@@ -1,27 +1,40 @@
 ---
 feature-id: M-001
-feature-name: "Quản Lý Tài Chính"
+feature-name: Quản Lý Tài Chính
 pipeline-type: sdlc
 status: in-progress
 depends-on: []
 blocked-by: []
-created: "2026-08-01T08:39:46Z"
-last-updated: "2026-08-01T08:39:46Z"
-current-stage: engineering-business-analyst
+created: 2026-08-01T08:39:46Z
+last-updated: 2026-08-01T08:50:41Z
+current-stage: engineering-technical-lead
 output-mode: lean
 repo-type: mini
-repo-path: "."
+repo-path: .
 project: ""
 docs-path: docs/modules/M-001-quan-ly-thu-chi
 intel-path: docs/intel
-stages-queue: ["engineering-system-architect","engineering-technical-lead","engineering-backend-developer-wave-1","engineering-qa-engineer-wave-1","engineering-code-reviewer"]
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
-    verdict: "Ready for BA"
-    completed-at: "2026-08-01T08:39:46Z"
+    verdict: Ready for BA
+    completed-at: 2026-08-01T08:39:46Z
+  engineering-business-analyst:
+    verdict: Pass
+    artifact: ba/00-lean-spec.md
+    completed-at: 2026-08-01
+  engineering-system-architect:
+    verdict: Pass
+    artifact: sa/00-lean-architecture.md
+    completed-at: 2026-08-01
 kpi:
   tokens-total: 0
-  cycle-time-start: "2026-08-01T08:39:46Z"
+  cycle-time-start: 2026-08-01T08:39:46Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count: {}
@@ -40,7 +53,6 @@ feature-req: |
   dev-unit: ""
 clarification-notes: ""
 ---
-
 # Pipeline State: Quản Lý Tài Chính
 
 ## Business Goal
@@ -57,6 +69,9 @@ clarification-notes: ""
 | 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
 | 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
 | 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
+| engineering-business-analyst | engineering-business-analyst | Pass | ba/00-lean-spec.md | 2026-08-01 |
+| engineering-system-architect | engineering-system-architect | Pass | sa/00-lean-architecture.md | 2026-08-01 |
+| engineering-system-architect | engineering-system-architect | Pass | sa/00-lean-architecture.md | 2026-08-01 |
 
 ## Current Stage
 

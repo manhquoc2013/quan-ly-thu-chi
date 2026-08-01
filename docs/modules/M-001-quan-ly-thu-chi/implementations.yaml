@@ -7,15 +7,27 @@ slug: quan-ly-thu-chi
 # Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
   apps: []
-  services: []
+  services:
+    - id: m001-app
+      name: quan-ly-thu-chi-web
+      type: frontend
+      path: src
+      framework: react
+      language: typescript
+      role: sole-implementation
+      notes: >-
+        React 19 + Vite SPA (PWA + Electron portable). Single-user offline-first
+        finance manager; backend is the client-side data layer (sql.js WASM +
+        Google Drive, IndexedDB cache). Source of truth: docs/01-architecture.md,
+        docs/05-technical-decisions.md, sa/00-lean-architecture.md.
   libs: []
   packages: []
 
 # Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
-  business-owner: ""
-  tech-lead: ""
-  qa-lead: ""
+  business-owner: "User (single-role app; BA spec §3)"
+  tech-lead: "engineering-technical-lead"
+  qa-lead: "engineering-qa-engineer"
 
 # Cross-references
 depends_on: []

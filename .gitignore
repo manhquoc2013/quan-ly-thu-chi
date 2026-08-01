@@ -5,11 +5,27 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.cursor/
 
 # Env
 .env
 .env.local
 
+# Build output
+dist/
 
-# ai-kit machine-local state (regenerable / local-only) — see specs/workspace-footprint.md
+# Vite cache
+.vite/
+
+# Dependencies
+node_modules/
+
+# ai-kit state
 .ai-kit/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
