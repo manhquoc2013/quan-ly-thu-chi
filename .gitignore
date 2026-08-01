@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env
+.env
+.env.local
+
+
+# ai-kit machine-local state (regenerable / local-only) — see specs/workspace-footprint.md
+.ai-kit/

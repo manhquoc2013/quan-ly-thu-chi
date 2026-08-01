@@ -1,0 +1,21 @@
+module_id: M-001
+module_name: "Quản Lý Tài Chính"
+type: bounded-context
+slug: quan-ly-thu-chi
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

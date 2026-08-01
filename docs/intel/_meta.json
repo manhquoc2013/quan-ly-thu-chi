@@ -1,0 +1,16 @@
+{
+  "artifacts": {
+    "_meta.json": {
+      "content_hash": "sha256:8d5c7a4a7390d7d6a297e2379ca345e9274794e78d88a2df51a10935e4bdd950",
+      "last_modified": "2026-08-01T08:39:43Z",
+      "last_producer": "ai-kit/scaffold_workspace",
+      "version": 1
+    }
+  },
+  "created_at": "2026-08-01T08:39:43Z",
+  "default_reuse_mode": "reuse_if_fresh",
+  "patch_rounds": [],
+  "schema_version": "1.0",
+  "updated_at": "2026-08-01T08:39:43Z",
+  "workspace": "quan-ly-thu-chi"
+}

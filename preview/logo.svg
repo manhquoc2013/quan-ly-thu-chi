@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="incomeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    
+    <linearGradient id="expenseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <circle cx="250" cy="250" r="230" fill="#F8FAFC" />
+
+  <g filter="url(#dropShadow)">
+    <path d="M 160 250 
+             A 90 90 0 0 0 340 250 
+             L 390 250 
+             A 140 140 0 0 1 110 250 
+             Z" 
+          fill="url(#expenseGrad)" />
+
+    <rect x="170" y="210" width="35" height="70" rx="6" fill="url(#incomeGrad)" />
+    
+    <rect x="220" y="160" width="35" height="120" rx="6" fill="url(#incomeGrad)" />
+    
+    <path d="M 270 280 
+             L 270 120 
+             L 255 120 
+             L 287.5 80 
+             L 320 120 
+             L 305 120 
+             L 305 280 
+             Z" 
+          fill="url(#incomeGrad)" />
+  </g>
+
+  <circle cx="135" cy="250" r="10" fill="#3B82F6" />
+  <circle cx="365" cy="250" r="10" fill="#10B981" />
+</svg>

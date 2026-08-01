@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản Lý Thu Chi — Theme Preview</title>
+<style>
+/* ═══════════════════════════════════════════
+   THEME TOKENS — CSS Variables (source of truth)
+   Port từ FeColors + FeSpacing + FeDimens
+   ═══════════════════════════════════════════ */
+:root {
+  /* Surface */
+  --color-background: #EFF2F7;
+  --color-surface: #FAFBFC;
+  --color-surface-hover: #F1F5F9;
+  --color-border: #CBD5E1;
+  --color-border-subtle: #E0E3E8;
+
+  /* Text */
+  --color-text-primary: #333333;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+
+  /* Accent */
+  --color-accent-bg: #E3F2FD;
+  --color-accent-fg: #1565C0;
+  --color-accent-fg-hover: #0D47A1;
+
+  /* Semantic */
+  --color-success-bg: #ECFDF5;
+  --color-success-fg: #065F46;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-fg: #92400E;
+  --color-danger-bg: #FFEBEE;
+  --color-danger-fg: #C62828;
+  --color-info-bg: #E0F2FE;
+  --color-info-fg: #1E3A8A;
+
+  /* Neutral */
+  --color-neutral-bg: #ECEFF1;
+  --color-neutral-fg: #37474F;
+  --color-neutral-bg-hover: #CFD8DC;
+
+  /* Button */
+  --color-run-bg: #1565C0;
+  --color-run-fg: #FFFFFF;
+  --color-cancel-bg: #F57C00;
+  --color-cancel-fg: #FFFFFF;
+
+  /* Grid */
+  --color-grid-header-bg: #F1F5F9;
+  --color-grid-header-fg: #334155;
+  --color-grid-row-even: #FFFFFF;
+  --color-grid-row-odd: #FAFBFC;
+  --color-grid-row-hover: #F1F5F9;
+
+  /* Sidebar */
+  --color-sidebar-bg: #1E293B;
+  --color-sidebar-fg: #CBD5E1;
+  --color-sidebar-active-bg: #334155;
+
+  /* Category colors */
+  --cat-office: #3B82F6;
+  --cat-rent: #8B5CF6;
+  --cat-utilities: #F59E0B;
+  --cat-salary: #10B981;
+  --cat-marketing: #EC4899;
+  --cat-supplies: #6366F1;
+  --cat-transportation: #14B8A6;
+  --cat-maintenance: #F97316;
+  --cat-tax: #EF4444;
+  --cat-other: #6B7280;
+
+  /* Chart */
+  --color-chart-1: #2563EB;
+  --color-chart-2: #7C3AED;
+  --color-chart-3: #16A34A;
+  --color-chart-4: #D97706;
+  --color-chart-5: #EC4899;
+
+  /* Spacing */
+  --sp-xs: 4px;
+  --sp-sm: 6px;
+  --sp-md: 8px;
+  --sp-lg: 12px;
+  --sp-xl: 16px;
+
+  /* Radius */
+  --r-field: 4px;
+  --r-panel: 6px;
+  --r-dialog: 8px;
+  --r-badge: 12px;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Shadows */
+  --shadow-dialog: 0 8px 30px rgba(0,0,0,0.12);
+  --shadow-dropdown: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-size: inherit; }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════ */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px; background: var(--color-sidebar-bg); color: var(--color-sidebar-fg);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar-header {
+  padding: var(--sp-lg) var(--sp-xl); font-size: var(--text-lg); font-weight: var(--fw-bold);
+  color: #FFFFFF; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-nav { flex: 1; padding: var(--sp-sm) 0; }
+.nav-item {
+  display: flex; align-items: center; gap: var(--sp-md); padding: var(--sp-sm) var(--sp-xl);
+  font-size: var(--text-sm); color: var(--color-sidebar-fg); cursor: pointer;
+  transition: background 150ms; border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: rgba(255,255,255,0.06); }
+.nav-item.active { background: var(--color-sidebar-active-bg); color: #FFFFFF; font-weight: var(--fw-semibold); }
+.nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+.main { flex: 1; display: flex; flex-direction: column; }
+.header {
+  background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+  padding: var(--sp-sm) var(--sp-xl); display: flex; align-items: center; justify-content: space-between;
+}
+.header-title { font-size: var(--text-lg); font-weight: var(--fw-semibold); }
+.header-right { display: flex; align-items: center; gap: var(--sp-lg); font-size: var(--text-sm); color: var(--color-text-muted); }
+.content { flex: 1; padding: var(--sp-md); overflow-y: auto; }
+.statusbar {
+  background: var(--color-surface); border-top: 1px solid var(--color-border);
+  padding: 6px var(--sp-xl); font-size: var(--text-xs); color: var(--color-text-muted);
+  display: flex; align-items: center; gap: var(--sp-sm);
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-success-fg); }
+
+/* ═══════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════ */
+
+/* Panel */
+.panel {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--r-panel); padding: var(--sp-md); margin-bottom: var(--sp-md);
+}
+.panel-translucent {
+  background: rgba(250,251,252,0.85); backdrop-filter: blur(8px);
+  border: 1px solid var(--color-border-subtle);
+}
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--sp-sm);
+}
+.panel-title {
+  display: flex; align-items: center; gap: var(--sp-xs);
+  font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--color-text-secondary);
+}
+.panel-title-icon { color: var(--color-accent-fg); font-size: 14px; }
+
+/* Button */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--sp-xs); padding: 3px 10px;
+  font-size: var(--text-xs); font-weight: var(--fw-medium); border-radius: var(--r-field);
+  border: none; cursor: pointer; transition: all 150ms; white-space: nowrap;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-icon { font-size: 14px; }
+.btn-run { background: var(--color-run-bg); color: var(--color-run-fg); }
+.btn-run:hover:not(:disabled) { background: var(--color-accent-fg-hover); }
+.btn-danger { background: var(--color-danger-fg); color: #FFFFFF; }
+.btn-danger:hover:not(:disabled) { background: #B71C1C; }
+.btn-neutral { background: var(--color-neutral-bg); color: var(--color-neutral-fg); }
+.btn-neutral:hover:not(:disabled) { background: var(--color-neutral-bg-hover); }
+.btn-accent { background: var(--color-accent-bg); color: var(--color-accent-fg); }
+.btn-accent:hover:not(:disabled) { background: #BBDEFB; }
+
+/* Badge */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px;
+  font-size: var(--text-xs); font-weight: var(--fw-medium); border-radius: var(--r-badge);
+  white-space: nowrap;
+}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+.badge-success { background: var(--color-success-bg); color: var(--color-success-fg); }
+.badge-success .badge-dot { background: var(--color-success-fg); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning-fg); }
+.badge-warning .badge-dot { background: var(--color-warning-fg); }
+.badge-error { background: var(--color-danger-bg); color: var(--color-danger-fg); }
+.badge-error .badge-dot { background: var(--color-danger-fg); }
+.badge-neutral { background: var(--color-neutral-bg); color: var(--color-neutral-fg); }
+.badge-neutral .badge-dot { background: var(--color-neutral-fg); }
+.badge-accent { background: var(--color-accent-bg); color: var(--color-accent-fg); }
+.badge-accent .badge-dot { background: var(--color-accent-fg); }
+
+/* Form */
+.form-group { margin-bottom: var(--sp-sm); }
+.form-label { font-size: var(--text-xs); color: var(--color-text-secondary); display: block; margin-bottom: 2px; }
+.form-input, .form-select {
+  width: 100%; padding: 4px 8px; font-size: var(--text-sm); background: #FFFFFF;
+  border: 1px solid var(--color-border); border-radius: var(--r-field);
+  color: var(--color-text-primary); outline: none; transition: border-color 150ms;
+}
+.form-input:focus, .form-select:focus { border-color: var(--color-accent-fg); box-shadow: 0 0 0 2px rgba(21,101,192,0.15); }
+.form-input::placeholder { color: #94A3B8; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-sm); }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-sm); }
+.toolbar-left { display: flex; align-items: center; gap: var(--sp-sm); }
+.toolbar-right { display: flex; align-items: center; gap: var(--sp-sm); }
+
+/* Grid */
+.grid-header {
+  display: grid; grid-template-columns: 32px 1fr 1fr 2fr 100px 110px;
+  gap: var(--sp-md); padding: 5px var(--sp-md); background: var(--color-grid-header-bg);
+  border-radius: var(--r-field); font-size: var(--text-xs); font-weight: var(--fw-semibold);
+  color: var(--color-grid-header-fg);
+}
+.grid-row {
+  display: grid; grid-template-columns: 32px 1fr 1fr 2fr 100px 110px;
+  gap: var(--sp-md); padding: 7px var(--sp-md); align-items: center;
+  font-size: var(--text-sm); border-bottom: 1px solid var(--color-border-subtle);
+  transition: background 150ms;
+}
+.grid-row-even { background: var(--color-grid-row-even); }
+.grid-row-odd { background: var(--color-grid-row-odd); }
+.grid-row:hover { background: var(--color-grid-row-hover); }
+.grid-amount { text-align: right; font-weight: var(--fw-medium); }
+.grid-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-sm); font-size: var(--text-xs); color: var(--color-text-muted); }
+.cat-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 4px; }
+
+/* Color swatch */
+.swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--sp-sm); }
+.swatch { display: flex; align-items: center; gap: var(--sp-md); padding: var(--sp-sm); }
+.swatch-box { width: 32px; height: 32px; border-radius: var(--r-field); border: 1px solid var(--color-border-subtle); flex-shrink: 0; }
+.swatch-name { font-size: var(--text-sm); font-weight: var(--fw-medium); }
+.swatch-hex { font-size: var(--text-xs); color: var(--color-text-muted); font-family: var(--font-mono); }
+
+/* Spacing demo */
+.spacing-demo { display: flex; flex-direction: column; gap: 4px; }
+.spacing-row { display: flex; align-items: center; gap: var(--sp-md); font-size: var(--text-sm); }
+.spacing-bar { height: 16px; background: var(--color-accent-bg); border-radius: 2px; }
+.spacing-label { width: 80px; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Radius demo */
+.radius-grid { display: flex; gap: var(--sp-xl); align-items: flex-end; }
+.radius-item { text-align: center; }
+.radius-box { width: 48px; height: 48px; background: var(--color-accent-bg); border: 2px solid var(--color-accent-fg); margin-bottom: 4px; }
+.radius-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Tab bar */
+.tab-bar { display: flex; background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 var(--sp-xl); gap: 1px; }
+.tab-btn {
+  padding: var(--sp-sm) var(--sp-lg); font-size: var(--text-sm); font-weight: var(--fw-medium);
+  color: var(--color-text-secondary); border: none; border-bottom: 2px solid transparent;
+  background: none; cursor: pointer; transition: all 150ms;
+}
+.tab-btn:hover { color: var(--color-text-primary); }
+.tab-btn.active { color: var(--color-accent-fg); border-bottom-color: var(--color-accent-fg); font-weight: var(--fw-semibold); }
+
+/* Section spacing */
+.section-title {
+  font-size: var(--text-lg); font-weight: var(--fw-semibold); color: var(--color-text-primary);
+  margin-bottom: var(--sp-md); display: flex; align-items: center; gap: var(--sp-sm);
+}
+.section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); }
+.section-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-md); }
+
+/* Summary cards */
+.summary-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--r-panel); padding: var(--sp-lg);
+}
+.summary-label { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 4px; }
+.summary-value { font-size: var(--text-xl); font-weight: var(--fw-bold); }
+
+/* Chart bar placeholder */
+.chart-bar-group { display: flex; align-items: flex-end; gap: var(--sp-md); height: 120px; padding-top: var(--sp-lg); }
+.chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar { width: 100%; border-radius: var(--r-field) var(--r-field) 0 0; transition: height 300ms; }
+.chart-bar-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Token reference table */
+.token-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.token-table th { background: var(--color-grid-header-bg); padding: var(--sp-sm) var(--sp-md); text-align: left; font-size: var(--text-xs); font-weight: var(--fw-semibold); color: var(--color-grid-header-fg); }
+.token-table td { padding: var(--sp-sm) var(--sp-md); border-bottom: 1px solid var(--color-border-subtle); }
+.token-table code { font-family: var(--font-mono); font-size: var(--text-xs); background: var(--color-neutral-bg); padding: 1px 4px; border-radius: 2px; }
+
+/* Toast */
+.toast { position: fixed; top: var(--sp-lg); right: var(--sp-lg); z-index: 100; display: flex; flex-direction: column; gap: var(--sp-sm); }
+.toast-item {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--r-panel); padding: var(--sp-sm) var(--sp-lg);
+  box-shadow: var(--shadow-dialog); font-size: var(--text-sm);
+  display: flex; align-items: center; gap: var(--sp-sm);
+  animation: slideIn 200ms ease-out;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast-success { border-left: 3px solid var(--color-success-fg); }
+.toast-error { border-left: 3px solid var(--color-danger-fg); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">🏠 Quản Lý Thu Chi</div>
+    <nav class="sidebar-nav">
+      <button class="nav-item"><span class="nav-icon">📊</span> Bảng điều khiển</button>
+      <button class="nav-item active"><span class="nav-icon">💰</span> Chi phí</button>
+      <button class="nav-item"><span class="nav-icon">📦</span> Doanh thu</button>
+      <button class="nav-item"><span class="nav-icon">📈</span> Báo cáo</button>
+      <button class="nav-item"><span class="nav-icon">🤖</span> AI Chat</button>
+      <button class="nav-item"><span class="nav-icon">⚙️</span> Cài đặt</button>
+    </nav>
+    <div style="padding: var(--sp-xl); font-size: var(--text-xs); color: #64748B; border-top: 1px solid rgba(255,255,255,0.06);">
+      v1.0.0 · Theme Preview
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <span class="header-title">💰 Quản lý Chi phí</span>
+      <div class="header-right">
+        <span class="badge badge-success"><span class="badge-dot"></span> Đã đồng bộ</span>
+        <span>⏰ 14:35 · 01/08/2026</span>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('colors')">🎨 Màu sắc</button>
+      <button class="tab-btn" onclick="switchTab('components')">🧩 Components</button>
+      <button class="tab-btn" onclick="switchTab('grid')">📊 Grid Chi Phí</button>
+      <button class="tab-btn" onclick="switchTab('report')">📈 Báo Cáo</button>
+      <button class="tab-btn" onclick="switchTab('tokens')">📋 Tokens</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ===== TAB: MÀU SẮC ===== -->
+      <div id="tab-colors" class="tab-content">
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🎨</span> Surface &amp; Text</div></div>
+            <div class="swatch-grid">
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-background)"></div><div><div class="swatch-name">Background</div><div class="swatch-hex">#EFF2F7</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-surface)"></div><div><div class="swatch-name">Surface</div><div class="swatch-hex">#FAFBFC</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-border)"></div><div><div class="swatch-name">Border</div><div class="swatch-hex">#CBD5E1</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-text-primary)"></div><div><div class="swatch-name">Text Primary</div><div class="swatch-hex">#333333</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-text-secondary)"></div><div><div class="swatch-name">Text Secondary</div><div class="swatch-hex">#475569</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-text-muted)"></div><div><div class="swatch-name">Text Muted</div><div class="swatch-hex">#64748B</div></div></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔔</span> Semantic Colors</div></div>
+            <div class="swatch-grid">
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-success-bg)"></div><div><div class="swatch-name">Success BG</div><div class="swatch-hex">#ECFDF5</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-success-fg)"></div><div><div class="swatch-name">Success FG</div><div class="swatch-hex">#065F46</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-warning-bg)"></div><div><div class="swatch-name">Warning BG</div><div class="swatch-hex">#FEF3C7</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-warning-fg)"></div><div><div class="swatch-name">Warning FG</div><div class="swatch-hex">#92400E</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-danger-bg)"></div><div><div class="swatch-name">Danger BG</div><div class="swatch-hex">#FFEBEE</div></div></div>
+              <div class="swatch"><div class="swatch-box" style="background:var(--color-danger-fg)"></div><div><div class="swatch-name">Danger FG</div><div class="swatch-hex">#C62828</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:var(--sp-md)">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏷️</span> Danh mục chi phí</div></div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-sm)">
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-office)"></div><div class="swatch-name">office</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-rent)"></div><div class="swatch-name">rent</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-utilities)"></div><div class="swatch-name">utilities</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-salary)"></div><div class="swatch-name">salary</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-marketing)"></div><div class="swatch-name">marketing</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-supplies)"></div><div class="swatch-name">supplies</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-transportation)"></div><div class="swatch-name">transport</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-maintenance)"></div><div class="swatch-name">maintenance</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-tax)"></div><div class="swatch-name">tax</div></div>
+            <div class="swatch"><div class="swatch-box" style="background:var(--cat-other)"></div><div class="swatch-name">other</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: COMPONENTS ===== -->
+      <div id="tab-components" class="tab-content" style="display:none">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔘</span> Button Variants</div></div>
+          <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap;align-items:center">
+            <button class="btn btn-run"><span class="btn-icon">＋</span> Thêm chi phí</button>
+            <button class="btn btn-neutral"><span class="btn-icon">🔍</span> Lọc</button>
+            <button class="btn btn-accent"><span class="btn-icon">📄</span> Xuất báo cáo</button>
+            <button class="btn btn-danger"><span class="btn-icon">🗑</span> Xóa</button>
+            <button class="btn btn-neutral" disabled><span class="btn-icon">⏳</span> Đang xử lý...</button>
+          </div>
+        </div>
+
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🏷️</span> Badge Variants</div></div>
+            <div style="display:flex;gap:var(--sp-sm);flex-wrap:wrap">
+              <span class="badge badge-success"><span class="badge-dot"></span> Đã thanh toán</span>
+              <span class="badge badge-warning"><span class="badge-dot"></span> Chờ thanh toán</span>
+              <span class="badge badge-error"><span class="badge-dot"></span> Đã hủy</span>
+              <span class="badge badge-accent"><span class="badge-dot"></span> Đang xử lý</span>
+              <span class="badge badge-neutral"><span class="badge-dot"></span> Mới tạo</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📦</span> Panel Styles</div></div>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-sm)">
+              <div class="panel" style="margin:0">
+                <div class="panel-header"><div class="panel-title">Solid Panel</div></div>
+                <div style="font-size:var(--text-sm);color:var(--color-text-secondary)">Nền đặc, border rõ. Dùng cho form &amp; nội dung chính.</div>
+              </div>
+              <div class="panel panel-translucent" style="margin:0">
+                <div class="panel-header"><div class="panel-title">Translucent Panel</div></div>
+                <div style="font-size:var(--text-sm);color:var(--color-text-secondary)">Nền trong suốt, border nhạt. Dùng cho grid.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📝</span> Form Elements</div></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Mô tả</label>
+              <input class="form-input" placeholder="Nhập mô tả chi phí...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Danh mục</label>
+              <select class="form-select"><option>Văn phòng phẩm</option><option>Điện nước</option><option>Vận chuyển</option></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Số tiền</label>
+              <div style="position:relative"><input class="form-input" placeholder="0" style="padding-right:24px"><span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:var(--text-xs);color:var(--color-text-muted)">₫</span></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ngày</label>
+              <input class="form-input" type="date" value="2026-08-01">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📏</span> Spacing Scale</div></div>
+          <div class="spacing-demo">
+            <div class="spacing-row"><span class="spacing-label">--sp-xs (4px)</span><div class="spacing-bar" style="width:16px"></div></div>
+            <div class="spacing-row"><span class="spacing-label">--sp-sm (6px)</span><div class="spacing-bar" style="width:24px"></div></div>
+            <div class="spacing-row"><span class="spacing-label">--sp-md (8px)</span><div class="spacing-bar" style="width:32px"></div></div>
+            <div class="spacing-row"><span class="spacing-label">--sp-lg (12px)</span><div class="spacing-bar" style="width:48px"></div></div>
+            <div class="spacing-row"><span class="spacing-label">--sp-xl (16px)</span><div class="spacing-bar" style="width:64px"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: GRID CHI PHÍ ===== -->
+      <div id="tab-grid" class="tab-content" style="display:none">
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div style="position:relative">
+              <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px">🔍</span>
+              <input class="form-input" placeholder="Tìm kiếm..." style="padding-left:26px;width:180px">
+            </div>
+            <button class="btn btn-neutral"><span class="btn-icon">📅</span> Từ 01/07 → Đến 31/07</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-run"><span class="btn-icon">＋</span> Thêm chi phí</button>
+            <button class="btn btn-danger"><span class="btn-icon">🗑</span> Xóa</button>
+          </div>
+        </div>
+
+        <!-- Grid Panel -->
+        <div class="panel panel-translucent">
+          <div class="panel-header">
+            <div class="panel-title"><span class="panel-title-icon">📋</span> Chi phí · 5 khoản</div>
+            <span style="font-size:var(--text-xs);color:var(--color-text-muted)">Tổng: <strong style="color:var(--color-danger-fg)">4.600.000 ₫</strong></span>
+          </div>
+
+          <div class="grid-header">
+            <span></span><span>Ngày</span><span>Danh mục</span><span>Mô tả</span><span>Trạng thái</span><span class="grid-amount">Số tiền</span>
+          </div>
+
+          <div class="grid-row grid-row-even">
+            <input type="checkbox">
+            <span>15/07/2026</span>
+            <span><span class="cat-dot" style="background:var(--cat-office)"></span>Văn phòng phẩm</span>
+            <span>Giấy in A4 Double A 5 ram 🖼️</span>
+            <span><span class="badge badge-success"><span class="badge-dot"></span> Đã TT</span></span>
+            <span class="grid-amount">250.000 ₫</span>
+          </div>
+          <div class="grid-row grid-row-odd">
+            <input type="checkbox">
+            <span>14/07/2026</span>
+            <span><span class="cat-dot" style="background:var(--cat-utilities)"></span>Điện nước</span>
+            <span>Tiền điện tháng 7</span>
+            <span><span class="badge badge-warning"><span class="badge-dot"></span> Chờ TT</span></span>
+            <span class="grid-amount">1.200.000 ₫</span>
+          </div>
+          <div class="grid-row grid-row-even">
+            <input type="checkbox">
+            <span>13/07/2026</span>
+            <span><span class="cat-dot" style="background:var(--cat-transportation)"></span>Vận chuyển</span>
+            <span>Xăng xe đi giao hàng</span>
+            <span><span class="badge badge-success"><span class="badge-dot"></span> Đã TT</span></span>
+            <span class="grid-amount">350.000 ₫</span>
+          </div>
+          <div class="grid-row grid-row-odd">
+            <input type="checkbox">
+            <span>12/07/2026</span>
+            <span><span class="cat-dot" style="background:var(--cat-marketing)"></span>Marketing</span>
+            <span>Chạy quảng cáo Facebook 🖼️</span>
+            <span><span class="badge badge-success"><span class="badge-dot"></span> Đã TT</span></span>
+            <span class="grid-amount">2.000.000 ₫</span>
+          </div>
+          <div class="grid-row grid-row-even">
+            <input type="checkbox">
+            <span>10/07/2026</span>
+            <span><span class="cat-dot" style="background:var(--cat-maintenance)"></span>Bảo trì</span>
+            <span>Sửa máy lạnh văn phòng</span>
+            <span><span class="badge badge-error"><span class="badge-dot"></span> Đã hủy</span></span>
+            <span class="grid-amount">800.000 ₫</span>
+          </div>
+
+          <div class="grid-pagination">
+            <span>✅ Đã chọn 0 dòng</span>
+            <span>[1] / 1 trang</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: BÁO CÁO ===== -->
+      <div id="tab-report" class="tab-content" style="display:none">
+        <!-- Summary Cards -->
+        <div class="section-grid-3" style="margin-bottom:var(--sp-md)">
+          <div class="summary-card">
+            <div class="summary-label">💰 Tổng chi phí</div>
+            <div class="summary-value" style="color:var(--color-danger-fg)">12.300.000 ₫</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px">23 khoản · Tháng 7/2026</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">📦 Tổng doanh thu</div>
+            <div class="summary-value" style="color:var(--color-success-fg)">45.600.000 ₫</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px">15 đơn · Tháng 7/2026</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">📊 Lợi nhuận</div>
+            <div class="summary-value" style="color:var(--color-accent-fg)">33.300.000 ₫</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px">Tỉ suất: 73%</div>
+          </div>
+        </div>
+
+        <!-- Chart: Chi phí theo tháng -->
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📊</span> Chi phí theo tháng</div></div>
+          <div class="chart-bar-group">
+            <div class="chart-bar-col"><div class="chart-bar" style="height:50px;background:var(--color-chart-1)"></div><div class="chart-bar-label">T4</div></div>
+            <div class="chart-bar-col"><div class="chart-bar" style="height:68px;background:var(--color-chart-2)"></div><div class="chart-bar-label">T5</div></div>
+            <div class="chart-bar-col"><div class="chart-bar" style="height:40px;background:var(--color-chart-3)"></div><div class="chart-bar-label">T6</div></div>
+            <div class="chart-bar-col"><div class="chart-bar" style="height:95px;background:var(--color-chart-4)"></div><div class="chart-bar-label">T7</div></div>
+            <div class="chart-bar-col"><div class="chart-bar" style="height:30px;background:var(--color-chart-5)"></div><div class="chart-bar-label">T8*</div></div>
+          </div>
+        </div>
+
+        <!-- Pie placeholder -->
+        <div class="section-grid" style="margin-top:var(--sp-md)">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🥧</span> Phân bổ theo danh mục</div></div>
+            <table style="width:100%;font-size:var(--text-sm)">
+              <tr style="color:var(--color-text-secondary)"><td><span class="cat-dot" style="background:var(--cat-utilities)"></span>Điện nước</td><td style="text-align:right">4.800.000 ₫</td><td style="text-align:right;color:var(--color-text-muted)">42%</td></tr>
+              <tr style="color:var(--color-text-secondary)"><td><span class="cat-dot" style="background:var(--cat-office)"></span>Văn phòng</td><td style="text-align:right">3.200.000 ₫</td><td style="text-align:right;color:var(--color-text-muted)">28%</td></tr>
+              <tr style="color:var(--color-text-secondary)"><td><span class="cat-dot" style="background:var(--cat-transportation)"></span>Vận chuyển</td><td style="text-align:right">2.100.000 ₫</td><td style="text-align:right;color:var(--color-text-muted)">18%</td></tr>
+              <tr style="color:var(--color-text-secondary)"><td><span class="cat-dot" style="background:var(--cat-other)"></span>Khác</td><td style="text-align:right">2.200.000 ₫</td><td style="text-align:right;color:var(--color-text-muted)">12%</td></tr>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📈</span> Doanh thu theo tháng</div></div>
+            <div class="chart-bar-group">
+              <div class="chart-bar-col"><div class="chart-bar" style="height:70px;background:var(--color-chart-3)"></div><div class="chart-bar-label">T4</div></div>
+              <div class="chart-bar-col"><div class="chart-bar" style="height:55px;background:var(--color-chart-3)"></div><div class="chart-bar-label">T5</div></div>
+              <div class="chart-bar-col"><div class="chart-bar" style="height:88px;background:var(--color-chart-3)"></div><div class="chart-bar-label">T6</div></div>
+              <div class="chart-bar-col"><div class="chart-bar" style="height:100px;background:var(--color-chart-3)"></div><div class="chart-bar-label">T7</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: TOKENS ===== -->
+      <div id="tab-tokens" class="tab-content" style="display:none">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📐</span> Border Radius</div></div>
+          <div class="radius-grid">
+            <div class="radius-item"><div class="radius-box" style="border-radius:4px"></div><div class="radius-label">field (4px)</div></div>
+            <div class="radius-item"><div class="radius-box" style="border-radius:6px"></div><div class="radius-label">panel (6px)</div></div>
+            <div class="radius-item"><div class="radius-box" style="border-radius:8px"></div><div class="radius-label">dialog (8px)</div></div>
+            <div class="radius-item"><div class="radius-box" style="border-radius:12px"></div><div class="radius-label">badge (12px)</div></div>
+          </div>
+        </div>
+
+        <div class="section-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🔤</span> Typography</div></div>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-sm)">
+              <div style="font-size:var(--text-xl);font-weight:var(--fw-bold)">Quản Lý Thu Chi — text-xl (16px)</div>
+              <div style="font-size:var(--text-lg);font-weight:var(--fw-semibold)">Quản Lý Thu Chi — text-lg (14px)</div>
+              <div style="font-size:var(--text-base)">Quản Lý Thu Chi — text-base (13px)</div>
+              <div style="font-size:var(--text-sm);color:var(--color-text-secondary)">Quản Lý Thu Chi — text-sm (12px)</div>
+              <div style="font-size:var(--text-xs);color:var(--color-text-muted)">Quản Lý Thu Chi — text-xs (11px)</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">📋</span> Token Usage</div></div>
+            <div style="font-size:var(--text-sm);font-family:var(--font-mono);color:var(--color-text-secondary);background:var(--color-grid-header-bg);padding:var(--sp-md);border-radius:var(--r-field);line-height:1.8">
+              <div><span style="color:#7C3AED">/* CSS Variable */</span></div>
+              <div><span style="color:#2563EB">color</span>: <span style="color:#16A34A">var(--color-accent-fg)</span>;</div>
+              <div><span style="color:#2563EB">padding</span>: <span style="color:#16A34A">var(--sp-md)</span>;</div>
+              <div style="margin-top:8px"><span style="color:#7C3AED">/* Tailwind CSS 4 class */</span></div>
+              <div>&lt;div <span style="color:#2563EB">class</span>=<span style="color:#16A34A">"bg-[var(--color-surface)] p-[var(--sp-md)]"</span>&gt;</div>
+              <div style="margin-top:8px"><span style="color:#7C3AED">/* TypeScript Constant */</span></div>
+              <div><span style="color:#7C3AED">import</span> { colors, spacing } <span style="color:#7C3AED">from</span> <span style="color:#16A34A">'@ui/theme'</span>;</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:var(--sp-md)">
+          <div class="panel-header"><div class="panel-title"><span class="panel-title-icon">🖥️</span> Tech Stack</div></div>
+          <table class="token-table">
+            <thead><tr><th>Layer</th><th>Technology</th><th>Version</th></tr></thead>
+            <tbody>
+              <tr><td><strong>UI Framework</strong></td><td>React</td><td><code>19.2.8</code></td></tr>
+              <tr><td><strong>Language</strong></td><td>TypeScript</td><td><code>5.x</code></td></tr>
+              <tr><td><strong>Build</strong></td><td>Vite</td><td><code>8.1.x</code></td></tr>
+              <tr><td><strong>Styling</strong></td><td>Tailwind CSS 4</td><td><code>4.x · CSS-first @theme</code></td></tr>
+              <tr><td><strong>State</strong></td><td>Zustand</td><td><code>5.x</code></td></tr>
+              <tr><td><strong>Desktop</strong></td><td>Electron</td><td><code>43.x · Chromium 150 · Node 24</code></td></tr>
+              <tr><td><strong>AI Local</strong></td><td>WebLLM</td><td><code>Qwen 2.5 0.5B · 280MB</code></td></tr>
+              <tr><td><strong>AI Cloud</strong></td><td>Gemini</td><td><code>2.0 Flash · 1.500 req/ngày</code></td></tr>
+              <tr><td><strong>Portable ZIP</strong></td><td>electron-builder</td><td><code>~95MB · giải nén là chạy</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Status Bar -->
+    <div class="statusbar">
+      <span class="status-dot"></span> Đã đồng bộ · 01/08/2026 14:35
+      <span style="margin-left:auto">Theme Preview v1.0</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toast example -->
+<div class="toast">
+  <div class="toast-item toast-success">✅ Đã thêm chi phí "Giấy in A4" — 250.000 ₫</div>
+  <div class="toast-item toast-error" style="animation-delay:200ms">❌ Lỗi đồng bộ — thử lại sau</div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).style.display = '';
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
