@@ -2,7 +2,7 @@
  * DashboardScreen — Real data from expense & revenue stores.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Briefcase, Clock } from 'lucide-react';
@@ -11,6 +11,9 @@ import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { formatCurrency } from '@/utils/currency';
 import { bootstrapAppData } from '@/services/bootstrap';
+import { formatAxisVnd, chartTooltipFormatter } from '@/utils/chartFormat';
+import type { Expense, Revenue } from '@/models';
+import { TransactionDetailModal } from './TransactionDetailModal';
 
 export function DashboardScreen() {
   const expenses = useExpenseStore((s) => s.records);
@@ -21,21 +24,26 @@ export function DashboardScreen() {
     void bootstrapAppData();
   }, []);
 
+  const [selectedTransaction, setSelectedTransaction] = useState<
+    { type: 'expense'; data: Expense; readOnly: boolean } | { type: 'revenue'; data: Revenue; readOnly: boolean } | null
+  >(null);
+
   const totalExpense = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const totalRevenue = useMemo(() => revenues.reduce((s, r) => s + r.finalAmount, 0), [revenues]);
   const profit = totalRevenue - totalExpense;
   const pendingCount = useMemo(() => revenues.filter(r => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled').length, [revenues]);
 
   const chartData = useMemo(() => {
-    const days = ['T2','T3','T4','T5','T6','T7','CN'];
+    const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     const today = new Date();
     return days.map((d, i) => {
-      const date = new Date(today); date.setDate(date.getDate() - (6 - i));
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
       const dateStr = date.toISOString().slice(0, 10);
       return {
         day: d,
-        thu: revenues.filter(r => r.date === dateStr).reduce((s, r) => s + r.finalAmount / 1_000_000, 0),
-        chi: expenses.filter(e => e.date === dateStr).reduce((s, e) => s + e.amount / 1_000_000, 0),
+        thu: revenues.filter((r) => r.date === dateStr).reduce((s, r) => s + r.finalAmount, 0),
+        chi: expenses.filter((e) => e.date === dateStr).reduce((s, e) => s + e.amount, 0),
       };
     });
   }, [expenses, revenues]);
@@ -87,12 +95,29 @@ export function DashboardScreen() {
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false} />
                 <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}tr`} />
-                <Tooltip contentStyle={{ background: '#1E293B', border: 'none', borderRadius: 6, color: '#F8FAFC', fontSize: 12 }} />
-                <Bar dataKey="thu" fill="#059669" radius={[4,4,0,0]} />
-                <Bar dataKey="chi" fill="#DC2626" radius={[4,4,0,0]} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#64748B' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={48}
+                  tickFormatter={formatAxisVnd}
+                />
+                <Tooltip
+                  formatter={chartTooltipFormatter as never}
+                  labelFormatter={(label) => `Ngày ${label}`}
+                  contentStyle={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 8,
+                    color: '#1E293B',
+                    fontSize: 12,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  }}
+                />
+                <Bar dataKey="thu" name="Thu" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="chi" name="Chi" fill="#DC2626" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -110,7 +135,14 @@ export function DashboardScreen() {
           {pendingOrders.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">Không có đơn chờ</p>
           ) : pendingOrders.map(o => (
-            <div key={o.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-[var(--s-lg)] py-[var(--s-md)] border-b border-border-subtle last:border-b-0">
+            <div
+              key={o.id}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-[var(--s-lg)] py-[var(--s-md)] border-b border-border-subtle last:border-b-0 cursor-pointer hover:bg-surface-hover transition-colors"
+              onClick={() => setSelectedTransaction({ type: 'revenue', data: o, readOnly: false })}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTransaction({ type: 'revenue', data: o, readOnly: false }) }}
+            >
               <div><span className="font-mono text-xs text-accent-fg font-semibold">{o.orderCode}</span></div>
               <div className="flex items-center gap-1 text-xs text-text-muted"><Clock size={12} />{o.date}</div>
               <span className="font-semibold text-xs text-right">{formatCurrency(o.finalAmount)}</span>
@@ -128,7 +160,32 @@ export function DashboardScreen() {
           {recentTransactions.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">Chưa có giao dịch</p>
           ) : recentTransactions.map(tx => (
-            <div key={tx.id} className="flex items-center justify-between py-[var(--s-sm)] border-b border-border-subtle last:border-b-0">
+            <div
+              key={tx.id}
+              className="flex items-center justify-between py-[var(--s-sm)] border-b border-border-subtle last:border-b-0 cursor-pointer hover:bg-surface-hover transition-colors"
+              onClick={() => {
+                if (tx.type === 'expense') {
+                  const fullExpense = expenses.find(e => e.id === tx.id);
+                  if (fullExpense) setSelectedTransaction({ type: 'expense', data: fullExpense, readOnly: true });
+                } else {
+                  const fullRevenue = revenues.find(r => r.id === tx.id);
+                  if (fullRevenue) setSelectedTransaction({ type: 'revenue', data: fullRevenue, readOnly: true });
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (tx.type === 'expense') {
+                    const fullExpense = expenses.find(e => e.id === tx.id);
+                    if (fullExpense) setSelectedTransaction({ type: 'expense', data: fullExpense, readOnly: true });
+                  } else {
+                    const fullRevenue = revenues.find(r => r.id === tx.id);
+                    if (fullRevenue) setSelectedTransaction({ type: 'revenue', data: fullRevenue, readOnly: true });
+                  }
+                }
+              }}
+            >
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-full ${tx.type === 'income' ? 'bg-success-bg' : 'bg-danger-bg'}`}>
                   {tx.type === 'income' ? <ArrowUpRight size={14} className="text-success-fg" /> : <ArrowDownRight size={14} className="text-danger-fg" />}
@@ -146,6 +203,25 @@ export function DashboardScreen() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedTransaction?.type === 'expense' && (
+        <TransactionDetailModal
+          open={!!selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+          type="expense"
+          record={selectedTransaction.data}
+          readOnly={selectedTransaction.readOnly}
+        />
+      )}
+      {selectedTransaction?.type === 'revenue' && (
+        <TransactionDetailModal
+          open={!!selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+          type="revenue"
+          record={selectedTransaction.data}
+          readOnly={selectedTransaction.readOnly}
+        />
+      )}
     </div>
   );
 }

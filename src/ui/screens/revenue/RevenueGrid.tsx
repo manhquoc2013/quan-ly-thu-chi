@@ -10,11 +10,23 @@
  * Uses @models (ORDER_STATUS_LABELS), @utils (formatCurrency), @ui/components.
  */
 
+import { useState, useCallback } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
 import { ORDER_STATUS_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
+import { useCustomerStore } from '@/store/customerStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Pencil, Trash2 } from 'lucide-react';
 
 /* ─── Props ─── */
@@ -50,9 +62,26 @@ function statusBadgeClass(status: OrderStatus): string {
 
 /* ─── Component ─── */
 
+function customerLabel(row: Revenue, customers: Array<{ id: string; name: string }>): string {
+  if (row.customerId === 'walk-in') return 'Khách vãng lai';
+  return (
+    customers.find((c) => c.id === row.customerId)?.name ||
+    row.notes?.replace(/^Khách:\s*/i, '') ||
+    '—'
+  );
+}
+
 export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGridProps) {
-  /* Row class helper */
-  const rowClass = () => [
+  const customers = useCustomerStore((s) => s.customers);
+  const [confirmDelete, setConfirmDelete] = useState<Revenue | null>(null);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!confirmDelete) return;
+    onDelete?.(confirmDelete);
+    setConfirmDelete(null);
+  }, [confirmDelete, onDelete]);
+
+  const rowClass = [
     'flex',
     'items-center',
     'gap-[var(--s-md)]',
@@ -64,7 +93,7 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
     'transition-colors',
     'duration-[var(--d-fast)]',
     'hover:bg-surface-hover',
-  ].filter(Boolean).join(' ');
+  ].join(' ');
 
   return (
     <div className="flex flex-col overflow-auto" role="grid" aria-label="Orders grid">
@@ -83,7 +112,7 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
         <div className="w-[70px] shrink-0 text-right" role="columnheader">SL SP</div>
         <div className="w-[140px] shrink-0 text-right" role="columnheader">Tổng tiền</div>
         <div className="w-[110px] shrink-0 text-center" role="columnheader">Trạng thái</div>
-        <div className="w-[90px] shrink-0 text-center" role="columnheader">Thao tác</div>
+        <div className="w-[100px] shrink-0 text-center" role="columnheader">Thao tác</div>
       </div>
 
       {/* Data rows */}
@@ -93,7 +122,7 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
         return (
           <div
             key={row.id}
-            className={rowClass()}
+            className={rowClass}
             role="row"
             onClick={() => onRowClick?.(row)}
             tabIndex={0}
@@ -104,60 +133,71 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
               }
             }}
           >
-            {/* Order code */}
             <div className="w-[150px] shrink-0 text-xs font-mono text-text-primary" role="gridcell">
               {row.orderCode}
             </div>
 
-            {/* Date */}
             <div className="w-[110px] shrink-0 text-xs text-text-secondary" role="gridcell">
               {row.date}
             </div>
 
-            {/* Customer */}
             <div className="flex-1 min-w-0 text-xs text-text-primary truncate" role="gridcell">
-              {row.customerId}
+              {customerLabel(row, customers)}
             </div>
 
-            {/* Items count */}
             <div className="w-[70px] shrink-0 text-xs text-right text-text-secondary font-medium" role="gridcell">
               {itemCount}
             </div>
 
-            {/* Total */}
             <div className="w-[140px] shrink-0 text-xs text-right font-semibold text-text-primary" role="gridcell">
               {formatCurrency(row.finalAmount)}
             </div>
 
-            {/* Status badge */}
             <div className="w-[110px] shrink-0 text-center" role="gridcell">
               <Badge variant={statusVariant(row.orderStatus)} className={statusBadgeClass(row.orderStatus)}>
                 {ORDER_STATUS_LABELS[row.orderStatus]}
               </Badge>
             </div>
 
-            {/* Actions */}
-            <div className="w-[90px] shrink-0 text-center" role="gridcell">
-              <div className="flex items-center justify-center gap-1">
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={() => onEdit?.(row)}
-                >
-                  <Pencil size={12} /> Sửa
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="xs"
-                  onClick={() => onDelete?.(row)}
-                >
-                  <Trash2 size={12} /> Xóa
-                </Button>
-              </div>
+            {/* stopPropagation so Sửa/Xóa không kích hoạt mở chi tiết */}
+            <div
+              className="w-[100px] shrink-0 flex items-center justify-center gap-1"
+              role="gridcell"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => onEdit?.(row)}
+              >
+                <Pencil size={12} /> Sửa
+              </Button>
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={() => setConfirmDelete(row)}
+              >
+                <Trash2 size={12} /> Xóa
+              </Button>
             </div>
           </div>
         );
       })}
+
+      <AlertDialog open={confirmDelete !== null} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa đơn “{confirmDelete?.orderCode}” không? Thao tác không hoàn tác được.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

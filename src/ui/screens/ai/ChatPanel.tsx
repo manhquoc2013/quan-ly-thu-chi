@@ -491,18 +491,23 @@ export function ChatPanel() {
                 >
                   {listening ? <MicOff size={14} /> : <Mic size={14} />}
                 </button>
-                <input
-                  type="text"
+                <textarea
+                  rows={1}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    const el = e.target;
+                    el.style.height = 'auto';
+                    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       void handleSend(input);
                     }
                   }}
-                  placeholder={listening ? 'Đang nghe...' : 'Nhập câu hỏi...'}
-                  className="flex-1 bg-input-bg border border-input-border rounded-field px-[var(--s-sm)] py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
+                  placeholder={listening ? 'Đang nghe...' : 'Nhập tin nhắn… (Shift+Enter xuống dòng)'}
+                  className="flex-1 min-h-7 max-h-[120px] resize-none overflow-y-auto bg-input-bg border border-input-border rounded-field px-[var(--s-sm)] py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-input-focus-ring leading-snug"
                   aria-label="Chat message input"
                   disabled={isTyping}
                 />

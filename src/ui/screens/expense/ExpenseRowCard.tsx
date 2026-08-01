@@ -4,19 +4,17 @@
  * Shows a compact summary line; clicking expands to reveal full detail
  * (supplier, payment method, notes, tags, invoice preview).
  *
- * Action buttons: edit, delete, change status.
- *
- * Named export: `ExpenseRowCard`
+ * Action buttons: edit, delete.
  */
 
 import { useState, useCallback } from 'react';
-import type { Expense, ExpenseStatus } from '@/models';
+import type { Expense } from '@/models';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, X, CheckCircle2, Clock } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 /* ─── Props ─── */
@@ -26,20 +24,7 @@ export interface ExpenseRowCardProps {
   onSelect: (id: string) => void;
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
-  onStatusChange: (id: string, status: ExpenseStatus) => void;
   isSelected?: boolean;
-}
-
-/* ─── Helpers ─── */
-
-function statusLabel(status: ExpenseStatus): string {
-  if (status === 'paid') return 'Đã thanh toán';
-  if (status === 'pending') return 'Chờ thanh toán';
-  return 'Đã hủy';
-}
-
-function statusVariant(status: ExpenseStatus): 'default' | 'secondary' | 'destructive' {
-  return status === 'paid' ? 'default' : status === 'pending' ? 'secondary' : 'destructive';
 }
 
 function paymentMethodLabel(method: string): string {
@@ -56,7 +41,6 @@ export function ExpenseRowCard({
   onSelect,
   onEdit,
   onDelete,
-  onStatusChange,
   isSelected = false,
 }: ExpenseRowCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -76,7 +60,6 @@ export function ExpenseRowCard({
       role="row"
       aria-expanded={expanded}
     >
-      {/* Compact summary line */}
       <div
         role="button"
         tabIndex={0}
@@ -90,7 +73,6 @@ export function ExpenseRowCard({
         }}
         className="flex items-center h-[52px] px-4 cursor-pointer bg-surface hover:bg-surface-hover transition-colors duration-[var(--d-fast)]"
       >
-        {/* Expand chevron */}
         <div className="w-6 shrink-0 flex items-center justify-center mr-2">
           <svg
             className={cn(
@@ -109,7 +91,6 @@ export function ExpenseRowCard({
           </svg>
         </div>
 
-        {/* Checkbox */}
         <div className="w-8 shrink-0 flex items-center justify-center mr-3">
           <input
             type="checkbox"
@@ -123,34 +104,24 @@ export function ExpenseRowCard({
           />
         </div>
 
-        {/* Date */}
         <div className="w-[120px] shrink-0 text-xs text-text-primary">
           {formatDate(expense.date)}
         </div>
 
-        {/* Category badge */}
         <div className="w-[150px] shrink-0">
           <Badge variant="outline">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
         </div>
 
-        {/* Description */}
         <div className="flex-1 min-w-0 text-xs text-text-primary">
           <span className="block text-ellipsis overflow-hidden whitespace-nowrap">
             {expense.description}
           </span>
         </div>
 
-        {/* Amount */}
         <div className="w-[130px] shrink-0 text-xs text-text-primary text-right font-mono">
           {formatCurrency(expense.amount)}
         </div>
 
-        {/* Status */}
-        <div className="w-[130px] shrink-0">
-          <Badge variant={statusVariant(expense.status)}>{statusLabel(expense.status)}</Badge>
-        </div>
-
-        {/* Actions */}
         <div className="w-[160px] shrink-0 flex items-center gap-1 ml-3">
           <Button
             variant="outline"
@@ -197,7 +168,6 @@ export function ExpenseRowCard({
         </div>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div
           role="region"
@@ -218,10 +188,6 @@ export function ExpenseRowCard({
               <span className="font-mono text-text-primary">
                 {formatCurrency(expense.amount)}
               </span>
-            </div>
-            <div>
-              <span className="text-text-muted">Trạng thái:{' '}</span>
-              <Badge variant={statusVariant(expense.status)}>{statusLabel(expense.status)}</Badge>
             </div>
             {expense.supplier && (
               <div>
@@ -259,7 +225,6 @@ export function ExpenseRowCard({
             </div>
           </div>
 
-          {/* Detail actions */}
           <div className="flex items-center gap-2 mt-4">
             <Button
               variant="default"
@@ -279,33 +244,6 @@ export function ExpenseRowCard({
             >
               <Trash2 size={14} /> Xóa
             </Button>
-            {expense.status === 'pending' && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  onStatusChange(expense.id, 'paid');
-                }}
-                className="px-3 py-1 text-xs"
-              >
-                <CheckCircle2 size={14} /> Đã thanh toán
-              </Button>
-            )}
-            {expense.status === 'paid' && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  onStatusChange(expense.id, 'pending');
-                }}
-                className="px-3 py-1 text-xs"
-              >
-                <Clock size={14} /> Chờ thanh toán
-              </Button>
-            )}
-            {expense.status === 'cancelled' && (
-              <span className="text-xs text-text-muted italic">
-                Chi phí đã hủy — không thể thay đổi
-              </span>
-            )}
           </div>
         </div>
       )}

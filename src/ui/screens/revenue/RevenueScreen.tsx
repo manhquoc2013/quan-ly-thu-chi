@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
+import { ORDER_STATUS_LABELS } from '@/models';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { getAllRevenues } from '@/services/revenueService';
@@ -22,19 +23,12 @@ import { OrderRowCard } from './OrderRowCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePicker } from '@/ui/components/DatePicker';
+import { Dropdown, optionsFromLabels } from '@/ui/components/Dropdown';
 
-/* ─── Status filter options ─────────────────────────────────────────────── */
-
-const STATUS_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
+const STATUS_FILTER_OPTIONS = optionsFromLabels(ORDER_STATUS_LABELS, [
   { value: '', label: 'Tất cả trạng thái' },
-  { value: 'new', label: 'Mới tạo' },
-  { value: 'confirmed', label: 'Đã xác nhận' },
-  { value: 'processing', label: 'Đang xử lý' },
-  { value: 'completed', label: 'Hoàn thành' },
-  { value: 'cancelled', label: 'Đã hủy' },
-];
+]);
 
 /* ─── Screen ────────────────────────────────────────────────────────────── */
 
@@ -135,44 +129,51 @@ export function RevenueScreen() {
     <div className="flex flex-col h-full bg-background min-h-0">
       {/* ── Toolbar ──────────────────────────────────────────────────── */}
 
-      <div className="flex items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface">
-        {/* Search */}
-        <input
-          type="text"
-          value={filters.search}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Tìm theo mã đơn, ghi chú..."
-          className={
-            'h-7 px-3 text-xs w-[220px] ' +
-            'bg-input-bg ' +
-            'border border-input-border rounded-field ' +
-            'text-text-primary placeholder-input-placeholder ' +
-            'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
-            'transition-colors duration-[var(--d-fast)]'
-          }
-          aria-label="Tìm kiếm đơn hàng"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-2 p-[var(--s-md)] border-b border-border bg-surface">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <input
+            type="text"
+            value={filters.search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Tìm theo mã đơn, ghi chú..."
+            className={
+              'h-7 px-3 text-xs w-[220px] ' +
+              'bg-input-bg ' +
+              'border border-input-border rounded-field ' +
+              'text-text-primary placeholder-input-placeholder ' +
+              'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
+              'transition-colors duration-[var(--d-fast)]'
+            }
+            aria-label="Tìm kiếm đơn hàng"
+          />
 
-        {/* Status filter */}
-        <Select value={(filters.orderStatus ?? '') as string} onValueChange={handleStatusFilter}>
-          <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
-          <SelectContent>{STATUS_FILTER_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-        </Select>
+          <Dropdown
+            options={STATUS_FILTER_OPTIONS}
+            value={(filters.orderStatus ?? '') as string}
+            onChange={handleStatusFilter}
+            placeholder="Trạng thái"
+            clearable
+            className="w-[160px] h-8"
+            aria-label="Lọc trạng thái"
+          />
 
-        {/* Date range */}
-        <DatePicker
-          value={filters.dateFrom}
-          onChange={handleDateFrom}
-          placeholder="Từ ngày"
-        />
-        <DatePicker
-          value={filters.dateTo}
-          onChange={handleDateTo}
-          placeholder="Đến ngày"
-        />
+          <DatePicker
+            value={filters.dateFrom}
+            onChange={handleDateFrom}
+            placeholder="Từ ngày"
+            className="w-[140px] h-8"
+          />
+          <DatePicker
+            value={filters.dateTo}
+            onChange={handleDateTo}
+            placeholder="Đến ngày"
+            className="w-[140px] h-8"
+          />
+        </div>
 
-        {/* Trailing info */}
-        <div className="flex items-center gap-[var(--s-sm)] ml-auto">
+        {/* Trailing info + add button */}
+        <div className="flex items-center gap-2">
           <div className="text-xs text-text-muted">
             <span className="font-semibold text-text-primary">
               {formatCurrency(filteredRecords.reduce((s, r) => s + r.finalAmount, 0))}
@@ -201,12 +202,17 @@ export function RevenueScreen() {
       {/* ── Revenue detail Dialog ─────────────────────────────────────── */}
 
       <Dialog open={detailRevenue !== null} onOpenChange={(v) => !v && setDetailRevenue(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detailRevenue?.orderCode}</DialogTitle>
-            <DialogDescription>{detailRevenue?.date}</DialogDescription>
+        <DialogContent className="max-w-lg sm:max-w-xl max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
+            <DialogTitle className="font-mono tracking-tight">{detailRevenue?.orderCode}</DialogTitle>
+            <DialogDescription>
+              Ngày {detailRevenue?.date}
+              {detailRevenue ? ` · ${detailRevenue.items.length} sản phẩm` : ''}
+            </DialogDescription>
           </DialogHeader>
-          {detailRevenue && <OrderRowCard row={detailRevenue} />}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+            {detailRevenue && <OrderRowCard row={detailRevenue} />}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -43,7 +43,7 @@ export { ScrollArea } from '@/components/ui/scroll-area';
 export { FormField, type FormFieldProps } from './FormField';
 export { FormInput, type FormInputProps } from './FormInput';
 export { FormTextarea, type FormTextareaProps } from './FormTextarea';
-export { Dropdown, type DropdownProps, type DropdownOption } from './Dropdown';
+export { Dropdown, optionsFromLabels, type DropdownProps, type DropdownOption } from './Dropdown';
 export { DatePicker, type DatePickerProps } from './DatePicker';
 export { GridCell, type GridCellProps } from './GridCell';
 export { ImagePreview, type ImagePreviewProps } from './ImagePreview';

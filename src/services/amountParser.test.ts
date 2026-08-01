@@ -49,6 +49,27 @@ describe('parseTextToDraft', () => {
     expect(d!.customerName?.toLowerCase()).toBe('hùng');
   });
 
+  it('parses bán cho khách + SL + SP + giá đơn vị', () => {
+    const d = parseTextToDraft('bán cho Hoa 3 kẹp tóc giá 15k');
+    expect(d).not.toBeNull();
+    expect(d!.kind).toBe('revenue');
+    expect(d!.customerName?.toLowerCase()).toBe('hoa');
+    expect(d!.quantity).toBe(3);
+    expect(d!.unitPrice).toBe(15000);
+    expect(d!.amount).toBe(45000);
+    expect(d!.description.toLowerCase()).toContain('kẹp tóc');
+    expect(d!.description).not.toMatch(/^cho\b/i);
+  });
+
+  it('parses bán cho khách without qty', () => {
+    const d = parseTextToDraft('bán cho Hùng thú nhồi bông 25k');
+    expect(d).not.toBeNull();
+    expect(d!.kind).toBe('revenue');
+    expect(d!.customerName?.toLowerCase()).toBe('hùng');
+    expect(d!.amount).toBe(25000);
+    expect(d!.description.toLowerCase()).toContain('thú nhồi bông');
+  });
+
   it('ignores analysis prompts', () => {
     expect(parseTextToDraft('phân tích chi phí')).toBeNull();
     expect(parseTextToDraft('tổng quan tháng')).toBeNull();

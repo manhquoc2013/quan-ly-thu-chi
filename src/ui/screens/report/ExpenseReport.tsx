@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
 import { formatCurrency } from '@/utils/currency';
+import { formatAxisVnd } from '@/utils/chartFormat';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/models';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -33,7 +34,7 @@ export function ExpenseReport() {
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-[var(--s-lg)]">
       <Card><CardHeader><CardTitle>Theo danh mục</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byCategory.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><PieChart><Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, percent}: {name: string, percent: number}) => (name === 'Khác' ? undefined : `${name} ${(percent*100).toFixed(0)}%`)}>{byCategory.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip formatter={(v:number)=>formatCurrency(v)}/></PieChart></ResponsiveContainer>}</div></CardContent></Card>
-      <Card><CardHeader><CardTitle>Theo tháng</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${(v/1_000_000).toFixed(0)}tr`}/><Tooltip formatter={(v:number)=>formatCurrency(v)}/><Bar dataKey="total" fill="#DC2626" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}</div></CardContent></Card>
+      <Card><CardHeader><CardTitle>Theo tháng</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false}/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} width={52} tickFormatter={(v:number)=>formatAxisVnd(v)}/><Tooltip formatter={(v:number)=>formatCurrency(v)} labelFormatter={(l)=>`Tháng ${l}`}/><Bar dataKey="total" fill="#DC2626" radius={[4,4,0,0]} name="Chi" maxBarSize={36}/></BarChart></ResponsiveContainer>}</div></CardContent></Card>
     </div>
   </div>;
 }

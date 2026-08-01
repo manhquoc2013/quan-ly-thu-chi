@@ -483,11 +483,15 @@ export const aiRouter = {
           const fxNote = draft.rawFx
             ? ` (${draft.rawFx.original} ${draft.rawFx.currency})`
             : '';
+          const qtyNote =
+            draft.kind === 'revenue' && (draft.quantity ?? 1) > 1
+              ? ` · SL **${draft.quantity}**`
+              : '';
           const customerNote =
             draft.kind === 'revenue' && draft.customerName
               ? ` · khách **${draft.customerName}**`
               : '';
-          const text = `✅ Đã thêm ${kindLabel}: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫${fxNote}${customerNote}`;
+          const text = `✅ Đã thêm ${kindLabel}: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫${fxNote}${qtyNote}${customerNote}`;
           addToHistory(message, text);
           return {
             text,

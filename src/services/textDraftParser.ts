@@ -41,17 +41,18 @@ function isAnalysisOnly(lower: string): boolean {
 }
 
 function tryRevenue(lower: string, original: string, source: DraftSource): DraftRecord | null {
+  // Specialized: bán cho {khách} [{SL}] {SP} [giá] {tiền}
+  const banCho = parseBanCho(lower, source);
+  if (banCho) return validateDraft(banCho);
+
   const patterns: Array<{
     re: RegExp;
     pick: (m: RegExpMatchArray) => { money: string; desc: string; customer?: string };
   }> = [
+    // Product then money then optional customer — NOT "bán cho …"
     {
-      re: new RegExp(`^bán\\s+(.+?)\\s+${MONEY}\\s*(?:cho\\s+(.+))?\\s*$`, 'i'),
+      re: new RegExp(`^bán\\s+(?!cho\\b)(.+?)\\s+${MONEY}\\s*(?:cho\\s+(.+))?\\s*$`, 'i'),
       pick: (m) => ({ desc: m[1]!, money: m[2]!, customer: m[3] }),
-    },
-    {
-      re: new RegExp(`^bán\\s+cho\\s+(.+?)\\s+(.+?)\\s+${MONEY}\\s*$`, 'i'),
-      pick: (m) => ({ customer: m[1]!, desc: m[2]!, money: m[3]! }),
     },
     {
       re: new RegExp(`^thu\\s+(?:được\\s+)?${MONEY}\\s*(?:từ\\s+(.+?))?(?:\\s+bán\\s+(.+))?\\s*$`, 'i'),
@@ -137,6 +138,59 @@ function tryRevenue(lower: string, original: string, source: DraftSource): Draft
   }
 
   return null;
+}
+
+/**
+ * Parse "bán cho Hoa 3 kẹp tóc giá 15k" / "bán cho Hùng thú nhồi bông 25k"
+ * - `giá X` → X is unit price; total = qty × X
+ * - bare money at end → total; unit = total / qty
+ */
+function parseBanCho(lower: string, source: DraftSource): DraftRecord | null {
+  const re = new RegExp(
+    `^bán\\s+cho\\s+(\\S+)\\s+(?:(\\d{1,4})\\s+)?(.+?)\\s+(?:(giá)\\s+)?${MONEY}\\s*$`,
+    'i',
+  );
+  const m = lower.match(re);
+  if (!m) return null;
+
+  const customerRaw = m[1]!;
+  const qtyRaw = m[2];
+  const productRaw = m[3]!;
+  const isUnitPrice = Boolean(m[4]);
+  const moneyToken = m[5]!;
+
+  const money = normalizeCasualMoney(parseMoney(moneyToken), moneyToken);
+  if (!money || money.amountVnd <= 0) return null;
+
+  const quantity = qtyRaw ? Math.max(1, parseInt(qtyRaw, 10) || 1) : 1;
+  let product = cleanDesc(productRaw);
+  // Drop stray leading qty if duplicated in product text
+  product = product.replace(/^\d{1,4}\s+/, '').trim();
+  if (product.length < 2) return null;
+
+  let unitPrice: number;
+  let amount: number;
+  if (isUnitPrice) {
+    unitPrice = money.amountVnd;
+    amount = unitPrice * quantity;
+  } else {
+    amount = money.amountVnd;
+    unitPrice = Math.round(amount / quantity);
+  }
+
+  const description =
+    quantity > 1 ? `${quantity} × ${capitalize(product)}` : capitalize(product);
+
+  return makeDraft({
+    kind: 'revenue',
+    amount,
+    unitPrice,
+    quantity,
+    description,
+    customerName: capitalize(cleanDesc(customerRaw)),
+    source,
+    rawFx: money.rawFx,
+  });
 }
 
 function tryExpense(lower: string, original: string, source: DraftSource): DraftRecord | null {
@@ -235,6 +289,8 @@ function makeDraft(partial: Omit<DraftRecord, 'id' | 'date'> & { date?: string }
     description: partial.description,
     category: partial.category,
     customerName: partial.customerName,
+    quantity: partial.quantity,
+    unitPrice: partial.unitPrice,
     source: partial.source,
     confidence: 0.9,
     rawFx: partial.rawFx,

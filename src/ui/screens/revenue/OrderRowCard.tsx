@@ -1,31 +1,21 @@
 /**
- * OrderRowCard — Expandable order row with items list, totals, payment method,
- * quick status change buttons.
- *
- * Used inside the Revenue detail Dialog.
- *
- * Uses @models (ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS),
- * @store (useRevenueStore), @utils (formatCurrency), @ui/components.
+ * OrderRowCard — Order detail content for the revenue detail dialog.
  */
 
 import type { ReactNode } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
-import { ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
+import { ORDER_STATUS_LABELS, DELIVERY_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Play, Package, X } from 'lucide-react';
+import { CheckCircle2, Play, Package, X, User, CreditCard, Truck } from 'lucide-react';
 import { useRevenueStore } from '@/store/revenueStore';
-
-/* ─── Props ─── */
+import { useCustomerStore } from '@/store/customerStore';
 
 export interface OrderRowCardProps {
   row: Revenue;
-  /** Called when a quick-status button is clicked */
   onStatusChange?: (id: string, status: OrderStatus) => void;
 }
-
-/* ─── Quick status options ─── */
 
 const QUICK_STATUS_OPTIONS: Array<{ status: OrderStatus; label: string; icon: ReactNode }> = [
   { status: 'confirmed', label: 'Xác nhận', icon: <CheckCircle2 size={12} /> },
@@ -34,10 +24,30 @@ const QUICK_STATUS_OPTIONS: Array<{ status: OrderStatus; label: string; icon: Re
   { status: 'cancelled', label: 'Hủy', icon: <X size={12} /> },
 ];
 
-/* ─── Component ─── */
+function statusBadgeClass(status: OrderStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'bg-success-bg text-success-fg border-success-bg';
+    case 'cancelled':
+      return 'bg-danger-bg text-danger-fg border-danger-bg';
+    case 'processing':
+    case 'confirmed':
+      return 'bg-accent-bg text-accent-fg border-accent-bg';
+    default:
+      return '';
+  }
+}
 
 export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
   const updateRecord = useRevenueStore((s) => s.updateRecord);
+  const customers = useCustomerStore((s) => s.customers);
+
+  const customerName =
+    row.customerId === 'walk-in'
+      ? 'Khách vãng lai'
+      : customers.find((c) => c.id === row.customerId)?.name ||
+        row.notes?.replace(/^Khách:\s*/i, '') ||
+        '—';
 
   const handleQuickStatus = (status: OrderStatus) => {
     updateRecord(row.id, { orderStatus: status });
@@ -45,53 +55,57 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
   };
 
   return (
-    <div
-      className="ml-[var(--s-xl)] p-[var(--s-md)] rounded-panel border border-border-subtle bg-surface"
-      role="row"
-      aria-label={`Chi tiết đơn ${row.orderCode}`}
-    >
-      {/* Summary line */}
-      <div className="flex items-center gap-[var(--s-md)] mb-[var(--s-md)] pb-[var(--s-sm)] border-b border-border-subtle">
-        <span className="text-xs font-mono font-semibold text-text-primary">
-          {row.orderCode}
-        </span>
-        <span className="text-xs text-text-muted">{row.date}</span>
-        <span className="text-xs text-text-primary font-medium">{row.customerId}</span>
-        <span className="ml-auto text-sm font-bold text-text-primary">
-          {formatCurrency(row.finalAmount)}
-        </span>
-        <Badge variant="outline" className="text-xs">
-          {ORDER_STATUS_LABELS[row.orderStatus]}
-        </Badge>
+    <div className="space-y-4" role="region" aria-label={`Chi tiết đơn ${row.orderCode}`}>
+      {/* Meta grid — no UUID, no duplicate order code */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-panel border border-border-subtle bg-surface p-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Khách hàng</p>
+          <p className="text-sm font-medium text-text-primary truncate flex items-center gap-1">
+            <User size={12} className="shrink-0 text-text-muted" />
+            {customerName}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Thành tiền</p>
+          <p className="text-sm font-bold text-accent-fg font-mono">{formatCurrency(row.finalAmount)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Trạng thái</p>
+          <Badge variant="outline" className={`text-xs ${statusBadgeClass(row.orderStatus)}`}>
+            {ORDER_STATUS_LABELS[row.orderStatus]}
+          </Badge>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Giao hàng</p>
+          <p className="text-xs text-text-primary flex items-center gap-1">
+            <Truck size={12} className="text-text-muted" />
+            {DELIVERY_STATUS_LABELS[row.deliveryStatus]}
+          </p>
+        </div>
       </div>
 
-      {/* Items table */}
-      <div className="mb-[var(--s-md)]">
-        <h4 className="text-xs font-semibold text-text-secondary mb-2">
-          Sản phẩm / Dịch vụ
-        </h4>
-        <div className="overflow-x-auto">
+      {/* Items */}
+      <div>
+        <h4 className="text-xs font-semibold text-text-secondary mb-2">Sản phẩm / Dịch vụ</h4>
+        <div className="overflow-x-auto rounded-field border border-border-subtle">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-border-subtle">
-                <th className="text-left py-1 px-2 font-medium text-text-muted">Tên</th>
-                <th className="text-right py-1 px-2 font-medium text-text-muted w-[60px]">SL</th>
-                <th className="text-right py-1 px-2 font-medium text-text-muted w-[120px]">Đơn giá</th>
-                <th className="text-right py-1 px-2 font-medium text-text-muted w-[120px]">Thành tiền</th>
+              <tr className="bg-surface-hover border-b border-border-subtle">
+                <th className="text-left py-2 px-3 font-medium text-text-muted">Tên</th>
+                <th className="text-right py-2 px-3 font-medium text-text-muted w-14">SL</th>
+                <th className="text-right py-2 px-3 font-medium text-text-muted w-28">Đơn giá</th>
+                <th className="text-right py-2 px-3 font-medium text-text-muted w-28">Thành tiền</th>
               </tr>
             </thead>
             <tbody>
               {row.items.map((item, idx) => (
-                <tr
-                  key={item.id}
-                  className={idx % 2 === 0 ? '' : 'bg-surface-hover'}
-                >
-                  <td className="py-1 px-2 text-text-primary">{item.name}</td>
-                  <td className="py-1 px-2 text-right text-text-secondary">{item.quantity}</td>
-                  <td className="py-1 px-2 text-right text-text-secondary font-mono">
+                <tr key={item.id} className={idx % 2 === 0 ? 'bg-surface' : 'bg-surface-hover/50'}>
+                  <td className="py-2 px-3 text-text-primary">{item.name}</td>
+                  <td className="py-2 px-3 text-right text-text-secondary">{item.quantity}</td>
+                  <td className="py-2 px-3 text-right text-text-secondary font-mono">
                     {formatCurrency(item.unitPrice)}
                   </td>
-                  <td className="py-1 px-2 text-right text-text-primary font-semibold font-mono">
+                  <td className="py-2 px-3 text-right text-text-primary font-semibold font-mono">
                     {formatCurrency(item.total)}
                   </td>
                 </tr>
@@ -102,56 +116,47 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
       </div>
 
       {/* Totals */}
-      <div className="flex flex-col items-end gap-1 mb-[var(--s-md)]">
-        <div className="flex justify-between gap-[var(--s-3xl)] text-xs w-full max-w-[280px]">
-          <span className="text-text-muted">Tổng tiền:</span>
-          <span className="text-text-primary font-mono">{formatCurrency(row.totalAmount)}</span>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex justify-between gap-8 text-xs w-full max-w-xs">
+          <span className="text-text-muted">Tổng tiền</span>
+          <span className="font-mono text-text-primary">{formatCurrency(row.totalAmount)}</span>
         </div>
         {row.discount > 0 && (
-          <div className="flex justify-between gap-[var(--s-3xl)] text-xs w-full max-w-[280px]">
-            <span className="text-text-muted">Giảm giá:</span>
-            <span className="text-danger-fg font-mono">- {formatCurrency(row.discount)}</span>
+          <div className="flex justify-between gap-8 text-xs w-full max-w-xs">
+            <span className="text-text-muted">Giảm giá</span>
+            <span className="font-mono text-danger-fg">−{formatCurrency(row.discount)}</span>
           </div>
         )}
-        <div className="flex justify-between gap-[var(--s-3xl)] text-sm w-full max-w-[280px] border-t border-border-subtle pt-1">
-          <span className="font-semibold text-text-primary">Thành tiền:</span>
-          <span className="font-bold text-run-bg font-mono">{formatCurrency(row.finalAmount)}</span>
+        <div className="flex justify-between gap-8 text-sm w-full max-w-xs border-t border-border-subtle pt-2">
+          <span className="font-semibold text-text-primary">Thành tiền</span>
+          <span className="font-bold text-accent-fg font-mono">{formatCurrency(row.finalAmount)}</span>
         </div>
       </div>
 
-      {/* Payment method */}
-      <div className="text-xs text-text-secondary mb-[var(--s-md)]">
-        <span className="text-text-muted">Phương thức thanh toán: </span>
-        <span className="font-medium text-text-primary">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary">
+        <span className="inline-flex items-center gap-1">
+          <CreditCard size={12} className="text-text-muted" />
           {PAYMENT_METHOD_LABELS[row.paymentMethod]}
         </span>
+        {row.notes && (
+          <span className="text-text-muted truncate max-w-full">Ghi chú: {row.notes}</span>
+        )}
       </div>
 
-      {/* Notes */}
-      {row.notes && (
-        <div className="mb-[var(--s-md)]">
-          <h4 className="text-xs font-semibold text-text-secondary mb-1">Ghi chú</h4>
-          <p className="text-xs text-text-primary bg-neutral-bg p-2 rounded-field">
-            {row.notes}
-          </p>
-        </div>
-      )}
-
-      {/* Quick status change buttons */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-text-muted">Thay đổi trạng thái:</span>
-        <div className="flex gap-1 flex-wrap">
+      {/* Status actions */}
+      <div className="pt-2 border-t border-border-subtle">
+        <p className="text-xs font-medium text-text-muted mb-2">Thay đổi trạng thái</p>
+        <div className="flex flex-wrap gap-1.5">
           {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
             <Button
               key={status}
               variant={row.orderStatus === status ? 'default' : 'outline'}
+              size="sm"
               onClick={() => handleQuickStatus(status)}
-              className="!px-2 !py-0.5 !text-[10px] whitespace-nowrap"
+              className="h-8 text-xs gap-1"
             >
-              <span className="flex items-center gap-1">
-                {icon}
-                {label}
-              </span>
+              {icon}
+              {label}
             </Button>
           ))}
         </div>

@@ -5,7 +5,7 @@
  * Auto-calculates: totalAmount = sum(items.total), finalAmount = totalAmount - discount.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Revenue, OrderItem, OrderStatus, DeliveryStatus, PaymentMethod } from '@/models';
 import {
   ORDER_STATUS_LABELS,
@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/ui/components/DatePicker';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Dropdown, optionsFromLabels } from '@/ui/components/Dropdown';
 
 /* ─── Props ─── */
 
@@ -66,23 +66,9 @@ const defaultForm: OrderFormState = {
   deliveryStatus: 'pending',
 };
 
-/* ─── Payment method options ─── */
-
-const PAYMENT_METHOD_OPTIONS: Array<{ value: string; label: string }> = (Object.keys(PAYMENT_METHOD_LABELS) as Array<keyof typeof PAYMENT_METHOD_LABELS>).map(
-  (key) => ({ value: key, label: PAYMENT_METHOD_LABELS[key] }),
-);
-
-/* ─── Status options ─── */
-
-const STATUS_OPTIONS: Array<{ value: string; label: string }> = (Object.entries(ORDER_STATUS_LABELS)).map(
-  ([value, label]) => ({ value, label }),
-);
-
-/* ─── Delivery status options ─── */
-
-const DELIVERY_OPTIONS: Array<{ value: string; label: string }> = (Object.entries(DELIVERY_STATUS_LABELS)).map(
-  ([value, label]) => ({ value, label }),
-);
+const PAYMENT_METHOD_OPTIONS = optionsFromLabels(PAYMENT_METHOD_LABELS);
+const STATUS_OPTIONS = optionsFromLabels(ORDER_STATUS_LABELS);
+const DELIVERY_OPTIONS = optionsFromLabels(DELIVERY_STATUS_LABELS);
 
 /* ─── Component ─── */
 
@@ -92,25 +78,37 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
   const customers = useCustomerStore((s) => s.customers);
   const addCustomer = useCustomerStore((s) => s.addCustomer);
 
-  /* Local form state — initialised from editRevenue or defaults */
-  const [form, setForm] = useState<OrderFormState>(() => {
+  const [form, setForm] = useState<OrderFormState>({ ...defaultForm, items: [emptyItem()] });
+
+  // Sync form whenever dialog opens / edit target changes
+  useEffect(() => {
+    if (!open) return;
     if (editRevenue) {
-      return {
+      const customer = useCustomerStore
+        .getState()
+        .customers.find((c) => c.id === editRevenue.customerId);
+      const customerLabel =
+        editRevenue.customerId === 'walk-in'
+          ? 'Khách vãng lai'
+          : customer?.name ||
+            editRevenue.notes?.replace(/^Khách:\s*/i, '') ||
+            '';
+      setForm({
         date: editRevenue.date,
         customerId: editRevenue.customerId,
-        customerSearch: '',
-        items: [...editRevenue.items],
+        customerSearch: customerLabel,
+        items: editRevenue.items.map((i) => ({ ...i })),
         discount: editRevenue.discount,
         paymentMethod: editRevenue.paymentMethod,
         notes: editRevenue.notes ?? '',
         orderStatus: editRevenue.orderStatus,
         deliveryStatus: editRevenue.deliveryStatus,
-      };
+      });
+    } else {
+      setForm({ ...defaultForm, date: new Date().toISOString().slice(0, 10), items: [emptyItem()] });
     }
-    return { ...defaultForm, items: [emptyItem()] };
-  });
+  }, [open, editRevenue]);
 
-  /* Close resets form to defaults */
   const handleClose = useCallback(() => {
     onClose();
     setForm({ ...defaultForm, items: [emptyItem()] });
@@ -182,7 +180,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
   /* ─── Customer search & quick-add ─── */
 
   const customerOptions = useMemo(() => {
-    if (!form.customerSearch.trim()) return [];
+    if (!form.customerSearch.trim() || form.customerId) return [];
     const q = form.customerSearch.toLowerCase();
     return customers.filter(
       (c) =>
@@ -190,10 +188,11 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
         c.phone.includes(form.customerSearch) ||
         (c.email?.toLowerCase().includes(q) ?? false),
     ).slice(0, 10);
-  }, [customers, form.customerSearch]);
+  }, [customers, form.customerSearch, form.customerId]);
 
   const handleCustomerSelect = useCallback((id: string) => {
-    setForm((prev) => ({ ...prev, customerId: id, customerSearch: '' }));
+    const name = useCustomerStore.getState().customers.find((c) => c.id === id)?.name ?? '';
+    setForm((prev) => ({ ...prev, customerId: id, customerSearch: name }));
   }, []);
 
   const handleQuickAddCustomer = useCallback(() => {
@@ -268,14 +267,15 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-[640px]" showCloseButton={false}>
-        <DialogHeader>
+      <DialogContent className="max-w-[680px] max-h-[90vh] !flex !flex-col overflow-hidden p-0 gap-0" showCloseButton={false}>
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle>{isEditing ? 'Chỉnh sửa đơn hàng' : 'Tạo đơn hàng mới'}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-[var(--s-md)]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <div className="flex flex-col gap-4">
           {/* Date + Status row */}
-          <div className="flex items-center gap-[var(--s-md)]">
-            <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-text-muted">Ngày đơn hàng</label>
               <DatePicker
                 value={form.date}
@@ -283,86 +283,89 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
               />
             </div>
 
-            <div className="flex flex-col gap-1 flex-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-text-muted">Trạng thái</label>
-              <Select value={form.orderStatus} onValueChange={(v) => setForm((p) => ({ ...p, orderStatus: v as OrderStatus }))}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <Dropdown
+                options={STATUS_OPTIONS}
+                value={form.orderStatus}
+                onChange={(v) => setForm((p) => ({ ...p, orderStatus: v as OrderStatus }))}
+                aria-label="Trạng thái đơn"
+                className="h-8"
+              />
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-text-muted">Trạng thái giao</label>
-              <Select value={form.deliveryStatus} onValueChange={(v) => setForm((p) => ({ ...p, deliveryStatus: v as DeliveryStatus }))}>
-                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>{DELIVERY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <Dropdown
+                options={DELIVERY_OPTIONS}
+                value={form.deliveryStatus}
+                onChange={(v) => setForm((p) => ({ ...p, deliveryStatus: v as DeliveryStatus }))}
+                aria-label="Trạng thái giao"
+                className="h-8"
+              />
             </div>
           </div>
 
           {/* Customer search + quick-add */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-text-muted">Khách hàng</label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={form.customerSearch}
-                  onChange={(e) => setForm((p) => ({ ...p, customerSearch: e.target.value }))}
-                  placeholder="Tìm tên, SĐT, email khách hàng..."
-                  className={
-                    'w-full h-7 px-3 text-xs ' +
-                    'bg-input-bg ' +
-                    'border border-input-border rounded-field ' +
-                    'text-text-primary placeholder-input-placeholder ' +
-                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
-                    'transition-colors duration-[var(--d-fast)]'
-                  }
-                  aria-label="Tìm khách hàng"
-                />
-              </div>
-              {form.customerSearch.trim() && (
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  onClick={handleQuickAddCustomer}
-                >
-                  <Plus size={12} /> Thêm nhanh
-                </Button>
-              )}
-            </div>
-
-            {/* Customer search results dropdown */}
-            {customerOptions.length > 0 && (
-              <div className="max-h-40 overflow-y-auto border border-border-subtle rounded-field bg-surface">
-                {customerOptions.map((c) => (
-                  <div
-                    key={c.id}
-                    className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover transition-colors"
-                    onClick={() => handleCustomerSelect(c.id)}
-                    role="option"
-                    aria-selected={form.customerId === c.id}
-                  >
-                    <span className="font-medium text-text-primary">{c.name}</span>
-                    <span className="text-text-muted ml-2">— {c.phone}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {form.customerId && (
-              <div className="flex items-center gap-1 mt-1">
-                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge text-xs">
-                  {customers.find((c) => c.id === form.customerId)?.name ?? form.customerId}
+            {form.customerId ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs bg-success-bg text-success-fg border-success-bg">
+                  {form.customerId === 'walk-in'
+                    ? 'Khách vãng lai'
+                    : (customers.find((c) => c.id === form.customerId)?.name ?? form.customerSearch) || 'Đã chọn'}
                 </Badge>
                 <button
                   type="button"
-                  onClick={() => setForm((p) => ({ ...p, customerId: '' }))}
+                  onClick={() => setForm((p) => ({ ...p, customerId: '', customerSearch: '' }))}
                   className="text-xs text-text-muted hover:text-text-primary"
+                  aria-label="Bỏ chọn khách hàng"
                 >
-                  ✕
+                  ✕ Đổi
                 </button>
               </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.customerSearch}
+                    onChange={(e) => setForm((p) => ({ ...p, customerSearch: e.target.value, customerId: '' }))}
+                    placeholder="Tìm tên, SĐT, email khách hàng..."
+                    className={
+                      'flex-1 h-8 px-3 text-xs ' +
+                      'bg-input-bg ' +
+                      'border border-input-border rounded-field ' +
+                      'text-text-primary placeholder-input-placeholder ' +
+                      'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
+                      'transition-colors duration-[var(--d-fast)]'
+                    }
+                    aria-label="Tìm khách hàng"
+                  />
+                  {form.customerSearch.trim() && (
+                    <Button variant="secondary" size="xs" onClick={handleQuickAddCustomer}>
+                      <Plus size={12} /> Thêm nhanh
+                    </Button>
+                  )}
+                </div>
+                {customerOptions.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto border border-border-subtle rounded-field bg-surface">
+                    {customerOptions.map((c) => (
+                      <div
+                        key={c.id}
+                        className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover transition-colors"
+                        onClick={() => handleCustomerSelect(c.id)}
+                        role="option"
+                        aria-selected={false}
+                      >
+                        <span className="font-medium text-text-primary">{c.name}</span>
+                        {c.phone ? <span className="text-text-muted ml-2">— {c.phone}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -458,14 +461,14 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
             </div>
 
             {/* Auto-calculated totals */}
-            <div className="flex flex-col items-end gap-1 pt-2 border-t border-border-subtle">
-              <div className="flex justify-between gap-[var(--s-3xl)] text-xs w-full max-w-[280px]">
-                <span className="text-text-muted">Tổng tiền:</span>
+            <div className="flex flex-col items-end gap-1.5 pt-3 border-t border-border-subtle">
+              <div className="flex justify-between items-center gap-8 text-xs w-full max-w-[260px]">
+                <span className="text-text-muted">Tổng tiền</span>
                 <span className="text-text-primary font-mono">{formatCurrency(totalAmount)}</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted">Giảm giá:</span>
+              <div className="flex justify-between items-center gap-8 text-xs w-full max-w-[260px]">
+                <span className="text-text-muted">Giảm giá</span>
                 <input
                   type="text"
                   value={form.discount > 0 ? formatCurrencyInput(String(form.discount)) : ''}
@@ -477,7 +480,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                   }
                   placeholder="0"
                   className={
-                    'w-[120px] h-7 px-2 text-xs text-right ' +
+                    'w-[110px] h-7 px-2 text-xs text-right ' +
                     'bg-input-bg ' +
                     'border border-input-border rounded-field ' +
                     'text-text-primary font-mono ' +
@@ -487,9 +490,9 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                 />
               </div>
 
-              <div className="flex justify-between gap-[var(--s-3xl)] text-sm w-full max-w-[280px] border-t border-border-subtle pt-1">
-                <span className="font-semibold text-text-primary">Thành tiền:</span>
-                <span className="font-bold text-run-bg font-mono">{formatCurrency(finalAmount)}</span>
+              <div className="flex justify-between items-center gap-8 text-sm w-full max-w-[260px] border-t border-border-subtle pt-2">
+                <span className="font-semibold text-text-primary">Thành tiền</span>
+                <span className="font-bold text-accent-fg font-mono">{formatCurrency(finalAmount)}</span>
               </div>
             </div>
           </div>
@@ -497,10 +500,13 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
           {/* Payment method */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-text-muted">Phương thức thanh toán</label>
-            <Select value={form.paymentMethod} onValueChange={(v) => setForm((p) => ({ ...p, paymentMethod: v as PaymentMethod }))}>
-              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{PAYMENT_METHOD_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
+            <Dropdown
+              options={PAYMENT_METHOD_OPTIONS}
+              value={form.paymentMethod}
+              onChange={(v) => setForm((p) => ({ ...p, paymentMethod: v as PaymentMethod }))}
+              aria-label="Phương thức thanh toán"
+              className="h-8"
+            />
           </div>
 
           {/* Notes */}
@@ -523,7 +529,8 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
             />
           </div>
         </div>
-        <DialogFooter>
+        </div>
+        <DialogFooter className="px-6 py-3 border-t border-border shrink-0 bg-muted/30">
           <Button variant="outline" onClick={handleClose}><X size={14} /> Hủy</Button>
           <Button variant="default" onClick={handleSubmit}>
             {isEditing ? <><Check size={14} /> Cập nhật</> : <><Plus size={14} /> Tạo đơn</>}

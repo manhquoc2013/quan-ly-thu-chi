@@ -231,16 +231,26 @@ async function persistRevenueDraft(draft: DraftRecord) {
   const { createRevenue } = await import('./revenueService');
   const { generateId } = await import('@/utils/id');
   const itemId = generateId();
+  const quantity = Math.max(1, draft.quantity ?? 1);
+  const unitPrice = draft.unitPrice ?? Math.round(draft.amount / quantity);
+  const lineTotal = unitPrice * quantity;
+  // Prefer draft.amount when it was set as explicit total (no unitPrice path mismatch)
+  const total = draft.unitPrice != null ? lineTotal : draft.amount;
+  const name =
+    quantity > 1 && !/×|x\s+\d/i.test(draft.description)
+      ? draft.description.replace(/^\d+\s*[×x]\s*/i, '').trim() || draft.description
+      : draft.description.replace(/^\d+\s*[×x]\s*/i, '').trim() || draft.description || 'Sản phẩm';
+
   return createRevenue({
     date: draft.date,
     customerId,
     items: [
       {
         id: itemId,
-        name: draft.description || 'Sản phẩm',
-        quantity: 1,
-        unitPrice: draft.amount,
-        total: draft.amount,
+        name: name || 'Sản phẩm',
+        quantity,
+        unitPrice: draft.unitPrice != null ? unitPrice : Math.round(total / quantity),
+        total,
       },
     ],
     discount: 0,

@@ -15,6 +15,10 @@ export interface DraftRecord {
   description: string;
   category?: ExpenseCategory;
   customerName?: string;
+  /** Line item quantity (revenue); default 1 when persisting */
+  quantity?: number;
+  /** Unit price when quantity > 1; amount should be qty × unitPrice */
+  unitPrice?: number;
   source: DraftSource;
   confidence?: number;
   ocrEngine?: 'gemini' | 'tesseract';

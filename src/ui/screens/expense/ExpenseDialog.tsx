@@ -21,8 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePicker } from '@/ui/components/DatePicker';
+import { Dropdown, optionsFromLabels } from '@/ui/components/Dropdown';
 
 /* ─── Form state ─── */
 
@@ -48,15 +48,8 @@ const EMPTY_FORM: FormState = {
   tags: '',
 };
 
-/* ─── Dropdown options ─── */
-
-const CATEGORY_OPTIONS = Object.entries(EXPENSE_CATEGORY_LABELS).map(
-  ([value, label]) => ({ value, label }),
-);
-
-const PAYMENT_OPTIONS = Object.entries(PAYMENT_METHOD_LABELS).map(
-  ([value, label]) => ({ value, label }),
-);
+const CATEGORY_OPTIONS = optionsFromLabels(EXPENSE_CATEGORY_LABELS);
+const PAYMENT_OPTIONS = optionsFromLabels(PAYMENT_METHOD_LABELS);
 
 /* ─── Props ─── */
 
@@ -81,7 +74,7 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
         setForm({
           date: editExpense.date,
           category: editExpense.category,
-          amount: editExpense.amount.toString(),
+          amount: formatCurrencyInput(String(editExpense.amount)),
           description: editExpense.description,
           paymentMethod: editExpense.paymentMethod,
           supplier: editExpense.supplier ?? '',
@@ -107,10 +100,6 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
     },
     [],
   );
-
-  const handleAmountFocus = useCallback(() => {
-    setForm((prev) => ({ ...prev, amount: parseCurrency(prev.amount).toString() }));
-  }, []);
 
   const handleAmountBlur = useCallback(() => {
     setForm((prev) => ({ ...prev, amount: formatCurrencyInput(prev.amount) }));
@@ -179,11 +168,12 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleCancel(); }}>
-      <DialogContent className="max-w-[640px]" showCloseButton={false}>
-        <DialogHeader>
+      <DialogContent className="max-w-[640px] !flex !flex-col overflow-hidden p-0 gap-0" showCloseButton={false}>
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle>{editExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}</DialogTitle>
         </DialogHeader>
-        <form ref={formRef} onSubmit={(e) => { handleSubmit(e); }} noValidate>
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <form ref={formRef} onSubmit={(e) => { handleSubmit(e); }} noValidate>
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
             {/* Date */}
             <div className="flex flex-col gap-1">
@@ -199,10 +189,13 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             {/* Category */}
             <div className="flex flex-col gap-1">
               <Label className="text-xs font-medium text-text-muted">Danh mục <span className="text-danger-fg">*</span></Label>
-              <Select value={form.category} onValueChange={handleChange('category')}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Chọn danh mục" /></SelectTrigger>
-                <SelectContent>{CATEGORY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <Dropdown
+                options={CATEGORY_OPTIONS}
+                value={form.category}
+                onChange={handleChange('category')}
+                placeholder="Chọn danh mục"
+                aria-label="Danh mục"
+              />
               {errors.category && <p className="text-[10px] text-danger-fg">{errors.category}</p>}
             </div>
 
@@ -211,16 +204,16 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
               <Label className="text-xs font-medium text-text-muted">Số tiền (VND) <span className="text-danger-fg">*</span></Label>
               <Input
                 type="text"
+                inputMode="numeric"
                 value={form.amount}
                 onChange={(e) =>
                   handleChange('amount')(formatCurrencyInput(e.target.value))
                 }
-                onFocus={handleAmountFocus}
                 onBlur={handleAmountBlur}
-                placeholder="Nhập số tiền"
+                placeholder="VD: 300.000"
                 aria-label="Số tiền"
                 aria-invalid={!!errors.amount}
-                className={errors.amount ? 'border-danger-fg' : ''}
+                className={errors.amount ? 'border-danger-fg font-mono' : 'font-mono'}
               />
               {errors.amount && <p className="text-[10px] text-danger-fg">{errors.amount}</p>}
             </div>
@@ -228,10 +221,13 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             {/* Payment Method */}
             <div className="flex flex-col gap-1">
               <Label className="text-xs font-medium text-text-muted">Phương thức thanh toán</Label>
-              <Select value={form.paymentMethod} onValueChange={handleChange('paymentMethod')}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Chọn phương thức" /></SelectTrigger>
-                <SelectContent>{PAYMENT_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <Dropdown
+                options={PAYMENT_OPTIONS}
+                value={form.paymentMethod}
+                onChange={handleChange('paymentMethod')}
+                placeholder="Chọn phương thức"
+                aria-label="Phương thức thanh toán"
+              />
               {errors.paymentMethod && <p className="text-[10px] text-danger-fg">{errors.paymentMethod}</p>}
             </div>
 
@@ -288,7 +284,8 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             </div>
           </div>
         </form>
-        <DialogFooter>
+        </div>
+        <DialogFooter className="px-6 py-3 border-t border-border shrink-0 bg-muted/30">
           <Button variant="outline" onClick={handleCancel}>
             <X size={14} /> Hủy
           </Button>
