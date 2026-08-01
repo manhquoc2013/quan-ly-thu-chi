@@ -144,32 +144,24 @@ gantt
 
 ---
 
-### Giai đoạn 4: Báo cáo (8 ngày)
+### Giai đoạn 4: Báo cáo (8 ngày) ✅ Đã triển khai (2026-08-02)
 
-#### 4.1 Expense Report (3 ngày)
+> **7/7 tab báo cáo đã hoàn thành**: Chi phí, Doanh thu, Lợi nhuận, Công nợ, Khách hàng, Sản phẩm, Kênh bán.
 
-| # | Task | Output | Priority |
-|:--|:---|:---|:---|
-| 4.1.1 | `reportService.ts` — aggregate functions | `src/services/reportService.ts` | P0 |
-| 4.1.2 | Pie chart: phân bổ chi phí theo danh mục (Recharts) | `ExpenseReport.tsx` | P0 |
-| 4.1.3 | Bar chart: chi phí theo tháng | `ExpenseReport.tsx` | P0 |
-| 4.1.4 | Summary cards: tổng chi, số giao dịch, trung bình/ngày | `ExpenseReport.tsx` | P0 |
-
-#### 4.2 Revenue Report (3 ngày)
-
-| # | Task | Output | Priority |
-|:--|:---|:---|:---|
-| 4.2.1 | Revenue summary cards | `RevenueReport.tsx` | P0 |
-| 4.2.2 | Bar chart: doanh thu theo tháng, top sản phẩm, top KH | `RevenueReport.tsx` | P0 |
-| 4.2.3 | Order status breakdown (pie chart) | `RevenueReport.tsx` | P1 |
-
-#### 4.3 Profit Report (2 ngày)
-
-| # | Task | Output | Priority |
-|:--|:---|:---|:---|
-| 4.3.1 | P&L computation: revenue - expense | `reportService.ts` | P0 |
-| 4.3.2 | Profit trend: bar (revenue) + line (profit) dual-axis chart | `ProfitReport.tsx` | P0 |
-| 4.3.3 | Export PDF (window.print or jsPDF) | Report screens | P1 |
+| # | Task | Output | Priority | Status |
+|:--|:---|:---|:---|:---|
+| 4.1.1 | `reportService.ts` — aggregate functions | `src/services/reportService.ts` | P0 | ✅ Done |
+| 4.1.2 | Pie chart: phân bổ chi phí theo danh mục (Recharts) | `ExpenseReport.tsx` | P0 | ✅ Done |
+| 4.1.3 | Bar chart: chi phí theo tháng | `ExpenseReport.tsx` | P0 | ✅ Done |
+| 4.1.4 | Summary cards: tổng chi, số giao dịch, trung bình/ngày | `ExpenseReport.tsx` | P0 | ✅ Done |
+| 4.2.1 | Revenue summary cards | `RevenueReport.tsx` | P0 | ✅ Done |
+| 4.2.2 | Bar chart: doanh thu theo tháng | `RevenueReport.tsx` | P0 | ✅ Done |
+| 4.2.3 | Order status breakdown (pie chart) | `RevenueReport.tsx` | P1 | ✅ Done |
+| 4.3.1 | P&L computation: revenue - expense | `reportService.ts` | P0 | ✅ Done |
+| 4.3.2 | Profit trend: bar (revenue) + line (profit) | `ProfitReport.tsx` | P0 | ✅ Done |
+| **🆕** | **Customer Report** — top KH theo đơn & doanh thu | `CustomerReport.tsx` | P1 | ✅ Done |
+| **🆕** | **Product Report** — top SP theo SL & doanh thu | `ProductReport.tsx` | P1 | ✅ Done |
+| **🆕** | **Platform Report** — doanh thu theo kênh bán | `PlatformReport.tsx` | P1 | ✅ Done |
 
 ---
 
@@ -215,13 +207,13 @@ gantt
 | 6.1.3 | Integration test: Drive sync flow, AI OCR pipeline | `*.test.ts` | P1 |
 | 6.1.4 | Edge cases: Drive quota exceeded, offline recovery, empty states | Manual + automated | P1 |
 
-#### 6.2 PWA & Deploy (1 ngày)
+#### 6.2 PWA & Deploy (1 ngày) ✅ Đã triển khai (2026-08-02)
 
-| # | Task | Output | Priority |
-|:--|:---|:---|:---|
-| 6.2.1 | PWA manifest + service worker (vite-plugin-pwa) | `manifest.json`, service worker | P0 |
-| 6.2.2 | Offline fallback UI | `Layout.tsx` | P1 |
-| 6.2.3 | Deploy to Vercel | Production URL | P0 |
+| # | Task | Output | Priority | Status |
+|:--|:---|:---|:---|:---|
+| 6.2.1 | PWA manifest + service worker | `manifest.json`, `public/sw.js`, `src/main.tsx` | P0 | ✅ Done |
+| 6.2.2 | Offline fallback UI | `sw.js` cache strategy | P1 | ✅ Done |
+| 6.2.3 | Deploy to GitHub Pages + CI/CD | `.github/workflows/deploy.yml`, `npm run deploy` | P0 | ✅ Done |
 
 ---
 

@@ -366,77 +366,67 @@ export interface DateRange {
   to: string;     // ISO date
 }
 
-export interface ExpenseReport {
-  dateRange: DateRange;
-  totalExpense: number;
-  byCategory: CategorySummary[];
-  byMonth: MonthlySummary[];
-  byPaymentMethod: PaymentMethodSummary[];
+// ── Core report types ──
+
+export interface ExpenseReport { /* ... */ }
+export interface RevenueReport { /* ... */ }
+export interface ProfitReport { /* ... */ }
+
+// ── Dashboard/summary ──
+
+export interface ExpenseByCategory {
+  category: string; total: number; count: number; percentage: number;
 }
 
-export interface RevenueReport {
-  dateRange: DateRange;
-  totalRevenue: number;
-  totalOrders: number;
-  averageOrderValue: number;
-  byMonth: MonthlySummary[];
-  topProducts: ProductSummary[];
-  topCustomers: CustomerSummary[];
-  byOrderStatus: StatusSummary[];
+export interface ExpenseByMonth {
+  month: string; total: number; count: number;
 }
 
-export interface ProfitReport {
-  dateRange: DateRange;
-  totalRevenue: number;
-  totalExpense: number;
-  grossProfit: number;
-  profitMargin: number;       // %
-  byMonth: MonthlyProfitSummary[];
+export interface RevenueByMonth {
+  month: string; total: number; count: number;
 }
 
-interface CategorySummary {
-  category: ExpenseCategory;
-  total: number;
-  count: number;
-  percentage: number;
+export interface ProfitSummary {
+  totalRevenue: number; totalExpense: number;
+  profit: number; margin: number; period: string;
 }
 
-interface MonthlySummary {
-  month: string;    // "2026-07"
-  total: number;
-  count: number;
+export interface DashboardSummary {
+  totalExpense: number; totalRevenue: number; profit: number;
+  pendingOrders: number;
+  recentTransactions: Array<{
+    id: string; date: string; description: string;
+    amount: number; type: 'expense' | 'revenue';
+  }>;
 }
 
-interface MonthlyProfitSummary {
-  month: string;
-  revenue: number;
-  expense: number;
-  profit: number;
-}
+// ── Customer report (🆕 2026-08-02) ──
 
-interface ProductSummary {
-  name: string;
-  totalQuantity: number;
-  totalRevenue: number;
-}
-
-interface CustomerSummary {
+export interface CustomerReportRow {
   customerId: string;
   customerName: string;
-  totalOrders: number;
+  orderCount: number;
   totalRevenue: number;
 }
 
-interface StatusSummary {
-  status: string;
-  count: number;
-  total: number;
+// ── Product report (🆕 2026-08-02) ──
+
+export interface ProductReportRow {
+  productId: string;
+  productName: string;
+  totalQuantity: number;
+  totalRevenue: number;
+  orderCount: number;
 }
 
-interface PaymentMethodSummary {
-  method: PaymentMethod;
-  total: number;
-  count: number;
+// ── Platform report (🆕 2026-08-02) ──
+
+export interface PlatformReportRow {
+  platformId: string;
+  platformName: string;
+  orderCount: number;
+  totalRevenue: number;
+  percentage: number;
 }
 ```
 

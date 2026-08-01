@@ -153,10 +153,14 @@ quan-ly-thu-chi/
 │   │   │   │   ├── OrderRowCard.tsx
 │   │   │   │   └── OrderDialog.tsx
 │   │   │   ├── report/
-│   │   │   │   ├── ReportScreen.tsx
-│   │   │   │   ├── ExpenseReport.tsx
-│   │   │   │   ├── RevenueReport.tsx
-│   │   │   │   └── ProfitReport.tsx
+│   │   │   │   ├── ReportScreen.tsx       # 7 tabs orchestrator
+│   │   │   │   ├── ExpenseReport.tsx      # Chi phí
+│   │   │   │   ├── RevenueReport.tsx      # Doanh thu
+│   │   │   │   ├── ProfitReport.tsx       # Lợi nhuận
+│   │   │   │   ├── UnpaidReport.tsx       # Công nợ
+│   │   │   │   ├── CustomerReport.tsx     # Khách hàng 🆕
+│   │   │   │   ├── ProductReport.tsx      # Sản phẩm 🆕
+│   │   │   │   └── PlatformReport.tsx     # Kênh bán 🆕
 │   │   │   ├── ai/
 │   │   │   │   ├── AIChatScreen.tsx
 │   │   │   │   ├── ChatPanel.tsx

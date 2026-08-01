@@ -1,8 +1,8 @@
 # Quản Lý Tài Chính
 
-> **Trạng thái**: Đang lập kế hoạch · **Phiên bản mục tiêu**: 1.0.0
+> **Trạng thái**: Đang phát triển · **Phiên bản**: 1.0.0 · **Cập nhật**: 2026-08-02
 
-Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI Kimi, lưu trữ dữ liệu trên Google Drive, phân phối dưới dạng portable application.
+Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI, lưu trữ dữ liệu local (SQLite/IndexedDB) + Google Drive sync. Hỗ trợ PWA (cài như app native) và CI/CD tự động deploy lên GitHub Pages.
 
 ## 🎯 Tính năng chính
 
@@ -11,7 +11,7 @@
 | 📊 **Dashboard** | Trang chủ: chart thu chi 7 ngày, đơn đang chờ + thời gian chờ, giao dịch gần đây |
 | 💰 **Quản lý Chi phí** | CRUD, danh mục, trạng thái, ảnh hóa đơn, tìm kiếm & lọc |
 | 📦 **Quản lý Doanh thu** | Tạo đơn hàng, quản lý khách hàng, sản phẩm, trạng thái đơn & giao hàng |
-| 📊 **Báo cáo** | Chi phí, doanh thu, lợi nhuận — biểu đồ tương tác + xuất PDF |
+| 📊 **Báo cáo (7 loại)** | Chi phí, Doanh thu, Lợi nhuận, Công nợ, Khách hàng, Sản phẩm, Kênh bán — biểu đồ tương tác |
 | 🤖 **Kimi — Trợ lý AI** | Chat thông minh, nhập liệu bằng giọng nói/text, quy đổi ngoại tệ, điều hướng app |
 | 📸 **AI OCR** | Nhập liệu từ ảnh chụp hóa đơn (cần Gemini Cloud), parse text thành đơn hàng |
 | 🔌 **Hybrid AI** | **WebLLM local** (Gemma 2B, offline, miễn phí) + **Gemini Cloud** (online, mạnh mẽ). Tự động chọn provider |
@@ -63,18 +63,28 @@ Mở file trong browser để xem toàn bộ giao diện:
 | **Desktop** | Electron 33 (portable packaging) |
 | **Build** | Vite 6 |
 | **Test** | Vitest 3 |
+| **Deploy** | GitHub Pages + GitHub Actions CI/CD |
+| **PWA** | Service Worker (manual) + Web App Manifest |
 
 ## 🚀 Bắt đầu
 
-> **Lưu ý**: Dự án đang trong giai đoạn lập kế hoạch. Chưa có code.
-
-Sau khi được approve, khởi tạo project:
-
 ```bash
-npm create vite@latest quan-ly-thu-chi -- --template react-ts
+# 1. Clone repository
+git clone https://github.com/tranquoc/quan-ly-thu-chi.git
 cd quan-ly-thu-chi
+
+# 2. Cài dependencies
 npm install
+
+# 3. Chạy dev server
 npm run dev
+# → http://localhost:5173
+
+# Build production
+npm run build
+
+# Deploy lên GitHub Pages
+npm run deploy
 ```
 
 ## ⚖️ License

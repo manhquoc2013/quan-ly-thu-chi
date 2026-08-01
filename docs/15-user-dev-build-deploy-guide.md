@@ -104,12 +104,21 @@ Khi mở app, Dashboard hiển thị:
 | **Tính tiền** | Tự động — tổng = SUM(SL × đơn giá) - giảm giá |
 | **Đổi trạng thái** | Click badge trạng thái đơn / giao hàng |
 
-### 1.6 Báo cáo
+### 1.6 Báo cáo (7 tab)
 
-Tab "📈 Báo cáo" hiển thị:
-- 4 summary cards (tổng chi, tổng thu, lợi nhuận, tỉ suất)
-- Biểu đồ phân bổ chi phí theo danh mục
-- Biểu đồ chi phí theo tháng
+Tab \"📊 Báo cáo\" hiển thị 7 loại báo cáo:
+
+| Tab | Nội dung | Biểu đồ |
+|:---|:---|:---|
+| **Chi phí** | Tổng chi, theo danh mục, theo tháng | Pie + Bar chart |
+| **Doanh thu** | Tổng thu, cọc vs thanh toán, theo tháng | Bar + Pie chart |
+| **Lợi nhuận** | P&L: thu, chi, lãi, margin theo tháng | Composed bar + line |
+| **Công nợ** | Danh sách đơn chưa thanh toán | Bảng chi tiết |
+| **🆕 Khách hàng** | Top KH theo số đơn & doanh thu | 2 Bar charts + bảng |
+| **🆕 Sản phẩm** | Top SP theo số lượng & doanh thu | 2 Bar charts + bảng |
+| **🆕 Kênh bán** | Doanh thu theo nền tảng (Shopee, Facebook...) | Pie chart + bảng |
+
+Tất cả báo cáo hỗ trợ lọc theo khoảng thời gian (Tháng này, Tháng trước, 7 ngày, 30 ngày, Tất cả).
 
 ### 1.7 AI Chat (FAB 🤖)
 
@@ -196,17 +205,16 @@ quan-ly-thu-chi/
 
 ```bash
 npm run dev              # Vite dev server (http://localhost:5173)
-npm run dev:electron     # Dev với Electron window
-npm run build            # Build React ra dist/
-npm run build:electron   # Build + package Electron portable
-npm run build:docker     # Build Docker images
+npm run build            # Build React ra dist/ (tsc + vite)
+npm run preview          # Preview production build (http://localhost:4173)
+npm run deploy           # Build cho GitHub Pages (base /quan-ly-thu-chi/)
+npm run predeploy        # Typecheck + test trước khi deploy
 npm run lint             # ESLint check (max-warnings=0)
 npm run lint:fix         # ESLint auto-fix
 npm run format           # Prettier format
 npm run typecheck        # TypeScript type check
 npm run test             # Vitest run
 npm run test:watch       # Vitest watch mode
-npm run test:coverage    # Vitest + coverage report
 npm run validate         # lint + typecheck + test (CI)
 ```
 
@@ -259,9 +267,13 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ### 3.1 Web Build (PWA)
 
 ```bash
-# Build ra static files
+# Build local (base path /)
 npm run build
 # → dist/
+
+# Build cho GitHub Pages (base path /quan-ly-thu-chi/)
+npm run deploy
+# → dist/ với asset paths /quan-ly-thu-chi/assets/...
 
 # Preview locally
 npm run preview
@@ -270,13 +282,19 @@ npm run preview
 # Output:
 dist/
 ├── index.html
-├── assets/
-│   ├── index-abc123.js     (~200KB gzipped)
-│   ├── vendor-def456.js    (~100KB)
-│   └── index-ghi789.css    (~30KB)
 ├── manifest.json
-└── sw.js                   (service worker)
+├── logo.svg
+├── sw.js                   # Service Worker (PWA offline support)
+├── assets/
+│   ├── index-abc123.js     (~7.6MB — includes sql.js WASM + WebLLM)
+│   └── index-ghi789.css    (~98KB)
 ```
+
+**PWA setup**: Service worker (`public/sw.js`) được đăng ký trong `src/main.tsx`. Hỗ trợ:
+- Cache static assets khi install
+- Stale-while-revalidate cho dynamic content
+- Auto-update: tự reload khi có phiên bản mới
+- Cài được như app native trên desktop + mobile
 
 ### 3.2 Electron Build (Portable Desktop)
 
@@ -342,17 +360,28 @@ docker compose pull
 docker compose up -d
 ```
 
-### 4.2 Vercel (PWA public)
+### 4.2 GitHub Pages (PWA public) 🆕
 
 ```bash
-# 1. Cài Vercel CLI
-npm i -g vercel
+# Deploy thủ công
+npm run deploy
+# → Build với base=/quan-ly-thu-chi/ → dist/
 
-# 2. Deploy
-vercel --prod
-
-# Hoặc connect GitHub repo → auto-deploy mỗi push
+# Deploy tự động qua CI/CD
+git push origin main
+# → GitHub Actions tự build + deploy lên GitHub Pages
 ```
+
+**CI/CD Pipeline** (`.github/workflows/deploy.yml`):
+1. Push lên `main` → trigger workflow
+2. Checkout → Setup Node.js 22 → `npm ci`
+3. Typecheck (`tsc --noEmit`) + Test (`vitest run`)
+4. Build với `--base=/quan-ly-thu-chi/`
+5. Deploy lên GitHub Pages qua `peaceiris/actions-gh-pages@v4`
+
+**URL**: `https://tranquoc.github.io/quan-ly-thu-chi/`
+
+> **Lưu ý**: Cần bật GitHub Pages trong repo Settings → Pages → Source: GitHub Actions.
 
 ### 4.3 GitHub Releases (Portable Desktop)
 
