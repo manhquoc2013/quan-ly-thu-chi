@@ -5,7 +5,6 @@
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/models';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { useExpenseStore } from '@/store/expenseStore';
@@ -97,23 +96,21 @@ export function ExpenseScreen() {
 
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
-      <div className="flex flex-wrap items-center justify-between gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
-        <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-w-0 flex-1">
-          <input type="text" value={searchInput} onChange={(e) => handleSearchChange(e.target.value)} placeholder="Tìm kiếm..." className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[160px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring" aria-label="Tìm kiếm chi phí" />
-          <Dropdown
-            options={CATEGORY_OPTIONS}
-            value={filters.category || ''}
-            onChange={handleCategoryChange}
-            placeholder="Danh mục"
-            clearable
-            className="w-[180px] h-8"
-            aria-label="Lọc danh mục"
-          />
-          <DatePicker value={filters.dateFrom} onChange={handleDateFromChange} placeholder="Từ ngày" className="w-[140px] h-8" />
-          <span className="text-xs text-text-muted shrink-0">→</span>
-          <DatePicker value={filters.dateTo} onChange={handleDateToChange} placeholder="Đến ngày" className="w-[140px] h-8" />
-        </div>
-        <Button variant="default" size="sm" onClick={handleAdd}>
+      <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
+        <input type="text" value={searchInput} onChange={(e) => handleSearchChange(e.target.value)} placeholder="Tìm kiếm..." className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[160px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring" aria-label="Tìm kiếm chi phí" />
+        <Dropdown
+          options={CATEGORY_OPTIONS}
+          value={filters.category || ''}
+          onChange={handleCategoryChange}
+          placeholder="Danh mục"
+          clearable
+          className="w-[180px] h-8"
+          aria-label="Lọc danh mục"
+        />
+        <DatePicker value={filters.dateFrom} onChange={handleDateFromChange} placeholder="Từ ngày" className="w-[140px] h-8" />
+        <span className="text-xs text-text-muted shrink-0">→</span>
+        <DatePicker value={filters.dateTo} onChange={handleDateToChange} placeholder="Đến ngày" className="w-[140px] h-8" />
+        <Button variant="default" size="sm" className="ml-auto" onClick={handleAdd}>
           <Plus /> Thêm chi phí
         </Button>
       </div>
@@ -148,7 +145,6 @@ export function ExpenseScreen() {
               onEdit={handleEdit}
               onDelete={async (expense: Expense) => {
                 await deleteExpenses([expense.id]);
-                toast.success('Đã xóa chi phí');
               }}
             />
           )}

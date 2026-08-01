@@ -12,6 +12,16 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Customer } from '@/models';
+import { cacheSet } from '@/services/cacheManager';
+
+const CACHE_KEY = 'customers';
+
+function persistCustomers(get: () => { customers: Customer[] }): void {
+  const snapshot = get().customers.map((c) => ({ ...c }));
+  void cacheSet(CACHE_KEY, snapshot).catch((err) =>
+    console.error('Failed to persist customers:', err),
+  );
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -58,23 +68,29 @@ export const useCustomerStore = create<CustomerStore>()(
         state.customers = customers;
       }),
 
-    addCustomer: (customer) =>
+    addCustomer: (customer) => {
       set((state) => {
         state.customers.unshift(customer);
-      }),
+      });
+      persistCustomers(get);
+    },
 
-    updateCustomer: (id, patch) =>
+    updateCustomer: (id, patch) => {
       set((state) => {
         const idx = state.customers.findIndex((c: Customer) => c.id === id);
         if (idx !== -1) {
           Object.assign(state.customers[idx]!, patch);
         }
-      }),
+      });
+      persistCustomers(get);
+    },
 
-    deleteCustomer: (id) =>
+    deleteCustomer: (id) => {
       set((state) => {
         state.customers = state.customers.filter((c: Customer) => c.id !== id);
-      }),
+      });
+      persistCustomers(get);
+    },
 
     setSearchQuery: (searchQuery) =>
       set((state) => {
@@ -89,7 +105,7 @@ export const useCustomerStore = create<CustomerStore>()(
       return customers.filter(
         (c) =>
           fuzzyMatch(c.name, searchQuery) ||
-          fuzzyMatch(c.phone, searchQuery) ||
+          (c.phone && fuzzyMatch(c.phone, searchQuery)) ||
           (c.email && fuzzyMatch(c.email, searchQuery)),
       );
     },

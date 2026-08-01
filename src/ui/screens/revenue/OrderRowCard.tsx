@@ -4,13 +4,20 @@
 
 import type { ReactNode } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
-import { ORDER_STATUS_LABELS, DELIVERY_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
+import { ORDER_STATUS_LABELS, DELIVERY_STATUS_LABELS, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
+import { todayISO } from '@/utils/date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Play, Package, X, User, CreditCard, Truck } from 'lucide-react';
-import { useRevenueStore } from '@/store/revenueStore';
+import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote } from 'lucide-react';
 import { useCustomerStore } from '@/store/customerStore';
+import { updateRevenue } from '@/services/revenueService';
+import { notify } from '@/utils/notify';
+import {
+  getRemainingBalance,
+  paymentSummaryLabel,
+} from '@/utils/revenueMetrics';
+import { shippingLabel } from '@/utils/orderTotals';
 
 export interface OrderRowCardProps {
   row: Revenue;
@@ -39,7 +46,6 @@ function statusBadgeClass(status: OrderStatus): string {
 }
 
 export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
-  const updateRecord = useRevenueStore((s) => s.updateRecord);
   const customers = useCustomerStore((s) => s.customers);
 
   const customerName =
@@ -49,10 +55,27 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
         row.notes?.replace(/^Khách:\s*/i, '') ||
         '—';
 
-  const handleQuickStatus = (status: OrderStatus) => {
-    updateRecord(row.id, { orderStatus: status });
+  const handleQuickStatus = async (status: OrderStatus) => {
+    await updateRevenue(row.id, { orderStatus: status });
     onStatusChange?.(row.id, status);
   };
+
+  const handleMarkPaid = async () => {
+    try {
+      await updateRevenue(row.id, {
+        paymentStatus: 'paid',
+        paidAt: todayISO(),
+        paidAmount: getRemainingBalance(row),
+      });
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Không cập nhật thanh toán');
+    }
+  };
+
+  const canMarkPaid =
+    row.paymentStatus !== 'paid' && row.orderStatus !== 'cancelled';
+  const paySummary = paymentSummaryLabel(row);
+  const shipSummary = shippingLabel(row.shippingFee ?? 0, row.shippingPayer);
 
   return (
     <div className="space-y-4" role="region" aria-label={`Chi tiết đơn ${row.orderCode}`}>
@@ -82,6 +105,25 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
             {DELIVERY_STATUS_LABELS[row.deliveryStatus]}
           </p>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <Badge
+          variant="outline"
+          className={
+            row.paymentStatus === 'paid'
+              ? 'bg-success-bg text-success-fg border-transparent'
+              : 'bg-warning-bg text-warning-fg border-transparent'
+          }
+        >
+          {PAYMENT_STATUS_LABELS[row.paymentStatus ?? 'unpaid']}
+        </Badge>
+        {row.depositedAt && (
+          <span className="text-text-muted">Ngày cọc: {row.depositedAt}</span>
+        )}
+        {row.paidAt && <span className="text-text-muted">Ngày TT: {row.paidAt}</span>}
+        {shipSummary && <span className="text-text-secondary w-full">{shipSummary}</span>}
+        {paySummary && <span className="text-text-secondary w-full">{paySummary}</span>}
       </div>
 
       {/* Items */}
@@ -144,21 +186,29 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
       </div>
 
       {/* Status actions */}
-      <div className="pt-2 border-t border-border-subtle">
-        <p className="text-xs font-medium text-text-muted mb-2">Thay đổi trạng thái</p>
-        <div className="flex flex-wrap gap-1.5">
-          {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
-            <Button
-              key={status}
-              variant={row.orderStatus === status ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleQuickStatus(status)}
-              className="h-8 text-xs gap-1"
-            >
-              {icon}
-              {label}
-            </Button>
-          ))}
+      <div className="pt-2 border-t border-border-subtle space-y-3">
+        {canMarkPaid && (
+          <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={handleMarkPaid}>
+            <Banknote size={12} />
+            Đánh dấu đã thanh toán
+          </Button>
+        )}
+        <div>
+          <p className="text-xs font-medium text-text-muted mb-2">Thay đổi trạng thái</p>
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
+              <Button
+                key={status}
+                variant={row.orderStatus === status ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleQuickStatus(status)}
+                className="h-8 text-xs gap-1"
+              >
+                {icon}
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

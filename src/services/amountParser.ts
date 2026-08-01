@@ -27,9 +27,12 @@ export interface ParsedMoney {
   rawFx?: { currency: string; original: number; rate: number };
 }
 
-/** Parse amounts like 25k, 1.5tr, 1,500,000, 100 USD, 50$ */
+/** Parse amounts like 25k, 1.5tr, 1,500,000, 798.000 ₫, 100 USD, 50$ */
 export function parseMoney(raw: string, rates: Record<string, number> = DEFAULT_FX_RATES): ParsedMoney | null {
-  const cleaned = raw.trim().replace(/\s+/g, ' ');
+  const cleaned = raw
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[₫]/g, 'đ');
   if (!cleaned) return null;
 
   // "$100" / "100$" / "100 USD" / "USD 100"
@@ -51,19 +54,22 @@ export function parseMoney(raw: string, rates: Record<string, number> = DEFAULT_
     };
   }
 
-  // Vietnamese units: 25k, 1.5tr, 2triệu, 1m
-  const unitMatch = cleaned.match(/^([\d.,]+)\s*(k|nghìn|ngàn|tr|triệu|m|trieu)?$/i);
-  if (!unitMatch) return null;
+  // VND with optional dong suffix: 798.000 ₫ / 98.000đ / 130.000 VND / 50 đồng
+  const vndMatch = cleaned.match(
+    /^([\d.,]+)\s*(k|nghìn|ngàn|tr|triệu|m|trieu|đ|vnd|đồng)?$/i,
+  );
+  if (!vndMatch) return null;
 
-  const base = parseNumberToken(unitMatch[1]!);
+  const base = parseNumberToken(vndMatch[1]!);
   if (base == null || base <= 0) return null;
-  const unit = (unitMatch[2] ?? '').toLowerCase();
+  const unit = (vndMatch[2] ?? '').toLowerCase();
 
   let amountVnd = base;
   if (unit === 'k' || unit === 'nghìn' || unit === 'ngàn') amountVnd = base * 1_000;
   else if (unit === 'tr' || unit === 'triệu' || unit === 'trieu' || unit === 'm') {
     amountVnd = base * 1_000_000;
   }
+  // đ / vnd / đồng / bare → already VND
 
   return { amountVnd: Math.round(amountVnd) };
 }
@@ -72,8 +78,8 @@ export function parseMoney(raw: string, rates: Record<string, number> = DEFAULT_
 export function extractMoneyFromText(text: string, rates?: Record<string, number>): ParsedMoney | null {
   const patterns = [
     /(\d[\d.,]*)\s*(USD|EUR|JPY|CNY|KRW|SGD|AUD|\$|đô(?:\s*la)?)/i,
-    /(\d[\d.,]*)\s*(k|nghìn|ngàn|tr|triệu|m)\b/i,
-    /(\d{1,3}(?:[.,]\d{3})+)/,
+    /(\d[\d.,]*)\s*(k|nghìn|ngàn|tr|triệu|m|vnd|đồng|₫|đ)/i,
+    /(\d{1,3}(?:[.,]\d{3})+)\s*(?:₫|đ)?/,
     /(\d+)/,
   ];
   for (const re of patterns) {
@@ -84,6 +90,25 @@ export function extractMoneyFromText(text: string, rates?: Record<string, number
     if (parsed && parsed.amountVnd > 0) return parsed;
   }
   return null;
+}
+
+/** Trailing money token on a line (for bulk paste). */
+export function extractTrailingMoney(
+  line: string,
+  rates?: Record<string, number>,
+): { description: string; money: ParsedMoney } | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const m = trimmed.match(
+    /^(.+?)[\t ]+(\d[\d.,]*\s*(?:k|nghìn|ngàn|m|tr|triệu|trieu|₫|đ|vnd|đồng)?)\s*$/i,
+  );
+  if (!m) return null;
+  const desc = m[1]!.trim();
+  const token = m[2]!.trim();
+  if (desc.length < 2) return null;
+  const money = parseMoney(token, rates);
+  if (!money || money.amountVnd <= 0) return null;
+  return { description: desc, money };
 }
 
 function parseNumberToken(raw: string): number | null {

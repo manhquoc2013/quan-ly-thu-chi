@@ -120,19 +120,19 @@ export function ExpenseGrid({
   );
 
   return (
-    <div className="flex flex-col h-full" role="grid" aria-label="Expense list">
+    <div className="flex flex-col h-full min-h-0 overflow-auto" role="grid" aria-label="Expense list">
+      <div className="inline-block min-w-full pb-[var(--dimens-fabClearance)]">
       <div
-        className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border"
+        className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[760px]"
         role="row"
       >
-        <div className="w-[120px] shrink-0" role="columnheader">Ngày</div>
+        <div className="w-[110px] shrink-0" role="columnheader">Ngày</div>
         <div className="w-[140px] shrink-0" role="columnheader">Danh mục</div>
-        <div className="flex-1 min-w-0" role="columnheader">Mô tả</div>
-        <div className="w-[130px] shrink-0 text-right" role="columnheader">Số tiền</div>
-        <div className="w-[140px] shrink-0" role="columnheader">Hành động</div>
+        <div className="flex-1 min-w-[120px]" role="columnheader">Mô tả</div>
+        <div className="w-[120px] shrink-0 text-right" role="columnheader">Số tiền</div>
+        <div className="w-[168px] shrink-0 text-center" role="columnheader">Hành động</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
         {expenses.map((expense, index) => (
           <div
             key={expense.id}
@@ -146,13 +146,13 @@ export function ExpenseGrid({
               }
             }}
             className={cn(
-              'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)]',
+              'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[760px]',
               index % 2 === 0 ? 'bg-grid-row-even' : 'bg-grid-row-odd',
               'hover:bg-grid-row-hover',
             )}
             data-expense-id={expense.id}
           >
-            <div className="w-[120px] shrink-0 text-xs text-text-primary">
+            <div className="w-[110px] shrink-0 text-xs text-text-primary">
               {formatDate(expense.date)}
             </div>
 
@@ -169,7 +169,7 @@ export function ExpenseGrid({
             </div>
 
             <div
-              className="flex-1 min-w-0 text-xs text-text-primary"
+              className="flex-1 min-w-[120px] text-xs text-text-primary"
               title={expense.description}
             >
               <span className="block text-ellipsis overflow-hidden whitespace-nowrap">
@@ -177,12 +177,12 @@ export function ExpenseGrid({
               </span>
             </div>
 
-            <div className="w-[130px] shrink-0 text-xs text-text-primary text-right font-mono">
+            <div className="w-[120px] shrink-0 text-xs text-text-primary text-right font-mono">
               {formatCurrency(expense.amount)}
             </div>
 
             <div
-              className="w-[140px] shrink-0 flex items-center gap-1"
+              className="w-[168px] shrink-0 flex items-center justify-end gap-1.5"
               onClick={(e) => e.stopPropagation()}
             >
               <Button

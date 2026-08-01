@@ -2,10 +2,21 @@
  * Shared draft types for multimodal AI intake (preview before persist).
  */
 
-import type { ExpenseCategory } from '@/models';
+import type {
+  ExpenseCategory,
+  OrderStatus,
+  PaymentStatus,
+  ShippingPayer,
+} from '@/models';
 
 export type DraftKind = 'expense' | 'revenue';
 export type DraftSource = 'text' | 'voice' | 'ocr' | 'csv';
+
+export interface DraftOrderItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 export interface DraftRecord {
   id: string;
@@ -15,10 +26,28 @@ export interface DraftRecord {
   description: string;
   category?: ExpenseCategory;
   customerName?: string;
+  /** Resolved customer id after AI entity pick */
+  customerId?: string;
+  /** Resolved product id after AI entity pick */
+  productId?: string;
+  /** Resolved platform id */
+  platformId?: string;
+  /** Platform name hint from text */
+  platformName?: string;
   /** Line item quantity (revenue); default 1 when persisting */
   quantity?: number;
   /** Unit price when quantity > 1; amount should be qty × unitPrice */
   unitPrice?: number;
+  /** Multi line-items (order table paste) */
+  orderItems?: DraftOrderItem[];
+  orderStatus?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  /** Số cọc (VND) khi khách đặt cọc */
+  depositAmount?: number;
+  depositedAt?: string;
+  shippingFee?: number;
+  shippingPayer?: ShippingPayer;
+  notes?: string;
   source: DraftSource;
   confidence?: number;
   ocrEngine?: 'gemini' | 'tesseract';

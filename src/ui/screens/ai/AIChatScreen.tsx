@@ -195,7 +195,6 @@ export function AIChatScreen() {
             : m,
         ),
       );
-      toast.success(`Đã lưu ${ok} khoản`);
     } finally {
       setConfirmingId(null);
     }

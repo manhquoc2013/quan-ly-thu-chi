@@ -21,7 +21,40 @@ export { getAllRevenues, createRevenue, updateRevenue, deleteRevenues } from './
 
 // ── Customer ─────────────────────────────────────────────────────────────────
 
-export { getAllCustomers, createCustomer, updateCustomer, deleteCustomer } from './customerService';
+export {
+  getAllCustomers,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  findOrCreateCustomerByName,
+} from './customerService';
+
+// ── Product ──────────────────────────────────────────────────────────────────
+
+export {
+  getAllProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  searchProducts,
+} from './productService';
+
+export {
+  getAllPlatforms,
+  createPlatform,
+  updatePlatform,
+  deletePlatform,
+  getDefaultPlatformId,
+  getActivePlatforms,
+} from './platformService';
+
+export {
+  resolveCustomerForOrder,
+  resolveProductForOrder,
+  resolvePlatformForOrder,
+  formatEntityPickMessage,
+  productQueryFromDescription,
+} from './entityResolve';
 
 // ── Report ───────────────────────────────────────────────────────────────────
 
@@ -55,3 +88,5 @@ export {
   isAcceptedIntakeFile,
 } from './intakeService';
 export type { DraftRecord, DraftKind, IntakeResult } from './draftTypes';
+export type { ChatIntent, ChatIntentKind } from './chatIntent';
+export { executeChatIntent } from './chatTools';

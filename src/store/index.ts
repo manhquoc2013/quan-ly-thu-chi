@@ -28,6 +28,12 @@ export type {
   CustomerSelectors,
 } from './customerStore';
 
+export { useProductStore } from './productStore';
+export type { ProductActions } from './productStore';
+
+export { usePlatformStore } from './platformStore';
+export type { PlatformActions } from './platformStore';
+
 export { useReportStore } from './reportStore';
 export type { ReportActions } from './reportStore';
 

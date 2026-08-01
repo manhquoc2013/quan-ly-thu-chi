@@ -27,6 +27,15 @@ const AIChatScreen = lazy(
 const SettingsScreen = lazy(
   () => import('@screens/settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen }))
 );
+const CustomerScreen = lazy(
+  () => import('@screens/customer/CustomerScreen').then((m) => ({ default: m.CustomerScreen }))
+);
+const ProductScreen = lazy(
+  () => import('@screens/product/ProductScreen').then((m) => ({ default: m.ProductScreen }))
+);
+const PlatformScreen = lazy(
+  () => import('@screens/platform/PlatformScreen').then((m) => ({ default: m.PlatformScreen }))
+);
 
 function LoadingFallback() {
   return (
@@ -45,6 +54,9 @@ export function App() {
             <Route index element={<DashboardScreen />} />
             <Route path="expense" element={<ExpenseScreen />} />
             <Route path="revenue" element={<RevenueScreen />} />
+            <Route path="customers" element={<CustomerScreen />} />
+            <Route path="products" element={<ProductScreen />} />
+            <Route path="platforms" element={<PlatformScreen />} />
             <Route path="report" element={<ReportScreen />} />
             <Route path="ai" element={<AIChatScreen />} />
             <Route path="settings" element={<SettingsScreen />} />

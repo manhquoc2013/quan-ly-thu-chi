@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Coins, BarChart3, Settings, Bot } from 'lucide-react';
+import { LayoutDashboard, Receipt, Coins, BarChart3, Settings, Bot, Users, Package, Store } from 'lucide-react';
 import { useUIStore } from '@store/uiStore';
 import { ChatPanel } from '@screens/ai/ChatPanel';
 import { bootstrapAppData } from '@/services/bootstrap';
@@ -22,6 +22,9 @@ const tabs = [
   { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },
   { label: 'Chi phí', route: '/expense', tab: 'expense' as const },
   { label: 'Doanh thu', route: '/revenue', tab: 'revenue' as const },
+  { label: 'Khách', route: '/customers', tab: 'customers' as const },
+  { label: 'SP', route: '/products', tab: 'products' as const },
+  { label: 'Kênh', route: '/platforms', tab: 'platforms' as const },
   { label: 'Báo cáo', route: '/report', tab: 'report' as const },
   { label: 'Cài đặt', route: '/settings', tab: 'settings' as const },
 ];
@@ -30,6 +33,9 @@ const tabIcons: Record<string, ReactNode> = {
   dashboard: <LayoutDashboard size={14} />,
   expense: <Receipt size={14} />,
   revenue: <Coins size={14} />,
+  customers: <Users size={14} />,
+  products: <Package size={14} />,
+  platforms: <Store size={14} />,
   report: <BarChart3 size={14} />,
   settings: <Settings size={14} />,
 };
@@ -109,18 +115,28 @@ export function Layout() {
     <div className="flex flex-col h-screen bg-background min-w-0 overflow-hidden">
       {/* ── Top Navigation Bar ─────────────────────────────────────── */}
       <header
-        className="shrink-0 flex items-center justify-between px-[var(--s-md)] h-12 bg-surface border-b border-border sticky top-0 z-20 min-w-0 overflow-hidden"
+        className="shrink-0 flex items-center justify-between gap-2 px-[var(--s-md)] h-12 bg-surface border-b border-border sticky top-0 z-20 min-w-0"
         role="navigation"
         aria-label="Main navigation"
       >
-        {/* Brand with logo */}
-        <div className="flex items-center gap-[var(--s-sm)] min-w-0">
-          <div className="flex items-center justify-center w-7 h-7 rounded-field bg-gradient-to-br from-accent-fg to-purple-600 text-white text-sm font-bold shrink-0">
-            ₫
+        {/* Brand */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 md:flex-initial">
+          <img
+            src="/logo.svg"
+            alt=""
+            width={28}
+            height={28}
+            className="size-7 rounded-field shrink-0 object-cover"
+          />
+          <div className="min-w-0">
+            <p className="text-text-primary font-semibold text-sm leading-tight truncate">
+              <span className="md:hidden">Thu Chi</span>
+              <span className="hidden md:inline">Quản Lý Tài Chính</span>
+            </p>
+            <p className="md:hidden text-[10px] text-text-muted leading-tight truncate">
+              Quản lý thu · chi
+            </p>
           </div>
-          <span className="hidden sm:inline text-text-primary font-semibold text-sm">
-            Quản Lý Tài Chính
-          </span>
         </div>
 
         {/* Center Tabs — visible on md+ */}
@@ -135,19 +151,45 @@ export function Layout() {
           ))}
         </nav>
 
-        {/* Right: Sync Status + Clock */}
-        <div className="hidden sm:flex items-center gap-[var(--s-md)] min-w-0">
-          <div className="flex items-center gap-[var(--s-xs)] text-[11px] text-text-secondary bg-success-bg px-2 py-0.5 rounded-badge">
-            <span className={`size-1.5 rounded-full ${syncState === 'synced' ? 'bg-success-fg' : syncState === 'syncing' ? 'bg-warning-fg animate-pulse' : 'bg-text-disabled'}`} />
-            {syncState === 'synced' ? 'Đã đồng bộ' : syncState === 'syncing' ? 'Đang đồng bộ...' : 'Ngoại tuyến'}
+        {/* Right: Sync + clock — always visible */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div
+            className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-text-secondary bg-success-bg px-2 py-0.5 rounded-badge max-w-[9.5rem]"
+            title={
+              syncState === 'synced'
+                ? 'Đã đồng bộ'
+                : syncState === 'syncing'
+                  ? 'Đang đồng bộ'
+                  : 'Ngoại tuyến'
+            }
+          >
+            <span
+              className={`size-1.5 rounded-full shrink-0 ${
+                syncState === 'synced'
+                  ? 'bg-success-fg'
+                  : syncState === 'syncing'
+                    ? 'bg-warning-fg animate-pulse'
+                    : 'bg-text-disabled'
+              }`}
+            />
+            <span className="truncate">
+              {syncState === 'synced' ? 'Đồng bộ' : syncState === 'syncing' ? 'Đang sync' : 'Offline'}
+            </span>
           </div>
-          <span className="text-[11px] text-text-muted tabular-nums">{clock}</span>
+          <span className="text-[11px] text-text-muted tabular-nums">{clock || '--:--'}</span>
         </div>
       </header>
 
+      {/* ── Content Area with max-width container ──────────────────── */}
+      <main className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-6xl mx-auto w-full p-[var(--s-md)] md:p-[var(--s-xl)] min-w-0 pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
+          <Outlet />
+        </div>
+      </main>
+
       {/* ── Mobile Tabs (bottom bar) ───────────────────────────────── */}
       <nav
-        className="md:hidden flex items-center justify-around h-14 bg-surface border-t border-border px-1 shrink-0 pb-[env(safe-area-inset-bottom,0px)]"
+        className="md:hidden flex items-center justify-around h-14 bg-surface border-t border-border px-1 shrink-0"
         aria-label="Primary tabs (mobile)"
       >
         {tabs.map((tab) => (
@@ -158,15 +200,8 @@ export function Layout() {
         ))}
       </nav>
 
-      {/* ── Content Area with max-width container ──────────────────── */}
-      <main className="flex-1 overflow-y-auto min-h-0 pb-[88px] md:pb-0">
-        <div className="max-w-6xl mx-auto w-full p-[var(--s-md)] md:p-[var(--s-xl)] min-w-0 overflow-x-auto">
-          <Outlet />
-        </div>
-      </main>
-
       {/* ── Bottom Status Bar ──────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-[var(--s-md)] h-[var(--dimens-statusBarHeight)] bg-surface border-t border-border text-[10px] text-text-muted shrink-0">
+      <div className="flex items-center justify-between px-[var(--s-md)] h-[var(--dimens-statusBarHeight)] bg-surface border-t border-border text-[10px] text-text-muted shrink-0 pb-[env(safe-area-inset-bottom,0px)]">
         <span>© 2026 Quản Lý Tài Chính</span>
         <span>v1.0.0</span>
       </div>
@@ -175,7 +210,7 @@ export function Layout() {
       <button
         type="button"
         onClick={toggleFab}
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 flex items-center justify-center size-12 text-2xl rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-[var(--d-fast)] hover:scale-110"
+        className="fixed z-40 flex items-center justify-center size-12 text-2xl rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-[var(--d-fast)] hover:scale-110 bottom-[calc(var(--dimens-statusBarHeight)+3.5rem+0.75rem)] right-4 md:bottom-[calc(var(--dimens-statusBarHeight)+0.75rem)] md:right-6"
         aria-label="Toggle AI chat"
       >
         <span className="absolute inset-[-4px] rounded-full border-2 border-accent-fg opacity-0 animate-[fabPulse_2s_infinite]" />

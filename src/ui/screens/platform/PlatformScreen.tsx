@@ -1,0 +1,206 @@
+/**
+ * PlatformScreen — CRUD order platforms / channels.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import type { OrderPlatform } from '@/models';
+import { PLATFORM_DIRECT_ID } from '@/models';
+import { usePlatformStore } from '@/store/platformStore';
+import { useRevenueStore } from '@/store/revenueStore';
+import { getAllPlatforms, deletePlatform } from '@/services/platformService';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { PlatformDialog } from './PlatformDialog';
+
+export function PlatformScreen() {
+  const platforms = usePlatformStore((s) => s.platforms);
+  const searchQuery = usePlatformStore((s) => s.searchQuery);
+  const setSearchQuery = usePlatformStore((s) => s.setSearchQuery);
+  const revenues = useRevenueStore((s) => s.records);
+
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<OrderPlatform | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OrderPlatform | null>(null);
+
+  useEffect(() => {
+    getAllPlatforms().finally(() => setLoading(false));
+  }, []);
+
+  const usage = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of revenues) {
+      if (!r.platformId) continue;
+      map.set(r.platformId, (map.get(r.platformId) ?? 0) + 1);
+    }
+    return map;
+  }, [revenues]);
+
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = [...platforms];
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.code?.toLowerCase().includes(q) ?? false),
+      );
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [platforms, searchQuery]);
+
+  const canDelete = (p: OrderPlatform) =>
+    p.id !== PLATFORM_DIRECT_ID && (usage.get(p.id) ?? 0) === 0;
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      await deletePlatform(deleteTarget.id);
+    } catch {
+      // toasted
+    } finally {
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget]);
+
+  return (
+    <div className="flex flex-col h-full bg-background min-h-0">
+      <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Tìm kênh..."
+          className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[160px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
+          aria-label="Tìm kênh đặt hàng"
+        />
+        <span className="text-xs text-text-muted">{filtered.length} kênh</span>
+        <Button
+          variant="default"
+          size="sm"
+          className="ml-auto"
+          onClick={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+        >
+          <Plus /> Thêm kênh
+        </Button>
+      </div>
+
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none">
+        <CardContent className="flex-1 p-0 overflow-y-auto">
+          {loading ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-xs text-text-muted py-16 text-center">Không có kênh</p>
+          ) : (
+            <ul className="divide-y divide-border-subtle">
+              {filtered.map((p) => {
+                const n = usage.get(p.id) ?? 0;
+                return (
+                  <li
+                    key={p.id}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-text-primary">{p.name}</p>
+                        {p.code ? (
+                          <Badge variant="outline" className="text-[10px] font-mono">
+                            {p.code}
+                          </Badge>
+                        ) : null}
+                        {!p.active ? (
+                          <Badge variant="secondary" className="text-[10px]">
+                            Tắt
+                          </Badge>
+                        ) : null}
+                        {n > 0 ? (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {n} đơn
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        aria-label={`Sửa ${p.name}`}
+                        onClick={() => {
+                          setEditing(p);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-danger-fg"
+                        aria-label={`Xóa ${p.name}`}
+                        disabled={!canDelete(p)}
+                        onClick={() => setDeleteTarget(p)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <PlatformDialog
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setEditing(null);
+        }}
+        editPlatform={editing}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa kênh?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && !canDelete(deleteTarget)
+                ? `“${deleteTarget.name}” không thể xóa (mặc định hoặc còn đơn).`
+                : `Xóa “${deleteTarget?.name ?? ''}”?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            {deleteTarget && canDelete(deleteTarget) ? (
+              <AlertDialogAction onClick={handleConfirmDelete}>Xóa</AlertDialogAction>
+            ) : null}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

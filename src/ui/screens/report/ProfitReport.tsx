@@ -1,29 +1,62 @@
-/** ProfitReport — P&L from real store data */
-import { useMemo } from 'react';
-import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
-import { useExpenseStore } from '@/store/expenseStore';
-import { useRevenueStore } from '@/store/revenueStore';
-import { formatCurrency } from '@/utils/currency';
-import { formatAxisVnd, chartTooltipFormatter } from '@/utils/chartFormat';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+/** ProfitReport — P&L in dateRange: cash events (cọc+TT) + expenses by date */
+import { useMemo } from "react";
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import { useExpenseStore } from "@/store/expenseStore";
+import { useRevenueStore } from "@/store/revenueStore";
+import { useReportStore } from "@/store/reportStore";
+import { formatCurrency } from "@/utils/currency";
+import { formatAxisVnd, chartTooltipFormatter } from "@/utils/chartFormat";
+import { isDateInRange } from "@/utils/date";
+import { allCashEvents, sumCashEventsInRange } from "@/utils/revenueMetrics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function ProfitReport() {
   const expenses = useExpenseStore((s) => s.records);
   const revenues = useRevenueStore((s) => s.records);
-  const totalRevenue = useMemo(() => revenues.reduce((s, r) => s + r.finalAmount, 0), [revenues]);
-  const totalExpense = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  const { from, to } = useReportStore((s) => s.dateRange);
+
+  const filteredExp = useMemo(
+    () => expenses.filter((e) => isDateInRange(e.date, from, to)),
+    [expenses, from, to],
+  );
+  const cashEvents = useMemo(() => {
+    return allCashEvents(revenues).filter((e) => {
+      if (from && e.date < from) return false;
+      if (to && e.date > to) return false;
+      return true;
+    });
+  }, [revenues, from, to]);
+
+  const totalRevenue = useMemo(
+    () => sumCashEventsInRange(revenues, from, to),
+    [revenues, from, to],
+  );
+  const totalExpense = useMemo(
+    () => filteredExp.reduce((s, e) => s + e.amount, 0),
+    [filteredExp],
+  );
   const profit = totalRevenue - totalExpense;
   const margin = totalRevenue ? (profit / totalRevenue) * 100 : 0;
 
   const byMonth = useMemo(() => {
     const map = new Map<string, { rev: number; exp: number }>();
-    revenues.forEach((r) => {
-      const k = r.date.slice(0, 7);
+    cashEvents.forEach((e) => {
+      const k = e.date.slice(0, 7);
       const v = map.get(k) || { rev: 0, exp: 0 };
-      v.rev += r.finalAmount;
+      v.rev += e.amount;
       map.set(k, v);
     });
-    expenses.forEach((e) => {
+    filteredExp.forEach((e) => {
       const k = e.date.slice(0, 7);
       const v = map.get(k) || { rev: 0, exp: 0 };
       v.exp += e.amount;
@@ -37,16 +70,32 @@ export function ProfitReport() {
         chi: exp,
         loi: rev - exp,
       }));
-  }, [expenses, revenues]);
+  }, [filteredExp, cashEvents]);
 
   return (
     <div className="space-y-[var(--s-lg)]">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)]">
         {[
-          { l: 'Doanh thu', v: formatCurrency(totalRevenue), c: 'text-success-fg' },
-          { l: 'Chi phí', v: formatCurrency(totalExpense), c: 'text-danger-fg' },
-          { l: 'Lợi nhuận', v: formatCurrency(profit), c: profit >= 0 ? 'text-success-fg' : 'text-danger-fg' },
-          { l: 'Biên lợi nhuận', v: `${margin.toFixed(1)}%`, c: 'text-accent-fg' },
+          {
+            l: "Doanh thu đã thu",
+            v: formatCurrency(totalRevenue),
+            c: "text-success-fg",
+          },
+          {
+            l: "Chi phí",
+            v: formatCurrency(totalExpense),
+            c: "text-danger-fg",
+          },
+          {
+            l: "Lợi nhuận",
+            v: formatCurrency(profit),
+            c: profit >= 0 ? "text-success-fg" : "text-danger-fg",
+          },
+          {
+            l: "Biên lợi nhuận",
+            v: `${margin.toFixed(1)}%`,
+            c: "text-accent-fg",
+          },
         ].map((c) => (
           <Card key={c.l} className="text-center py-4">
             <CardContent>
@@ -59,27 +108,51 @@ export function ProfitReport() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Lợi nhuận theo tháng</CardTitle>
+          <CardTitle>Thu / chi / lãi theo tháng</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[280px] overflow-hidden">
+          <div className="h-[300px]">
             {byMonth.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>
+              <div className="flex items-center justify-center h-full text-xs text-text-muted">
+                Chưa có dữ liệu trong khoảng này
+              </div>
             ) : (
-              <ResponsiveContainer>
-                <ComposedChart data={byMonth} barCategoryGap="28%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} width={52} tickFormatter={formatAxisVnd} />
-                  <Tooltip
-                    formatter={chartTooltipFormatter as never}
-                    labelFormatter={(l) => `Tháng ${l}`}
-                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={byMonth}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#E0E3E8"
+                    vertical={false}
                   />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    width={52}
+                    tickFormatter={formatAxisVnd}
+                  />
+                  <Tooltip formatter={chartTooltipFormatter as never} />
                   <Legend />
-                  <Bar dataKey="thu" fill="#059669" radius={[4, 4, 0, 0]} name="Thu" maxBarSize={32} />
-                  <Bar dataKey="chi" fill="#DC2626" radius={[4, 4, 0, 0]} name="Chi" maxBarSize={32} />
-                  <Line dataKey="loi" stroke="#2563EB" strokeWidth={2} dot={{ r: 3 }} name="Lợi nhuận" />
+                  <Bar
+                    dataKey="thu"
+                    name="Thu"
+                    fill="#059669"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="chi"
+                    name="Chi"
+                    fill="#DC2626"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="loi"
+                    name="Lãi"
+                    stroke="#2563EB"
+                    strokeWidth={2}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             )}

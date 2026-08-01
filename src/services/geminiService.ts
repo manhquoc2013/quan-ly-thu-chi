@@ -74,7 +74,11 @@ async function generateWithFallback(
     } catch (err) {
       lastErr = err;
       const msg = err instanceof Error ? err.message : String(err);
-      // Try next model on quota / not found
+      // Hard free-tier exhaustion → stop hopping models so caller can fall back to WebLLM
+      if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg) && /limit:\s*0|free_tier|retry in/i.test(msg)) {
+        throw err instanceof Error ? err : new Error(msg);
+      }
+      // Try next model on soft quota / not found
       if (/429|RESOURCE_EXHAUSTED|quota|not found|NOT_FOUND|404/i.test(msg)) {
         continue;
       }

@@ -28,18 +28,25 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dropdown, optionsFromLabels } from '@/ui/components/Dropdown';
 import { formatCurrency } from '@/utils/currency';
-import { toast } from 'sonner';
 import {
   type Expense,
   type Revenue,
   PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
   EXPENSE_CATEGORY_LABELS,
   ORDER_STATUS_LABELS,
   DELIVERY_STATUS_LABELS,
 } from '@/models';
-import { useExpenseStore } from '@/store/expenseStore';
-import { useRevenueStore } from '@/store/revenueStore';
 import { useCustomerStore } from '@/store/customerStore';
+import { updateExpense, deleteExpenses } from '@/services/expenseService';
+import { updateRevenue, deleteRevenues } from '@/services/revenueService';
+import { todayISO } from '@/utils/date';
+import {
+  getRemainingBalance,
+  paymentSummaryLabel,
+} from '@/utils/revenueMetrics';
+import { shippingLabel } from '@/utils/orderTotals';
+import { notify } from '@/utils/notify';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +70,6 @@ type ExpenseLocal = {
 type RevenueLocal = {
   orderStatus: Revenue['orderStatus'];
   deliveryStatus: Revenue['deliveryStatus'];
-  paymentMethod: Revenue['paymentMethod'];
   notes: Revenue['notes'];
 };
 
@@ -98,8 +104,6 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
   const { open, onClose, readOnly = false } = props;
 
   // ── Expense state ─────────────────────────────────────────────────────────
-  const expenseStore = useExpenseStore();
-
   const [expenseLocal, setExpenseLocal] = useState<ExpenseLocal>({
     paymentMethod: 'cash',
     notes: '',
@@ -109,12 +113,9 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
 
   // ── Revenue state ─────────────────────────────────────────────────────────
-  const revenueStore = useRevenueStore();
-
   const [revenueLocal, setRevenueLocal] = useState<RevenueLocal>({
     orderStatus: 'new',
     deliveryStatus: 'pending',
-    paymentMethod: 'cash',
     notes: '',
   });
   const [savingRevenue, setSavingRevenue] = useState(false);
@@ -135,7 +136,6 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
       setRevenueLocal({
         orderStatus: r.orderStatus,
         deliveryStatus: r.deliveryStatus,
-        paymentMethod: r.paymentMethod,
         notes: r.notes ?? '',
       });
     }
@@ -143,64 +143,78 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
 
   // ── Expense handlers ──────────────────────────────────────────────────────
 
-  const handleExpenseSave = () => {
+  const handleExpenseSave = async () => {
     if (props.type !== 'expense') return;
     const rec = props.record as Expense;
     setSavingExpense(true);
-    expenseStore.updateRecord(rec.id, {
-      paymentMethod: expenseLocal.paymentMethod,
-      notes: expenseLocal.notes,
-      supplier: expenseLocal.supplier,
-    });
-    toast.success('Đã cập nhật khoản chi');
-    setSavingExpense(false);
-    onClose();
+    try {
+      await updateExpense(rec.id, {
+        paymentMethod: expenseLocal.paymentMethod,
+        notes: expenseLocal.notes,
+        supplier: expenseLocal.supplier,
+      });
+      onClose();
+    } finally {
+      setSavingExpense(false);
+    }
   };
 
-  const handleExpenseDelete = () => {
+  const handleExpenseDelete = async () => {
     if (props.type !== 'expense') return;
     const rec = props.record as Expense;
-    expenseStore.deleteRecords([rec.id]);
-    toast.success('Đã xóa khoản chi');
+    await deleteExpenses([rec.id]);
     setDeleteAlertOpen(false);
     onClose();
   };
 
   // ── Revenue handlers ──────────────────────────────────────────────────────
 
-  const handleRevenueSave = () => {
+  const handleRevenueSave = async () => {
     if (props.type !== 'revenue') return;
     const rec = props.record as Revenue;
     setSavingRevenue(true);
-    revenueStore.updateRecord(rec.id, {
-      orderStatus: revenueLocal.orderStatus,
-      deliveryStatus: revenueLocal.deliveryStatus,
-      paymentMethod: revenueLocal.paymentMethod,
-      notes: revenueLocal.notes,
-    });
-    toast.success('Đã cập nhật đơn hàng');
-    setSavingRevenue(false);
-    onClose();
+    try {
+      await updateRevenue(rec.id, {
+        orderStatus: revenueLocal.orderStatus,
+        deliveryStatus: revenueLocal.deliveryStatus,
+        notes: revenueLocal.notes,
+      });
+      onClose();
+    } finally {
+      setSavingRevenue(false);
+    }
   };
 
-  const handleRevenueDelete = () => {
+  const handleRevenueDelete = async () => {
     if (props.type !== 'revenue') return;
     const rec = props.record as Revenue;
-    revenueStore.deleteRecords([rec.id]);
-    toast.success('Đã xóa đơn hàng');
+    await deleteRevenues([rec.id]);
     setDeleteAlertOpenRev(false);
     onClose();
   };
 
-  // ── Customer lookup ───────────────────────────────────────────────────────
+  const handleMarkPaid = async () => {
+    if (props.type !== 'revenue') return;
+    const rec = props.record as Revenue;
+    try {
+      await updateRevenue(rec.id, {
+        paymentStatus: 'paid',
+        paidAt: todayISO(),
+        paidAmount: getRemainingBalance(rec),
+      });
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Không cập nhật thanh toán');
+    }
+  };
 
   const customerName = (() => {
     if (props.type !== 'revenue') return '';
-    const rec = props as { type: 'revenue'; record: Revenue };
-    const customer = useCustomerStore.getState().customers.find(
-      (c) => c.id === rec.record.customerId,
-    );
-    return customer?.name ?? '';
+    const rec = props.record as Revenue;
+    if (rec.customerId === 'walk-in') return 'Khách vãng lai';
+    const found = useCustomerStore.getState().customers.find((c) => c.id === rec.customerId)?.name;
+    if (found) return found;
+    const fromNotes = rec.notes?.replace(/^Khách:\s*/i, '').trim();
+    return fromNotes || '—';
   })();
 
   // ── Dialog open tracking ──────────────────────────────────────────────────
@@ -216,7 +230,11 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0">
+        <DialogContent
+          className={`max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0 ${
+            props.type === 'revenue' ? 'max-w-lg sm:max-w-xl' : 'max-w-2xl'
+          }`}
+        >
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {props.type === 'expense' ? 'Chi tiết chi phí' : 'Chi tiết đơn hàng'}
@@ -342,168 +360,182 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
               </div>
             )}
 
-            {/* ── REVENUE section ──────────────────────────────────────────── */}
+            {/* ── REVENUE: readonly info + editable status/notes ─────────── */}
             {props.type === 'revenue' && (
               <div className="space-y-4">
-                <div className={`grid gap-4 ${revenueLocal.orderStatus === 'processing' ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                  {/* Order status */}
+                {/* Readonly summary */}
+                <div className="rounded-panel border border-border-subtle bg-surface/60 p-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wide text-text-muted">Khách hàng</p>
+                      <p className="text-sm font-medium text-text-primary truncate">{customerName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wide text-text-muted">Ngày đơn</p>
+                      <p className="text-sm text-text-primary">{formatDate(props.record.date)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wide text-text-muted">PTTT</p>
+                      <p className="text-sm text-text-primary">
+                        {PAYMENT_METHOD_LABELS[props.record.paymentMethod]}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wide text-text-muted">Thu tiền</p>
+                      <p className="text-sm text-text-primary">
+                        {PAYMENT_STATUS_LABELS[props.record.paymentStatus ?? 'unpaid']}
+                        {props.record.depositedAt
+                          ? ` · cọc ${props.record.depositedAt}`
+                          : ''}
+                        {props.record.paidAt ? ` · TT ${props.record.paidAt}` : ''}
+                      </p>
+                      {shippingLabel(
+                        props.record.shippingFee ?? 0,
+                        props.record.shippingPayer,
+                      ) && (
+                        <p className="text-xs text-text-secondary">
+                          {shippingLabel(
+                            props.record.shippingFee ?? 0,
+                            props.record.shippingPayer,
+                          )}
+                        </p>
+                      )}
+                      {paymentSummaryLabel(props.record) && (
+                        <p className="text-xs text-text-secondary">
+                          {paymentSummaryLabel(props.record)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-wide text-text-muted">Mã đơn</p>
+                      <p className="text-sm font-mono text-text-primary">{props.record.orderCode}</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wide text-text-muted">Sản phẩm</p>
+                    <div className="overflow-x-auto rounded-field border border-border-subtle">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border-subtle text-text-muted bg-surface">
+                            <th className="text-left py-1.5 px-2 font-medium">Sản phẩm</th>
+                            <th className="text-right py-1.5 px-2 font-medium">SL</th>
+                            <th className="text-right py-1.5 px-2 font-medium">Đơn giá</th>
+                            <th className="text-right py-1.5 px-2 font-medium">Thành tiền</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {props.record.items.map((item) => (
+                            <tr key={item.id} className="border-b border-border-subtle/50 last:border-0">
+                              <td className="py-1.5 px-2 text-text-primary">{item.name}</td>
+                              <td className="py-1.5 px-2 text-right text-text-primary">{item.quantity}</td>
+                              <td className="py-1.5 px-2 text-right text-text-primary tabular-nums">
+                                {formatCurrency(item.unitPrice)}
+                              </td>
+                              <td className="py-1.5 px-2 text-right font-medium text-text-primary tabular-nums">
+                                {formatCurrency(item.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-muted">Tổng tiền</span>
+                      <span className="text-text-primary font-medium tabular-nums">
+                        {formatCurrency(props.record.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-muted">Giảm giá</span>
+                      <span className="text-danger-fg font-medium tabular-nums">
+                        −{formatCurrency(props.record.discount)}
+                      </span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between text-sm font-bold">
+                      <span className="text-text-primary">Thành tiền</span>
+                      <span className="text-text-primary tabular-nums">
+                        {formatCurrency(props.record.finalAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Editable fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs text-text-muted font-medium">Trạng thái đơn</label>
                     {readOnly ? (
                       <div className="text-sm text-text-primary">{ORDER_STATUS_LABELS[revenueLocal.orderStatus]}</div>
                     ) : (
-                    <Dropdown
-                      options={optionsFromLabels(ORDER_STATUS_LABELS).map((o) => ({
-                        ...o,
-                        disabled: o.value === 'completed' && revenueLocal.deliveryStatus !== 'delivered',
-                      }))}
-                      value={revenueLocal.orderStatus}
-                      onChange={(v) => {
-                        const next = v as Revenue['orderStatus'];
-                        setRevenueLocal((p) => ({
-                          ...p,
-                          orderStatus: next,
-                          deliveryStatus: next === 'processing' ? 'pending' : p.deliveryStatus,
-                        }));
-                      }}
-                      aria-label="Trạng thái đơn"
-                      className="w-full"
-                    />
+                      <Dropdown
+                        options={optionsFromLabels(ORDER_STATUS_LABELS).map((o) => ({
+                          ...o,
+                          disabled: o.value === 'completed' && revenueLocal.deliveryStatus !== 'delivered',
+                        }))}
+                        value={revenueLocal.orderStatus}
+                        onChange={(v) => {
+                          const next = v as Revenue['orderStatus'];
+                          setRevenueLocal((p) => ({
+                            ...p,
+                            orderStatus: next,
+                            deliveryStatus: next === 'processing' ? 'pending' : p.deliveryStatus,
+                          }));
+                        }}
+                        aria-label="Trạng thái đơn"
+                        className="w-full"
+                      />
                     )}
                   </div>
 
-                  {/* Delivery status — only visible when order is processing */}
-                  {revenueLocal.orderStatus === 'processing' && (
-                    <div className="space-y-2">
-                      <label className="text-xs text-text-muted font-medium">Trạng thái giao hàng</label>
-                      {readOnly ? (
-                        <div className="text-sm text-text-primary">{DELIVERY_STATUS_LABELS[revenueLocal.deliveryStatus]}</div>
-                      ) : (
+                  <div className="space-y-2">
+                    <label className="text-xs text-text-muted font-medium">Trạng thái giao hàng</label>
+                    {readOnly ? (
+                      <div className="text-sm text-text-primary">{DELIVERY_STATUS_LABELS[revenueLocal.deliveryStatus]}</div>
+                    ) : (
                       <Dropdown
                         options={optionsFromLabels(DELIVERY_STATUS_LABELS)}
                         value={revenueLocal.deliveryStatus}
-                        onChange={(v) => setRevenueLocal((p) => ({ ...p, deliveryStatus: v as Revenue['deliveryStatus'] }))}
+                        onChange={(v) =>
+                          setRevenueLocal((p) => ({
+                            ...p,
+                            deliveryStatus: v as Revenue['deliveryStatus'],
+                          }))
+                        }
                         aria-label="Trạng thái giao hàng"
                         className="w-full"
                       />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Payment method */}
-                  <div className="space-y-2">
-                    <label className="text-xs text-text-muted font-medium">Phương thức thanh toán</label>
-                    {readOnly ? (
-                      <div className="text-sm text-text-primary">{PAYMENT_METHOD_LABELS[revenueLocal.paymentMethod]}</div>
-                    ) : (
-                    <Dropdown
-                      options={optionsFromLabels(PAYMENT_METHOD_LABELS)}
-                      value={revenueLocal.paymentMethod}
-                      onChange={(v) => setRevenueLocal((p) => ({ ...p, paymentMethod: v as Revenue['paymentMethod'] }))}
-                      aria-label="Phương thức thanh toán"
-                      className="w-full"
-                    />
                     )}
                   </div>
                 </div>
 
-                <Separator />
-
-                {/* Customer */}
-                <div className="space-y-2">
-                  <label className="text-xs text-text-muted font-medium">Khách hàng</label>
-                  <div className="text-sm text-text-primary">
-                    {customerName ? `Khách hàng: ${customerName}` : 'Khách hàng: Không xác định'}
-                  </div>
-                </div>
-
-                {/* Items table */}
-                <div className="space-y-2">
-                  <label className="text-xs text-text-muted font-medium">Danh sách sản phẩm</label>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border-subtle text-text-muted">
-                          <th className="text-left py-1.5 font-medium">Sản phẩm</th>
-                          <th className="text-right py-1.5 font-medium">SL</th>
-                          <th className="text-right py-1.5 font-medium">Đơn giá</th>
-                          <th className="text-right py-1.5 font-medium">Thành tiền</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {props.record.items.map((item) => (
-                          <tr key={item.id} className="border-b border-border-subtle/50">
-                            <td className="py-1 text-text-primary">{item.name}</td>
-                            <td className="py-1 text-right text-text-primary">{item.quantity}</td>
-                            <td className="py-1 text-right text-text-primary">{formatCurrency(item.unitPrice)}</td>
-                            <td className="py-1 text-right font-medium text-text-primary">{formatCurrency(item.total)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Amounts summary */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-text-muted">Tổng tiền</span>
-                    <span className="text-text-primary font-medium">{formatCurrency(props.record.totalAmount)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-text-muted">Giảm giá</span>
-                    <span className="text-danger-fg font-medium">-{formatCurrency(props.record.discount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-sm font-bold">
-                    <span className="text-text-primary">Tổng sau giảm giá</span>
-                    <span className="text-text-primary">{formatCurrency(props.record.finalAmount)}</span>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Date */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs text-text-muted font-medium">Ngày tạo đơn</label>
-                    <div className="text-sm text-text-primary">{formatDate(props.record.date)}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-text-muted font-medium">Mã đơn hàng</label>
-                    <div className="text-sm font-mono text-text-primary">{props.record.orderCode}</div>
-                  </div>
-                </div>
-
-                {/* Notes */}
                 <div className="space-y-2">
                   <label className="text-xs text-text-muted font-medium">Ghi chú</label>
                   {readOnly ? (
                     <div className="text-sm text-text-primary">{revenueLocal.notes || '—'}</div>
                   ) : (
-                  <Textarea
-                    value={revenueLocal.notes}
-                    onChange={(e) => setRevenueLocal((p) => ({ ...p, notes: e.target.value }))}
-                    rows={3}
-                  />
+                    <Textarea
+                      value={revenueLocal.notes}
+                      onChange={(e) => setRevenueLocal((p) => ({ ...p, notes: e.target.value }))}
+                      rows={3}
+                      placeholder="Ghi chú đơn hàng…"
+                    />
                   )}
                 </div>
 
-                {/* Timestamps */}
-                <div className="space-y-2 pt-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-text-muted font-medium">Tạo lúc</label>
-                      <div className="text-xs text-text-primary">{formatDateTime(props.record.createdAt)}</div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-text-muted font-medium">Cập nhật</label>
-                      <div className="text-xs text-text-primary">{formatDateTime(props.record.updatedAt)}</div>
-                    </div>
-                  </div>
-                </div>
+                {!readOnly &&
+                  props.record.paymentStatus !== 'paid' &&
+                  props.record.orderStatus !== 'cancelled' && (
+                    <Button type="button" variant="secondary" size="sm" onClick={handleMarkPaid}>
+                      Đánh dấu đã thanh toán
+                    </Button>
+                  )}
               </div>
             )}
           </div>

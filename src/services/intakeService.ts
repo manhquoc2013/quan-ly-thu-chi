@@ -10,7 +10,7 @@ import { ocrFileToDraft } from './ocrService';
 import {
   looksLikeAnalysisIntent,
   looksLikeCreateIntent,
-  parseTextToDraft,
+  parseTextToDrafts,
 } from './textDraftParser';
 import {
   ACCEPTED_INTAKE_MIME,
@@ -22,8 +22,17 @@ import {
 } from './draftTypes';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
+import { useCustomerStore } from '@/store/customerStore';
+import { useProductStore } from '@/store/productStore';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
+import { notify } from '@/utils/notify';
+import { sumPaidRevenue, sumUnpaidReceivable, isUnpaidReceivable } from '@/utils/revenueMetrics';
+import {
+  resolveCustomerForOrder,
+  resolveProductForOrder,
+  productQueryFromDescription,
+} from './entityResolve';
 
 export function isAcceptedIntakeFile(file: File): string | null {
   const name = file.name.toLowerCase();
@@ -94,26 +103,33 @@ export async function intakeFromFile(file: File): Promise<IntakeResult> {
 }
 
 export function intakeFromText(message: string, source: 'text' | 'voice' = 'text'): IntakeResult | null {
-  const draft = parseTextToDraft(message, source);
-  if (!draft) return null;
+  const drafts = parseTextToDrafts(message, source);
+  if (!drafts.length) return null;
 
-  const kindLabel = draft.kind === 'expense' ? 'chi phí' : 'doanh thu';
-  const fxNote = draft.rawFx
-    ? ` (${draft.rawFx.original} ${draft.rawFx.currency} × ${draft.rawFx.rate.toLocaleString('vi-VN')})`
-    : '';
+  const lines = drafts.map((d) => {
+    const kindLabel = d.kind === 'expense' ? 'chi phí' : 'doanh thu';
+    const cust = d.kind === 'revenue' && d.customerName ? ` · ${d.customerName}` : '';
+    return `• ${kindLabel}: **${d.description}** — ${d.amount.toLocaleString('vi-VN')}₫${cust}`;
+  });
 
   return {
-    text: `Đã nhận diện ${kindLabel}: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫${fxNote}`,
+    text:
+      drafts.length === 1
+        ? `Đã nhận diện ${drafts[0]!.kind === 'expense' ? 'chi phí' : 'doanh thu'}: **${drafts[0]!.description}** — ${drafts[0]!.amount.toLocaleString('vi-VN')}₫`
+        : `Đã nhận diện **${drafts.length}** giao dịch:\n${lines.join('\n')}`,
     source: 'local',
-    drafts: [draft],
+    drafts,
   };
 }
 
 export function buildFinanceContext(): string {
   const expenses = useExpenseStore.getState().records;
   const revenues = useRevenueStore.getState().records;
+  const customers = useCustomerStore.getState().customers;
   const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalRevenue = revenues.reduce((s, r) => s + r.finalAmount, 0);
+  const totalRevenue = sumPaidRevenue(revenues);
+  const unpaid = sumUnpaidReceivable(revenues);
+  const unpaidN = revenues.filter(isUnpaidReceivable).length;
   const byCategory: Record<string, number> = {};
   expenses.forEach((e) => {
     byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
@@ -127,19 +143,59 @@ export function buildFinanceContext(): string {
 
   const pendingOrders = revenues.filter(
     (r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled',
-  ).length;
+  );
 
-  return `DỮ LIỆU THỰC TẾ (dùng để phân tích/tra cứu):
+  const recentExp = [...expenses]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 8)
+    .map((e) => `  - ${e.date} | ${e.description} | ${e.amount} | id=${e.id.slice(0, 8)}`)
+    .join('\n');
+
+  const recentRev = [...revenues]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 8)
+    .map(
+      (r) =>
+        `  - ${r.orderCode} | ${r.date} | ${r.finalAmount} | ${r.orderStatus} | ${r.paymentStatus ?? 'unpaid'} | ${r.items.map((i) => i.name).join(', ')} | id=${r.id.slice(0, 8)}`,
+    )
+    .join('\n');
+
+  const customerNames = customers
+    .slice(0, 20)
+    .map((c) => c.name)
+    .join(', ');
+
+  const products = useProductStore.getState().products;
+  const productNames = products
+    .slice(0, 20)
+    .map((p) => `${p.name}${p.sku ? ` (${p.sku})` : ''}`)
+    .join(', ');
+
+  return `DỮ LIỆU THỰC TẾ (dùng để phân tích/tra cứu/thao tác):
 Tổng chi: ${formatCurrency(totalExpense)} (${expenses.length} khoản)
-Tổng thu: ${formatCurrency(totalRevenue)} (${revenues.length} đơn)
+Tổng thu (đã thanh toán): ${formatCurrency(totalRevenue)}
+Công nợ (chưa thanh toán): ${formatCurrency(unpaid)} (${unpaidN} đơn)
 Lợi nhuận: ${formatCurrency(totalRevenue - totalExpense)}
-Đơn đang xử lý: ${pendingOrders}
-Chi tiết chi theo danh mục:
-${categorySummary || '  (chưa có)'}`;
+Đơn đang xử lý: ${pendingOrders.length}${pendingOrders
+    .slice(0, 5)
+    .map((r) => `\n  - ${r.orderCode} (${r.orderStatus})`)
+    .join('')}
+Khách hàng: ${customerNames || '(chưa có)'}
+Sản phẩm: ${productNames || '(chưa có)'}
+Chi theo danh mục:
+${categorySummary || '  (chưa có)'}
+Chi gần đây:
+${recentExp || '  (trống)'}
+Đơn gần đây:
+${recentRev || '  (trống)'}`;
 }
 
 export function shouldAttachFinanceContext(message: string): boolean {
-  return looksLikeAnalysisIntent(message);
+  return (
+    looksLikeAnalysisIntent(message) ||
+    looksLikeCreateIntent(message) ||
+    /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu)\b/i.test(message)
+  );
 }
 
 export { looksLikeCreateIntent, looksLikeAnalysisIntent };
@@ -168,15 +224,18 @@ export async function persistConfirmed(
   for (const draft of drafts) {
     try {
       if (draft.kind === 'expense') {
-        const record = await createExpense({
-          date: draft.date,
-          category: (draft.category ?? 'other') as ExpenseCategory,
-          amount: draft.amount,
-          description: draft.description,
-          status: 'pending' as ExpenseStatus,
-          paymentMethod: 'cash' as PaymentMethod,
-          tags: [],
-        });
+        const record = await createExpense(
+          {
+            date: draft.date,
+            category: (draft.category ?? 'other') as ExpenseCategory,
+            amount: draft.amount,
+            description: draft.description,
+            status: 'pending' as ExpenseStatus,
+            paymentMethod: 'cash' as PaymentMethod,
+            tags: [],
+          },
+          { silent: true },
+        );
         created.push({
           kind: 'expense',
           id: record.id,
@@ -201,64 +260,172 @@ export async function persistConfirmed(
     }
   }
 
+  if (ok > 0) {
+    notify.success(ok > 1 ? `Đã lưu ${ok} khoản` : 'Đã lưu 1 khoản');
+  }
+  if (failed.length > 0 && ok === 0) {
+    notify.error(failed[0] ?? 'Không lưu được dữ liệu');
+  }
+
   return { ok, failed, created };
 }
 
 async function persistRevenueDraft(draft: DraftRecord) {
-  let customerId = 'walk-in';
-  if (draft.customerName) {
-    const { useCustomerStore } = await import('@/store/customerStore');
-    const { generateId } = await import('@/utils/id');
-    const customers = useCustomerStore.getState().customers;
-    const existing = customers.find(
-      (c) => c.name.toLowerCase() === draft.customerName!.toLowerCase(),
-    );
-    if (existing) {
-      customerId = existing.id;
-    } else {
-      customerId = generateId();
-      useCustomerStore.getState().addCustomer({
-        id: customerId,
-        name: draft.customerName,
-        phone: '',
-        email: '',
-        address: '',
-        createdAt: new Date().toISOString(),
+  // Prefer IDs already resolved by AI; otherwise resolve with auto-create
+  // (OCR / draft UI confirm — if ambiguous, create under the typed name).
+  let customerId = draft.customerId ?? 'walk-in';
+  let customerName = draft.customerName;
+
+  if (!draft.customerId && draft.customerName?.trim()) {
+    let cust = await resolveCustomerForOrder(draft.customerName, { silent: true });
+    if (cust.status === 'ambiguous') {
+      cust = await resolveCustomerForOrder(draft.customerName, {
+        forceCreate: true,
+        silent: true,
       });
     }
+    if (cust.status === 'resolved' || cust.status === 'walk-in') {
+      customerId = cust.id;
+      customerName = cust.name;
+    }
+  }
+
+  let platformId = draft.platformId;
+  if (!platformId) {
+    const { resolvePlatformForOrder } = await import('./entityResolve');
+    let plat = await resolvePlatformForOrder(draft.platformName, { silent: true });
+    if (plat.status === 'ambiguous') {
+      plat = await resolvePlatformForOrder(draft.platformName, {
+        forceCreate: true,
+        silent: true,
+      });
+    }
+    if (plat.status === 'resolved') platformId = plat.id;
+  }
+  if (!platformId) {
+    platformId = (await import('./platformService')).getDefaultPlatformId();
   }
 
   const { createRevenue } = await import('./revenueService');
   const { generateId } = await import('@/utils/id');
-  const itemId = generateId();
-  const quantity = Math.max(1, draft.quantity ?? 1);
-  const unitPrice = draft.unitPrice ?? Math.round(draft.amount / quantity);
-  const lineTotal = unitPrice * quantity;
-  // Prefer draft.amount when it was set as explicit total (no unitPrice path mismatch)
-  const total = draft.unitPrice != null ? lineTotal : draft.amount;
-  const name =
-    quantity > 1 && !/×|x\s+\d/i.test(draft.description)
-      ? draft.description.replace(/^\d+\s*[×x]\s*/i, '').trim() || draft.description
-      : draft.description.replace(/^\d+\s*[×x]\s*/i, '').trim() || draft.description || 'Sản phẩm';
 
-  return createRevenue({
-    date: draft.date,
-    customerId,
-    items: [
-      {
-        id: itemId,
-        name: name || 'Sản phẩm',
+  type Line = {
+    id: string;
+    productId?: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  };
+
+  let items: Line[];
+
+  if (draft.orderItems && draft.orderItems.length > 0) {
+    items = [];
+    for (const oi of draft.orderItems) {
+      const quantity = Math.max(1, oi.quantity);
+      const unitPrice = Math.max(1, oi.unitPrice);
+      let productId: string | undefined;
+      let itemName = oi.name;
+      let prod = await resolveProductForOrder(oi.name, {
+        suggestedPrice: unitPrice,
+        silent: true,
+      });
+      if (prod.status === 'ambiguous') {
+        prod = await resolveProductForOrder(oi.name, {
+          forceCreate: true,
+          suggestedPrice: unitPrice,
+          silent: true,
+        });
+      }
+      if (prod.status === 'resolved') {
+        productId = prod.id;
+        itemName = prod.name;
+      }
+      items.push({
+        id: generateId(),
+        productId,
+        name: itemName || 'Sản phẩm',
         quantity,
-        unitPrice: draft.unitPrice != null ? unitPrice : Math.round(total / quantity),
-        total,
+        unitPrice,
+        total: quantity * unitPrice,
+      });
+    }
+  } else {
+    const quantity = Math.max(1, draft.quantity ?? 1);
+    let unitPrice = draft.unitPrice ?? Math.round(draft.amount / quantity);
+    const lineTotal = unitPrice * quantity;
+    const total = draft.unitPrice != null ? lineTotal : draft.amount;
+    unitPrice = draft.unitPrice != null ? unitPrice : Math.round(total / quantity);
+
+    let productId = draft.productId;
+    let itemName = productQueryFromDescription(draft.description) || draft.description || 'Sản phẩm';
+
+    if (!draft.productId) {
+      let prod = await resolveProductForOrder(draft.description, {
+        suggestedPrice: unitPrice,
+        silent: true,
+      });
+      if (prod.status === 'ambiguous') {
+        prod = await resolveProductForOrder(draft.description, {
+          forceCreate: true,
+          suggestedPrice: unitPrice,
+          silent: true,
+        });
+      }
+      if (prod.status === 'resolved') {
+        productId = prod.id;
+        itemName = prod.name;
+        if (!draft.unitPrice && !(draft.amount > 0) && (prod.defaultUnitPrice ?? 0) > 0) {
+          unitPrice = prod.defaultUnitPrice ?? 0;
+        }
+      }
+    } else {
+      const { useProductStore } = await import('@/store/productStore');
+      const p = useProductStore.getState().products.find((x) => x.id === draft.productId);
+      if (p) itemName = p.name;
+    }
+
+    const finalTotal = unitPrice * quantity;
+    items = [
+      {
+        id: generateId(),
+        productId,
+        name: itemName || 'Sản phẩm',
+        quantity,
+        unitPrice,
+        total: draft.unitPrice != null || draft.productId ? finalTotal : total,
       },
-    ],
-    discount: 0,
-    orderStatus: 'new',
-    deliveryStatus: 'pending',
-    paymentMethod: 'cash' as PaymentMethod,
-    notes: draft.customerName ? `Khách: ${draft.customerName}` : undefined,
-  });
+    ];
+  }
+
+  const noteBits = [
+    customerName && customerId !== 'walk-in' ? `Khách: ${customerName}` : undefined,
+    draft.notes,
+  ].filter(Boolean);
+
+  return createRevenue(
+    {
+      date: draft.date,
+      customerId,
+      platformId,
+      items,
+      discount: 0,
+      shippingFee: draft.shippingFee ?? 0,
+      shippingPayer: draft.shippingPayer ?? 'customer',
+      depositAmount: draft.depositAmount,
+      depositedAt: draft.depositAmount
+        ? draft.depositedAt ?? draft.date
+        : undefined,
+      orderStatus: draft.orderStatus ?? 'new',
+      deliveryStatus: 'pending',
+      paymentMethod: 'cash' as PaymentMethod,
+      paymentStatus: draft.paymentStatus ?? 'unpaid',
+      paidAt: draft.paymentStatus === 'paid' ? draft.date : undefined,
+      notes: noteBits.join(' · ') || undefined,
+    },
+    { silent: true },
+  );
 }
 
 /** Convert Gemini/WebLLM ```action block into a draft (no persist). */

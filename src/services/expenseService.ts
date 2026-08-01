@@ -10,6 +10,7 @@
 
 import type { Expense } from '@/models';
 import { useExpenseStore } from '@/store';
+import { notify, type NotifyOpts } from '@/utils/notify';
 import { cacheGet, cacheSet } from './cacheManager';
 
 const CACHE_KEY = 'expenses';
@@ -40,6 +41,7 @@ export async function getAllExpenses(): Promise<Expense[]> {
  */
 export async function createExpense(
   data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>,
+  opts?: NotifyOpts,
 ): Promise<Expense> {
   // --- manual validation ---
   if (typeof data.amount !== 'number' || data.amount < 0) {
@@ -78,6 +80,7 @@ export async function createExpense(
   await cacheSet(CACHE_KEY, updated);
   useExpenseStore.getState().setRecords(updated);
 
+  notify.success(`Đã thêm chi phí: ${record.description}`, opts);
   return record;
 }
 
@@ -88,10 +91,12 @@ export async function createExpense(
 export async function updateExpense(
   id: string,
   patch: Partial<Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>>,
+  opts?: NotifyOpts,
 ): Promise<Expense | undefined> {
   const existing = (await cacheGet<Expense[]>(CACHE_KEY)) ?? [];
   const idx = existing.findIndex((r) => r.id === id);
   if (idx === -1) {
+    notify.error('Không tìm thấy chi phí để cập nhật', opts);
     return undefined;
   }
 
@@ -129,15 +134,18 @@ export async function updateExpense(
   await cacheSet(CACHE_KEY, updatedAll);
   useExpenseStore.getState().setRecords(updatedAll);
 
+  notify.success(`Đã cập nhật chi phí: ${updated.description}`, opts);
   return updated;
 }
 
 /**
  * Delete one or more expenses by id.
  */
-export async function deleteExpenses(ids: string[]): Promise<void> {
+export async function deleteExpenses(ids: string[], opts?: NotifyOpts): Promise<void> {
   const existing = (await cacheGet<Expense[]>(CACHE_KEY)) ?? [];
   const updated = existing.filter((r) => !ids.includes(r.id));
   await cacheSet(CACHE_KEY, updated);
   useExpenseStore.getState().setRecords(updated);
+  const n = ids.length;
+  notify.success(n > 1 ? `Đã xóa ${n} chi phí` : 'Đã xóa chi phí', opts);
 }

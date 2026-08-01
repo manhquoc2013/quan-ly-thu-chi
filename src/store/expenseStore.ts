@@ -17,8 +17,18 @@ import type {
   ExpenseCategory,
   ExpenseStatus,
 } from '@/models';
+import { cacheSet } from '@/services/cacheManager';
 
 enableMapSet();
+
+const CACHE_KEY = 'expenses';
+
+function persistExpenses(get: () => { records: Expense[] }): void {
+  const snapshot = get().records.map((r) => ({ ...r, tags: [...r.tags] }));
+  void cacheSet(CACHE_KEY, snapshot).catch((err) =>
+    console.error('Failed to persist expenses:', err),
+  );
+}
 
 // ── Filter shape ──────────────────────────────────────────────────────────────
 
@@ -182,12 +192,14 @@ export const useExpenseStore = create<ExpenseStore>()(
         state.selectedIds = new Set();
       }),
 
-    addRecord: (record) =>
+    addRecord: (record) => {
       set((state) => {
         state.records.unshift(record);
-      }),
+      });
+      persistExpenses(get);
+    },
 
-    updateRecord: (id, patch) =>
+    updateRecord: (id, patch) => {
       set((state) => {
         const idx = state.records.findIndex((r: Expense) => r.id === id);
         if (idx !== -1) {
@@ -195,15 +207,19 @@ export const useExpenseStore = create<ExpenseStore>()(
             updatedAt: new Date().toISOString(),
           });
         }
-      }),
+      });
+      persistExpenses(get);
+    },
 
-    deleteRecords: (ids) =>
+    deleteRecords: (ids) => {
       set((state) => {
         state.records = state.records.filter((r: Expense) => !ids.includes(r.id));
         state.selectedIds = new Set(
           [...state.selectedIds].filter((sid) => !ids.includes(sid)),
         );
-      }),
+      });
+      persistExpenses(get);
+    },
 
     setFilters: (partial) =>
       set((state) => {

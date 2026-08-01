@@ -5,7 +5,7 @@
  * Re-exports shared types from expense.ts.
  */
 
-import { type ExpenseCategory, type PaymentMethod } from './expense';
+import { type ExpenseCategory, type PaymentMethod } from "./expense";
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -175,6 +175,35 @@ export interface DashboardSummary {
     date: string;
     description: string;
     amount: number;
-    type: 'expense' | 'revenue';
+    type: "expense" | "revenue";
   }>;
+}
+
+// ── Customer report types ────────────────────────────────────────────────────
+
+export interface CustomerReportRow {
+  customerId: string;
+  customerName: string;
+  orderCount: number;
+  totalRevenue: number;
+}
+
+// ── Product report types ─────────────────────────────────────────────────────
+
+export interface ProductReportRow {
+  productId: string;
+  productName: string;
+  totalQuantity: number;
+  totalRevenue: number;
+  orderCount: number;
+}
+
+// ── Platform report types ────────────────────────────────────────────────────
+
+export interface PlatformReportRow {
+  platformId: string;
+  platformName: string;
+  orderCount: number;
+  totalRevenue: number;
+  percentage: number;
 }

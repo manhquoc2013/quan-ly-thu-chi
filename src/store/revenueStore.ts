@@ -11,7 +11,17 @@
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Revenue, OrderStatus } from '@/models';
+import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
+import { cacheSet } from '@/services/cacheManager';
+
+const CACHE_KEY = 'revenues';
+
+function persistRevenues(get: () => { records: Revenue[] }): void {
+  const snapshot = get().records.map((r) => ({ ...r, items: r.items.map((i) => ({ ...i })) }));
+  void cacheSet(CACHE_KEY, snapshot).catch((err) =>
+    console.error('Failed to persist revenues:', err),
+  );
+}
 
 // ── Filter shape ──────────────────────────────────────────────────────────────
 
@@ -20,6 +30,7 @@ export interface RevenueFilters {
   dateFrom: string;
   dateTo: string;
   orderStatus: OrderStatus | undefined;
+  paymentStatus: PaymentStatus | undefined;
   customerId: string | undefined;
 }
 
@@ -33,6 +44,7 @@ const defaultFilters: RevenueFilters = {
   dateFrom: '',
   dateTo: '',
   orderStatus: undefined,
+  paymentStatus: undefined,
   customerId: undefined,
 };
 
@@ -111,6 +123,10 @@ function applyFiltersAndSort(
     result = result.filter((r) => r.orderStatus === filters.orderStatus);
   }
 
+  if (filters.paymentStatus) {
+    result = result.filter((r) => r.paymentStatus === filters.paymentStatus);
+  }
+
   // Customer ID
   if (filters.customerId) {
     result = result.filter((r) => r.customerId === filters.customerId);
@@ -157,26 +173,32 @@ export const useRevenueStore = create<RevenueStore>()(
         state.selectedIds = new Set();
       }),
 
-    addRecord: (record) =>
+    addRecord: (record) => {
       set((state) => {
         state.records.unshift(record);
-      }),
+      });
+      persistRevenues(get);
+    },
 
-    updateRecord: (id, patch) =>
+    updateRecord: (id, patch) => {
       set((state) => {
         const idx = state.records.findIndex((r: Revenue) => r.id === id);
         if (idx !== -1) {
           Object.assign(state.records[idx]!, patch, { updatedAt: new Date().toISOString() });
         }
-      }),
+      });
+      persistRevenues(get);
+    },
 
-    deleteRecords: (ids) =>
+    deleteRecords: (ids) => {
       set((state) => {
         state.records = state.records.filter((r: Revenue) => !ids.includes(r.id));
         state.selectedIds = new Set(
           [...state.selectedIds].filter((sid) => !ids.includes(sid)),
         );
-      }),
+      });
+      persistRevenues(get);
+    },
 
     setFilters: (partial) =>
       set((state) => {

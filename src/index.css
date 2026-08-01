@@ -106,6 +106,8 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dimens-statusBarHeight: 32px;
   --dimens-gridRowHeight: 48px;
+  --dimens-fabSize: 48px;
+  --dimens-fabClearance: 72px; /* FAB size + margin so content isn't covered */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

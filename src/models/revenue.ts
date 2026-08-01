@@ -22,11 +22,21 @@ export type DeliveryStatus =
   | 'delivered'       // Đã giao
   | 'returned';       // Hoàn trả
 
+export type PaymentStatus =
+  | 'unpaid'          // Chưa thanh toán
+  | 'paid';           // Đã thanh toán
+
+/** Ai chịu phí ship: khách (cộng vào đơn) | shop (ghi chi phí) */
+export type ShippingPayer = 'customer' | 'shop';
+
 // ── Entities ──────────────────────────────────────────────────────────────────
 
 export interface OrderItem {
   /** UUID v4 */
   id: string;
+
+  /** FK → Product (optional; legacy lines may omit) */
+  productId?: string;
 
   /** Tên sản phẩm/dịch vụ */
   name: string;
@@ -34,7 +44,7 @@ export interface OrderItem {
   /** Số lượng (≥ 1) */
   quantity: number;
 
-  /** Đơn giá (VND) (> 0) */
+  /** Đơn giá (VND) (> 0) — giá thực tế trên đơn, có thể khác default catalog */
   unitPrice: number;
 
   /** Thành tiền = quantity × unitPrice (tự tính) */
@@ -75,6 +85,33 @@ export interface Revenue {
   /** Phương thức thanh toán */
   paymentMethod: PaymentMethod;
 
+  /** Trạng thái thu tiền */
+  paymentStatus: PaymentStatus;
+
+  /** Số tiền đã cọc (VND); cặp với depositedAt */
+  depositAmount?: number;
+
+  /** Ngày cọc (yyyy-MM-dd); bắt buộc khi depositAmount > 0 */
+  depositedAt?: string;
+
+  /** Số tiền ghi nhận doanh thu ngày thanh toán; mặc định = còn lại sau cọc */
+  paidAmount?: number;
+
+  /** Ngày thanh toán (yyyy-MM-dd); bắt buộc khi paymentStatus = paid */
+  paidAt?: string;
+
+  /** Phí ship (VND); 0 / thiếu = không có ship */
+  shippingFee?: number;
+
+  /** Người chịu ship; mặc định customer khi shippingFee > 0 */
+  shippingPayer?: ShippingPayer;
+
+  /** FK → Expense khi shop chịu ship */
+  shippingExpenseId?: string;
+
+  /** FK → OrderPlatform (kênh / nền tảng đặt hàng) */
+  platformId?: string;
+
   /** Ghi chú (tùy chọn) */
   notes?: string;
 
@@ -100,4 +137,14 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   shipping: 'Đang giao',
   delivered: 'Đã giao',
   returned: 'Hoàn trả',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: 'Chưa thanh toán',
+  paid: 'Đã thanh toán',
+};
+
+export const SHIPPING_PAYER_LABELS: Record<ShippingPayer, string> = {
+  customer: 'Khách chịu',
+  shop: 'Shop chịu',
 };

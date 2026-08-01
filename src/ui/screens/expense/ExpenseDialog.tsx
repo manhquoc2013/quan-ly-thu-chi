@@ -16,6 +16,7 @@ import { EXPENSE_CATEGORY_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
 import { createExpense, updateExpense } from '@/services/expenseService';
 import { formatCurrencyInput, parseCurrency } from '@/utils/currency';
 import { todayISO } from '@/utils/date';
+import { notify } from '@/utils/notify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -128,33 +129,37 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
       const amountNum = parseCurrency(form.amount);
       const tagsArr = form.tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 10);
 
-      if (editExpense) {
-        await updateExpense(editExpense.id, {
-          date: form.date,
-          category: form.category,
-          amount: amountNum,
-          description: form.description.trim(),
-          paymentMethod: form.paymentMethod,
-          supplier: form.supplier.trim() || undefined,
-          notes: form.notes.trim() || undefined,
-          tags: tagsArr,
-        });
-      } else {
-        await createExpense({
-          date: form.date,
-          category: form.category,
-          amount: amountNum,
-          description: form.description.trim(),
-          status: 'pending',
-          paymentMethod: form.paymentMethod,
-          supplier: form.supplier.trim() || undefined,
-          notes: form.notes.trim() || undefined,
-          tags: tagsArr,
-        });
+      try {
+        if (editExpense) {
+          await updateExpense(editExpense.id, {
+            date: form.date,
+            category: form.category,
+            amount: amountNum,
+            description: form.description.trim(),
+            paymentMethod: form.paymentMethod,
+            supplier: form.supplier.trim() || undefined,
+            notes: form.notes.trim() || undefined,
+            tags: tagsArr,
+          });
+        } else {
+          await createExpense({
+            date: form.date,
+            category: form.category,
+            amount: amountNum,
+            description: form.description.trim(),
+            status: 'pending',
+            paymentMethod: form.paymentMethod,
+            supplier: form.supplier.trim() || undefined,
+            notes: form.notes.trim() || undefined,
+            tags: tagsArr,
+          });
+        }
+        onClose();
+      } catch (err) {
+        notify.error(err instanceof Error ? err.message : 'Không lưu được chi phí');
+      } finally {
+        setSaving(false);
       }
-
-      setSaving(false);
-      onClose();
     },
     [form, editExpense, validate, onClose],
   );

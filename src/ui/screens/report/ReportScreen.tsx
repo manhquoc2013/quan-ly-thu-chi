@@ -1,34 +1,186 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, TrendingUp, LineChart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Receipt,
+  TrendingUp,
+  LineChart,
+  Wallet,
+  Users,
+  Package,
+  Store,
+} from "lucide-react";
 import { ExpenseReport } from "./ExpenseReport";
 import { RevenueReport } from "./RevenueReport";
 import { ProfitReport } from "./ProfitReport";
+import { UnpaidReport } from "./UnpaidReport";
+import { CustomerReport } from "./CustomerReport";
+import { ProductReport } from "./ProductReport";
+import { PlatformReport } from "./PlatformReport";
 import { bootstrapAppData } from "@/services/bootstrap";
-type ReportTab = 'expense' | 'revenue' | 'profit';
+import { useReportStore } from "@/store/reportStore";
+import { DatePicker } from "@/ui/components/DatePicker";
+import {
+  getMonthRange,
+  getPreviousMonthRange,
+  getLast7Days,
+  getLast30Days,
+  todayISO,
+} from "@/utils/date";
+
+type ReportTab =
+  | "expense"
+  | "revenue"
+  | "profit"
+  | "unpaid"
+  | "customer"
+  | "product"
+  | "platform";
 
 const SEGMENTS = [
   { value: "expense", label: "Chi phí", icon: Receipt },
   { value: "revenue", label: "Doanh thu", icon: TrendingUp },
   { value: "profit", label: "Lợi nhuận", icon: LineChart },
+  { value: "unpaid", label: "Công nợ", icon: Wallet },
+  { value: "customer", label: "Khách hàng", icon: Users },
+  { value: "product", label: "Sản phẩm", icon: Package },
+  { value: "platform", label: "Kênh bán", icon: Store },
 ];
+
+const PRESETS = [
+  {
+    id: "this-month",
+    label: "Tháng này",
+    range: () => {
+      const r = getMonthRange();
+      return { from: r.start, to: r.end };
+    },
+  },
+  {
+    id: "last-month",
+    label: "Tháng trước",
+    range: () => {
+      const r = getPreviousMonthRange();
+      return { from: r.start, to: r.end };
+    },
+  },
+  {
+    id: "7d",
+    label: "7 ngày",
+    range: () => {
+      const r = getLast7Days();
+      return { from: r.start, to: r.end };
+    },
+  },
+  {
+    id: "30d",
+    label: "30 ngày",
+    range: () => {
+      const r = getLast30Days();
+      return { from: r.start, to: r.end };
+    },
+  },
+  {
+    id: "all",
+    label: "Tất cả",
+    range: () => ({ from: "2000-01-01", to: todayISO() }),
+  },
+] as const;
 
 export function ReportScreen() {
   const [reportType, setReportTab] = useState<ReportTab>("expense");
+  const dateRange = useReportStore((s) => s.dateRange);
+  const setDateRange = useReportStore((s) => s.setDateRange);
+  const [activePreset, setActivePreset] = useState<string>("this-month");
+
   useEffect(() => {
     void bootstrapAppData();
   }, []);
+
+  const applyPreset = (id: string) => {
+    const preset = PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setDateRange(preset.range());
+    setActivePreset(id);
+  };
+
   return (
     <div className="flex flex-col gap-[var(--s-md)] p-[var(--s-md)]">
-      <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
-      <Tabs value={reportType} onValueChange={(v) => setReportTab(v as ReportTab)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          {PRESETS.map((p) => (
+            <Button
+              key={p.id}
+              type="button"
+              size="sm"
+              variant={activePreset === p.id ? "default" : "outline"}
+              className="h-7 text-[11px] px-2"
+              onClick={() => applyPreset(p.id)}
+            >
+              {p.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <DatePicker
+          value={dateRange.from}
+          onChange={(from) => {
+            setActivePreset("");
+            setDateRange({
+              from,
+              to: dateRange.to && dateRange.to < from ? from : dateRange.to,
+            });
+          }}
+          placeholder="Từ ngày"
+          className="w-[140px] h-8"
+          aria-label="Từ ngày"
+        />
+        <span className="text-xs text-text-muted">→</span>
+        <DatePicker
+          value={dateRange.to}
+          onChange={(to) => {
+            setActivePreset("");
+            setDateRange({
+              from: dateRange.from && dateRange.from > to ? to : dateRange.from,
+              to,
+            });
+          }}
+          placeholder="Đến ngày"
+          className="w-[140px] h-8"
+          aria-label="Đến ngày"
+        />
+        <span className="text-[11px] text-text-muted">
+          {dateRange.from} → {dateRange.to}
+        </span>
+      </div>
+
+      <Tabs
+        value={reportType}
+        onValueChange={(v) => setReportTab(v as ReportTab)}
+      >
         <TabsList>
-          {SEGMENTS.map(s => <TabsTrigger key={s.value} value={s.value} className="flex items-center gap-1.5"><s.icon size={14} />{s.label}</TabsTrigger>)}
+          {SEGMENTS.map((s) => (
+            <TabsTrigger
+              key={s.value}
+              value={s.value}
+              className="flex items-center gap-1.5"
+            >
+              <s.icon size={14} />
+              {s.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
       {reportType === "expense" && <ExpenseReport />}
       {reportType === "revenue" && <RevenueReport />}
       {reportType === "profit" && <ProfitReport />}
+      {reportType === "unpaid" && <UnpaidReport />}
+      {reportType === "customer" && <CustomerReport />}
+      {reportType === "product" && <ProductReport />}
+      {reportType === "platform" && <PlatformReport />}
     </div>
   );
 }

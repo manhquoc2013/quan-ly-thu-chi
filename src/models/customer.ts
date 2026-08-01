@@ -10,7 +10,10 @@ export interface Customer {
   /** Họ tên khách hàng (2–100 ký tự) */
   name: string;
 
-  /** Số điện thoại (bắt buộc, regex: ^(0|\+84)[0-9]{9,10}$) */
+  /**
+   * Số điện thoại (tùy chọn).
+   * Nếu có: regex `^(0|\+84)[0-9]{9,10}$`. Chuỗi rỗng = chưa cập nhật.
+   */
   phone: string;
 
   /** Email (tùy chọn, nếu có: regex email chuẩn) */

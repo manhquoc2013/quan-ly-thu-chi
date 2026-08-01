@@ -5,33 +5,101 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, Briefcase, Clock } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  Briefcase,
+  Package,
+  Wallet,
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
+import { useCustomerStore } from '@/store/customerStore';
 import { formatCurrency } from '@/utils/currency';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { formatAxisVnd, chartTooltipFormatter } from '@/utils/chartFormat';
-import type { Expense, Revenue } from '@/models';
+import {
+  sumPaidRevenue,
+  sumUnpaidReceivable,
+  cashRevenueOnDate,
+  isUnpaidReceivable,
+} from '@/utils/revenueMetrics';
+import {
+  ORDER_STATUS_LABELS,
+  EXPENSE_CATEGORY_LABELS,
+  PAYMENT_STATUS_LABELS,
+  type Expense,
+  type ExpenseCategory,
+  type OrderStatus,
+  type Revenue,
+} from '@/models';
 import { TransactionDetailModal } from './TransactionDetailModal';
+
+function money(amount: number): string {
+  return formatCurrency(Math.round(amount));
+}
+
+function statusTone(status: OrderStatus): string {
+  switch (status) {
+    case 'processing':
+    case 'confirmed':
+      return 'bg-accent-bg text-accent-fg border-transparent';
+    case 'new':
+      return 'bg-surface-hover text-text-secondary border-transparent';
+    default:
+      return '';
+  }
+}
+
+function customerLabel(order: Revenue, customers: { id: string; name: string }[]): string {
+  if (order.customerId === 'walk-in') return 'Khách vãng lai';
+  const name = customers.find((c) => c.id === order.customerId)?.name;
+  if (name) return name;
+  const fromNotes = order.notes?.replace(/^Khách:\s*/i, '').trim();
+  return fromNotes || 'Khách chưa rõ';
+}
+
+function orderSummary(order: Revenue): string {
+  const first = order.items[0]?.name?.trim();
+  if (!first) return ORDER_STATUS_LABELS[order.orderStatus];
+  const extra = order.items.length > 1 ? ` +${order.items.length - 1}` : '';
+  return `${first}${extra}`;
+}
 
 export function DashboardScreen() {
   const expenses = useExpenseStore((s) => s.records);
   const revenues = useRevenueStore((s) => s.records);
+  const customers = useCustomerStore((s) => s.customers);
 
-  // Ensure data is loaded even if navigated here before Layout bootstrap finishes
   useEffect(() => {
     void bootstrapAppData();
   }, []);
 
-  const [selectedTransaction, setSelectedTransaction] = useState<
-    { type: 'expense'; data: Expense; readOnly: boolean } | { type: 'revenue'; data: Revenue; readOnly: boolean } | null
+  const [selectedId, setSelectedId] = useState<
+    { type: 'expense'; id: string; readOnly: boolean } | { type: 'revenue'; id: string; readOnly: boolean } | null
   >(null);
 
+  const selectedTransaction = useMemo(() => {
+    if (!selectedId) return null;
+    if (selectedId.type === 'expense') {
+      const data = expenses.find((e) => e.id === selectedId.id);
+      return data ? ({ type: 'expense' as const, data, readOnly: selectedId.readOnly }) : null;
+    }
+    const data = revenues.find((r) => r.id === selectedId.id);
+    return data ? ({ type: 'revenue' as const, data, readOnly: selectedId.readOnly }) : null;
+  }, [selectedId, expenses, revenues]);
+
   const totalExpense = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
-  const totalRevenue = useMemo(() => revenues.reduce((s, r) => s + r.finalAmount, 0), [revenues]);
+  const totalRevenue = useMemo(() => sumPaidRevenue(revenues), [revenues]);
+  const unpaidTotal = useMemo(() => sumUnpaidReceivable(revenues), [revenues]);
+  const unpaidCount = useMemo(() => revenues.filter(isUnpaidReceivable).length, [revenues]);
   const profit = totalRevenue - totalExpense;
-  const pendingCount = useMemo(() => revenues.filter(r => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled').length, [revenues]);
+  const pendingCount = useMemo(
+    () => revenues.filter((r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled').length,
+    [revenues],
+  );
 
   const chartData = useMemo(() => {
     const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -42,42 +110,117 @@ export function DashboardScreen() {
       const dateStr = date.toISOString().slice(0, 10);
       return {
         day: d,
-        thu: revenues.filter((r) => r.date === dateStr).reduce((s, r) => s + r.finalAmount, 0),
+        thu: cashRevenueOnDate(revenues, dateStr),
         chi: expenses.filter((e) => e.date === dateStr).reduce((s, e) => s + e.amount, 0),
       };
     });
   }, [expenses, revenues]);
 
-  const pendingOrders = useMemo(() =>
-    revenues.filter(r => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled').slice(0, 5),
-  [revenues]);
+  const pendingOrders = useMemo(
+    () =>
+      revenues
+        .filter((r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled')
+        .slice()
+        .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, 6),
+    [revenues],
+  );
 
   const recentTransactions = useMemo(() => {
     const items = [
-      ...expenses.map(e => ({ id: e.id, desc: e.description, amount: e.amount, type: 'expense' as const, date: e.date, cat: e.category })),
-      ...revenues.map(r => ({ id: r.id, desc: r.orderCode, amount: r.finalAmount, type: 'income' as const, date: r.date, cat: 'Doanh thu' })),
+      ...expenses.map((e) => ({
+        id: e.id,
+        desc: e.description,
+        amount: e.amount,
+        type: 'expense' as const,
+        date: e.date,
+        cat: EXPENSE_CATEGORY_LABELS[e.category as ExpenseCategory] ?? e.category,
+        sortAt: e.updatedAt || e.createdAt || e.date,
+      })),
+      ...revenues.map((r) => ({
+        id: r.id,
+        desc: r.orderCode,
+        amount: r.finalAmount,
+        type: 'income' as const,
+        date: r.date,
+        cat: orderSummary(r),
+        sortAt: r.updatedAt || r.createdAt || r.date,
+      })),
     ];
-    return items.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+    return items.sort((a, b) => b.sortAt.localeCompare(a.sortAt)).slice(0, 6);
   }, [expenses, revenues]);
+
+  const kpiCards = [
+    {
+      title: 'Tổng thu',
+      value: money(totalRevenue),
+      hint: undefined as string | undefined,
+      icon: ArrowUpRight,
+      tone: 'text-success-fg',
+      className: 'md:col-span-2 xl:col-span-1',
+    },
+    {
+      title: 'Tổng chi',
+      value: money(totalExpense),
+      hint: undefined,
+      icon: ArrowDownRight,
+      tone: 'text-danger-fg',
+      className: 'md:col-span-2 xl:col-span-1',
+    },
+    {
+      title: 'Lợi nhuận',
+      value: money(profit),
+      hint: undefined,
+      icon: TrendingUp,
+      tone: profit >= 0 ? 'text-success-fg' : 'text-danger-fg',
+      className: 'md:col-span-2 xl:col-span-1',
+    },
+    {
+      title: 'Công nợ',
+      value: money(unpaidTotal),
+      hint: unpaidCount > 0 ? `${unpaidCount} đơn chưa thu` : 'Không còn nợ',
+      icon: Wallet,
+      tone: unpaidTotal > 0 ? 'text-warning-fg' : 'text-text-primary',
+      className: 'md:col-span-3 xl:col-span-1',
+    },
+    {
+      title: 'Đơn chờ',
+      value: String(pendingCount),
+      hint: pendingCount > 0 ? 'Cần xử lý' : 'Đã xong',
+      icon: Briefcase,
+      tone: 'text-text-primary',
+      // Mobile 2-col: span full row so the 5th card is not a lonely half-cell
+      className: 'col-span-2 md:col-span-3 xl:col-span-1',
+    },
+  ];
 
   return (
     <div className="space-y-[var(--s-lg)]">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)]">
-        {[
-          { title: 'Tổng thu', value: formatCurrency(totalRevenue), icon: ArrowUpRight, positive: true },
-          { title: 'Tổng chi', value: formatCurrency(totalExpense), icon: ArrowDownRight, positive: false },
-          { title: 'Lợi nhuận', value: formatCurrency(profit), icon: TrendingUp, positive: profit >= 0 },
-          { title: 'Đơn chờ', value: String(pendingCount), icon: Briefcase, positive: false },
-        ].map(c => (
-          <Card key={c.title} className="flex flex-col gap-1 bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-lg hover:-translate-y-px transition-all">
-            <CardContent className="flex flex-col gap-1 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex items-center justify-center w-10 h-10 rounded-field bg-surface-hover">
-                  <c.icon className="w-5 h-5 text-accent-fg" />
-                </div>
-                <span className="text-[13px] text-text-muted">{c.title}</span>
+      {/*
+        Responsive KPI strip:
+        - mobile: 2 cols (last card full-width)
+        - md: 3 + 2 balanced (6-col grid)
+        - xl: 5 equal columns in one row
+      */}
+      <div className="grid grid-cols-2 md:grid-cols-6 xl:grid-cols-5 gap-[var(--s-md)]">
+        {kpiCards.map((c) => (
+          <Card
+            key={c.title}
+            className={`bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all ${c.className}`}
+          >
+            <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+              <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-field bg-surface-hover">
+                <c.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${c.tone}`} />
               </div>
-              <p className="text-xl font-bold text-text-primary">{c.value}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] sm:text-[12px] text-text-muted leading-tight">{c.title}</p>
+                <p className={`text-base sm:text-lg font-bold tabular-nums leading-tight truncate ${c.tone}`}>
+                  {c.value}
+                </p>
+                {c.hint ? (
+                  <p className="text-[10px] sm:text-[11px] text-text-muted mt-0.5 truncate">{c.hint}</p>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -89,117 +232,179 @@ export function DashboardScreen() {
           <Badge variant="secondary">Tuần này</Badge>
         </CardHeader>
         <CardContent>
-        <div className="h-[200px] -mx-2">
-          {chartData.every(d => d.thu === 0 && d.chi === 0) ? (
-            <div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748B' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={48}
-                  tickFormatter={formatAxisVnd}
-                />
-                <Tooltip
-                  formatter={chartTooltipFormatter as never}
-                  labelFormatter={(label) => `Ngày ${label}`}
-                  contentStyle={{
-                    background: '#FFFFFF',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 8,
-                    color: '#1E293B',
-                    fontSize: 12,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  }}
-                />
-                <Bar dataKey="thu" name="Thu" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="chi" name="Chi" fill="#DC2626" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+          <div className="h-[200px] -mx-2">
+            {chartData.every((d) => d.thu === 0 && d.chi === 0) ? (
+              <div className="flex items-center justify-center h-full text-xs text-text-muted">
+                Chưa có dữ liệu
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748B' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={48}
+                    tickFormatter={formatAxisVnd}
+                  />
+                  <Tooltip
+                    formatter={chartTooltipFormatter as never}
+                    labelFormatter={(label) => `Ngày ${label}`}
+                    contentStyle={{
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 8,
+                      color: '#1E293B',
+                      fontSize: 12,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    }}
+                  />
+                  <Bar dataKey="thu" name="Thu" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="chi" name="Chi" fill="#DC2626" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-[var(--s-lg)]">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle>Đơn đang chờ</CardTitle>
-            <Badge variant="secondary">{pendingOrders.length} đơn</Badge>
-          </CardHeader>
-          <CardContent>
-          {pendingOrders.length === 0 ? (
-            <p className="text-xs text-text-muted py-4 text-center">Không có đơn chờ</p>
-          ) : pendingOrders.map(o => (
-            <div
-              key={o.id}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-[var(--s-lg)] py-[var(--s-md)] border-b border-border-subtle last:border-b-0 cursor-pointer hover:bg-surface-hover transition-colors"
-              onClick={() => setSelectedTransaction({ type: 'revenue', data: o, readOnly: false })}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedTransaction({ type: 'revenue', data: o, readOnly: false }) }}
-            >
-              <div><span className="font-mono text-xs text-accent-fg font-semibold">{o.orderCode}</span></div>
-              <div className="flex items-center gap-1 text-xs text-text-muted"><Clock size={12} />{o.date}</div>
-              <span className="font-semibold text-xs text-right">{formatCurrency(o.finalAmount)}</span>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-[var(--s-lg)]">
+        {/* ── Đơn đang chờ ─────────────────────────────────────────────── */}
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-field bg-accent-bg text-accent-fg shrink-0">
+                <Package size={16} />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-sm">Đơn đang chờ</CardTitle>
+                <p className="text-[11px] text-text-muted font-normal">Chạm để cập nhật trạng thái</p>
+              </div>
             </div>
-          ))}
+            <Badge variant="secondary">{pendingCount} đơn</Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            {pendingOrders.length === 0 ? (
+              <p className="text-xs text-text-muted py-10 text-center">Không có đơn chờ xử lý</p>
+            ) : (
+              <ul className="divide-y divide-border-subtle">
+                {pendingOrders.map((o) => (
+                  <li key={o.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:bg-accent-bg/40"
+                      onClick={() => setSelectedId({ type: 'revenue', id: o.id, readOnly: false })}
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-semibold text-accent-fg">{o.orderCode}</span>
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusTone(o.orderStatus)}`}>
+                            {ORDER_STATUS_LABELS[o.orderStatus]}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 h-5 border-transparent ${
+                              o.paymentStatus === 'paid'
+                                ? 'bg-success-bg text-success-fg'
+                                : 'bg-warning-bg text-warning-fg'
+                            }`}
+                          >
+                            {PAYMENT_STATUS_LABELS[o.paymentStatus ?? 'unpaid']}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-text-primary truncate">{customerLabel(o, customers)}</p>
+                        <p className="text-[11px] text-text-muted truncate">{orderSummary(o)} · {o.date}</p>
+                      </div>
+                      <div className="shrink-0 text-right space-y-1">
+                        <p className="text-sm font-semibold tabular-nums text-text-primary">{money(o.finalAmount)}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle>Giao dịch gần đây</CardTitle>
-            <Badge variant="outline">{recentTransactions.length} mới</Badge>
-          </CardHeader>
-          <CardContent>
-          {recentTransactions.length === 0 ? (
-            <p className="text-xs text-text-muted py-4 text-center">Chưa có giao dịch</p>
-          ) : recentTransactions.map(tx => (
-            <div
-              key={tx.id}
-              className="flex items-center justify-between py-[var(--s-sm)] border-b border-border-subtle last:border-b-0 cursor-pointer hover:bg-surface-hover transition-colors"
-              onClick={() => {
-                if (tx.type === 'expense') {
-                  const fullExpense = expenses.find(e => e.id === tx.id);
-                  if (fullExpense) setSelectedTransaction({ type: 'expense', data: fullExpense, readOnly: true });
-                } else {
-                  const fullRevenue = revenues.find(r => r.id === tx.id);
-                  if (fullRevenue) setSelectedTransaction({ type: 'revenue', data: fullRevenue, readOnly: true });
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  if (tx.type === 'expense') {
-                    const fullExpense = expenses.find(e => e.id === tx.id);
-                    if (fullExpense) setSelectedTransaction({ type: 'expense', data: fullExpense, readOnly: true });
-                  } else {
-                    const fullRevenue = revenues.find(r => r.id === tx.id);
-                    if (fullRevenue) setSelectedTransaction({ type: 'revenue', data: fullRevenue, readOnly: true });
-                  }
-                }
-              }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-full ${tx.type === 'income' ? 'bg-success-bg' : 'bg-danger-bg'}`}>
-                  {tx.type === 'income' ? <ArrowUpRight size={14} className="text-success-fg" /> : <ArrowDownRight size={14} className="text-danger-fg" />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-text-primary truncate">{tx.desc}</p>
-                  <p className="text-[10px] text-text-muted">{tx.cat} · {tx.date}</p>
-                </div>
+        {/* ── Giao dịch gần đây ────────────────────────────────────────── */}
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-field bg-surface-hover text-text-secondary shrink-0">
+                <TrendingUp size={16} />
               </div>
-              <span className={`shrink-0 text-xs font-semibold ${tx.type === 'income' ? 'text-success-fg' : 'text-danger-fg'}`}>
-                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-              </span>
+              <div className="min-w-0">
+                <CardTitle className="text-sm">Giao dịch gần đây</CardTitle>
+                <p className="text-[11px] text-text-muted font-normal">Thu / chi mới nhất</p>
+              </div>
             </div>
-          ))}
+            <Badge variant="outline">{recentTransactions.length} mục</Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            {recentTransactions.length === 0 ? (
+              <p className="text-xs text-text-muted py-10 text-center">Chưa có giao dịch</p>
+            ) : (
+              <ul className="divide-y divide-border-subtle">
+                {recentTransactions.map((tx) => {
+                  const isIncome = tx.type === 'income';
+                  return (
+                    <li key={`${tx.type}-${tx.id}`}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:bg-accent-bg/40"
+                        onClick={() => {
+                          if (tx.type === 'expense') {
+                            const fullExpense = expenses.find((e) => e.id === tx.id);
+                            if (fullExpense) {
+                              setSelectedId({ type: 'expense', id: fullExpense.id, readOnly: true });
+                            }
+                          } else {
+                            const fullRevenue = revenues.find((r) => r.id === tx.id);
+                            if (fullRevenue) {
+                              setSelectedId({ type: 'revenue', id: fullRevenue.id, readOnly: true });
+                            }
+                          }
+                        }}
+                      >
+                        <div
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                            isIncome ? 'bg-success-bg text-success-fg' : 'bg-danger-bg text-danger-fg'
+                          }`}
+                        >
+                          {isIncome ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-medium text-text-primary truncate">{tx.desc}</p>
+                            <Badge
+                              variant="outline"
+                              className={`shrink-0 text-[10px] px-1.5 py-0 h-5 border-transparent ${
+                                isIncome ? 'bg-success-bg text-success-fg' : 'bg-danger-bg text-danger-fg'
+                              }`}
+                            >
+                              {isIncome ? 'Thu' : 'Chi'}
+                            </Badge>
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-text-muted truncate">
+                            {tx.cat} · {tx.date}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 text-sm font-semibold tabular-nums ${
+                            isIncome ? 'text-success-fg' : 'text-danger-fg'
+                          }`}
+                        >
+                          {isIncome ? '+' : '−'}
+                          {money(tx.amount)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -207,7 +412,7 @@ export function DashboardScreen() {
       {selectedTransaction?.type === 'expense' && (
         <TransactionDetailModal
           open={!!selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          onClose={() => setSelectedId(null)}
           type="expense"
           record={selectedTransaction.data}
           readOnly={selectedTransaction.readOnly}
@@ -216,7 +421,7 @@ export function DashboardScreen() {
       {selectedTransaction?.type === 'revenue' && (
         <TransactionDetailModal
           open={!!selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
+          onClose={() => setSelectedId(null)}
           type="revenue"
           record={selectedTransaction.data}
           readOnly={selectedTransaction.readOnly}

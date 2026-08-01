@@ -18,7 +18,7 @@ export {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
-} from './expense';
+} from "./expense";
 
 // ── Revenue ───────────────────────────────────────────────────────────────────
 
@@ -27,13 +27,25 @@ export {
   type OrderItem,
   type OrderStatus,
   type DeliveryStatus,
+  type PaymentStatus,
+  type ShippingPayer,
   ORDER_STATUS_LABELS,
   DELIVERY_STATUS_LABELS,
-} from './revenue';
+  PAYMENT_STATUS_LABELS,
+  SHIPPING_PAYER_LABELS,
+} from "./revenue";
 
 // ── Customer ──────────────────────────────────────────────────────────────────
 
-export { type Customer } from './customer';
+export { type Customer } from "./customer";
+
+export { type Product } from "./product";
+
+export {
+  type OrderPlatform,
+  PLATFORM_DIRECT_ID,
+  DEFAULT_PLATFORM_SEEDS,
+} from "./platform";
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
@@ -48,4 +60,7 @@ export {
   type RevenueByMonth,
   type ProfitSummary,
   type DashboardSummary,
-} from './report';
+  type CustomerReportRow,
+  type ProductReportRow,
+  type PlatformReportRow,
+} from "./report";

@@ -230,7 +230,6 @@ export function ChatPanel() {
             : m,
         ),
       );
-      toast.success(`Đã lưu ${ok} khoản`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu');
     } finally {
