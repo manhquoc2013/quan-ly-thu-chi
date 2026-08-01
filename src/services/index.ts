@@ -33,9 +33,9 @@ export {
   getDashboardSummary,
 } from './reportService';
 
-// ── Database ─────────────────────────────────────────────────────────────────
+// ── Bootstrap ────────────────────────────────────────────────────────────────
 
-export { initDatabase, getDB, saveToCache, queryAll, queryOne, execute } from './database';
+export { bootstrapAppData, isAppDataReady } from './bootstrap';
 
 // ── Google Drive ─────────────────────────────────────────────────────────────
 
@@ -46,3 +46,12 @@ export { connectGoogleDrive, syncFromDrive, syncToDrive, isDriveConnected, uploa
 export { aiRouter } from './aiRouter';
 export { geminiService } from './geminiService';
 export { webLLM } from './webLLM';
+export { speechService } from './speechService';
+export {
+  intakeFromFile,
+  intakeFromText,
+  persistConfirmed,
+  buildFinanceContext,
+  isAcceptedIntakeFile,
+} from './intakeService';
+export type { DraftRecord, DraftKind, IntakeResult } from './draftTypes';

@@ -5,16 +5,18 @@
  *   - Top nav bar: brand logo + 5 tabs + sync badge + clock
  *   - Content area: <Outlet /> with max-width container
  *   - Bottom: StatusBar
- *   - FAB (🤖) bottom-right to toggle AI ChatPanel
+ *   - FAB (Bot icon) bottom-right to toggle AI ChatPanel
  *   - ChatPanel slide-in overlay
  *   - Mobile (<768px): tabs move to bottom navigation
  */
 
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
+import { LayoutDashboard, Receipt, Coins, BarChart3, Settings, Bot } from 'lucide-react';
 import { useUIStore } from '@store/uiStore';
-import { StatusBar } from '@components/StatusBar';
 import { ChatPanel } from '@screens/ai/ChatPanel';
+import { bootstrapAppData } from '@/services/bootstrap';
 
 const tabs = [
   { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },
@@ -23,6 +25,14 @@ const tabs = [
   { label: 'Báo cáo', route: '/report', tab: 'report' as const },
   { label: 'Cài đặt', route: '/settings', tab: 'settings' as const },
 ];
+
+const tabIcons: Record<string, ReactNode> = {
+  dashboard: <LayoutDashboard size={14} />,
+  expense: <Receipt size={14} />,
+  revenue: <Coins size={14} />,
+  report: <BarChart3 size={14} />,
+  settings: <Settings size={14} />,
+};
 
 function tabClass({ isActive }: { isActive: boolean }): string {
   return [
@@ -48,6 +58,29 @@ export function Layout() {
   const toggleFab = useUIStore((s) => s.toggleFab);
   const [clock, setClock] = useState('');
   const [syncState, setSyncState] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  const [dataReady, setDataReady] = useState(false);
+
+  // Hydrate stores from IndexedDB once on mount
+  useEffect(() => {
+    let cancelled = false;
+    setSyncState(navigator.onLine ? 'syncing' : 'offline');
+    bootstrapAppData()
+      .then(() => {
+        if (!cancelled) {
+          setDataReady(true);
+          setSyncState(navigator.onLine ? 'synced' : 'offline');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDataReady(true); // still render UI even if cache fail
+          setSyncState(navigator.onLine ? 'synced' : 'offline');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Live clock
   useEffect(() => {
@@ -63,14 +96,14 @@ export function Layout() {
   useEffect(() => {
     const online = () => setSyncState('synced');
     const offline = () => setSyncState('offline');
-    setSyncState(navigator.onLine ? 'synced' : 'offline');
+    setSyncState(navigator.onLine ? (dataReady ? 'synced' : 'syncing') : 'offline');
     window.addEventListener('online', online);
     window.addEventListener('offline', offline);
     return () => {
       window.removeEventListener('online', online);
       window.removeEventListener('offline', offline);
     };
-  }, []);
+  }, [dataReady]);
 
   return (
     <div className="flex flex-col h-screen bg-background min-w-0 overflow-hidden">
@@ -94,7 +127,10 @@ export function Layout() {
         <nav className="hidden md:flex items-center gap-1" aria-label="Primary tabs">
           {tabs.map((tab) => (
             <NavLink key={tab.route} to={tab.route} className={tabClass} end={tab.route === '/'}>
-              {tab.label}
+              <span className="flex items-center gap-1.5">
+                {tabIcons[tab.tab]}
+                {tab.label}
+              </span>
             </NavLink>
           ))}
         </nav>
@@ -116,13 +152,7 @@ export function Layout() {
       >
         {tabs.map((tab) => (
           <NavLink key={tab.route} to={tab.route} className={mobileTabClass} end={tab.route === '/'}>
-            <span className="text-base">
-              {tab.tab === 'dashboard' && '📊'}
-              {tab.tab === 'expense' && '💸'}
-              {tab.tab === 'revenue' && '💰'}
-              {tab.tab === 'report' && '📈'}
-              {tab.tab === 'settings' && '⚙️'}
-            </span>
+            <span className="text-base">{tabIcons[tab.tab]}</span>
             <span>{tab.label}</span>
           </NavLink>
         ))}
@@ -136,7 +166,10 @@ export function Layout() {
       </main>
 
       {/* ── Bottom Status Bar ──────────────────────────────────────── */}
-      <StatusBar syncStatus={syncState} />
+      <div className="flex items-center justify-between px-[var(--s-md)] h-[var(--dimens-statusBarHeight)] bg-surface border-t border-border text-[10px] text-text-muted shrink-0">
+        <span>© 2026 Quản Lý Tài Chính</span>
+        <span>v1.0.0</span>
+      </div>
 
       {/* ── FAB — AI Chat Toggle ───────────────────────────────────── */}
       <button
@@ -146,7 +179,7 @@ export function Layout() {
         aria-label="Toggle AI chat"
       >
         <span className="absolute inset-[-4px] rounded-full border-2 border-accent-fg opacity-0 animate-[fabPulse_2s_infinite]" />
-        🤖
+        <Bot size={20} />
       </button>
 
       {/* ── AI Chat Panel ──────────────────────────────────────────── */}

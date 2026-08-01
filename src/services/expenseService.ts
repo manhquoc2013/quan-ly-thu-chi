@@ -47,10 +47,10 @@ export async function createExpense(
   }
   if (
     typeof data.description !== 'string' ||
-    data.description.length < 5 ||
+    data.description.length < 2 ||
     data.description.length > 500
   ) {
-    throw new Error('description must be 5–500 characters');
+    throw new Error('description must be 2–500 characters');
   }
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (typeof data.date !== 'string' || !dateRegex.test(data.date)) {
@@ -101,7 +101,7 @@ export async function updateExpense(
   }
   if (
     patch.description !== undefined &&
-    (patch.description.length < 5 || patch.description.length > 500)
+    (patch.description.length < 2 || patch.description.length > 500)
   ) {
     throw new Error('description must be 5–500 characters');
   }

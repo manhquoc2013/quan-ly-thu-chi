@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { useExpenseStore } from '@/store/expenseStore';
 import { formatCurrency } from '@/utils/currency';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/models';
-import { Panel } from '@components/Panel';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const COLORS = ['#2563EB','#7C3AED','#16A34A','#D97706','#EC4899','#14B8A6','#F97316','#8B5CF6','#EF4444','#6B7280'];
 
@@ -29,11 +29,11 @@ export function ExpenseReport() {
   }, [expenses]);
   return <div className="space-y-[var(--s-lg)]">
     <div className="grid grid-cols-3 gap-[var(--s-md)]">
-      {[{l:'Tổng chi',v:formatCurrency(total)},{l:'Số khoản',v:String(expenses.length)},{l:'TB/ngày',v:formatCurrency(Math.round(total/Math.max(expenses.length||1,30)))}].map(c=><Panel key={c.l} className="text-center py-4"><p className="text-xs text-text-muted">{c.l}</p><p className="text-lg font-bold text-text-primary">{c.v}</p></Panel>)}
+      {[{l:'Tổng chi',v:formatCurrency(total)},{l:'Số khoản',v:String(expenses.length)},{l:'TB/ngày',v:formatCurrency(Math.round(total/Math.max(expenses.length||1,30)))}].map(c=><Card key={c.l} className="text-center py-4"><CardContent><p className="text-xs text-text-muted">{c.l}</p><p className="text-lg font-bold text-text-primary">{c.v}</p></CardContent></Card>)}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-[var(--s-lg)]">
-      <Panel title="Theo danh mục"><div className="h-[280px] overflow-hidden">{byCategory.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><PieChart><Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, percent}: {name: string, percent: number}) => (name === 'Khác' ? undefined : `${name} ${(percent*100).toFixed(0)}%`)}>{byCategory.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip formatter={(v:number)=>formatCurrency(v)}/></PieChart></ResponsiveContainer>}</div></Panel>
-      <Panel title="Theo tháng"><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${(v/1_000_000).toFixed(0)}tr`}/><Tooltip formatter={(v:number)=>formatCurrency(v)}/><Bar dataKey="total" fill="#DC2626" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}</div></Panel>
+      <Card><CardHeader><CardTitle>Theo danh mục</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byCategory.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><PieChart><Pie data={byCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, percent}: {name: string, percent: number}) => (name === 'Khác' ? undefined : `${name} ${(percent*100).toFixed(0)}%`)}>{byCategory.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip formatter={(v:number)=>formatCurrency(v)}/></PieChart></ResponsiveContainer>}</div></CardContent></Card>
+      <Card><CardHeader><CardTitle>Theo tháng</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${(v/1_000_000).toFixed(0)}tr`}/><Tooltip formatter={(v:number)=>formatCurrency(v)}/><Bar dataKey="total" fill="#DC2626" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}</div></CardContent></Card>
     </div>
   </div>;
 }

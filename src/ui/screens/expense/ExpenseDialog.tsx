@@ -10,16 +10,18 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Loader2, X, Check } from 'lucide-react';
 import type { Expense, ExpenseCategory, PaymentMethod } from '@/models';
 import { EXPENSE_CATEGORY_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
 import { createExpense, updateExpense } from '@/services/expenseService';
-import { useExpenseStore } from '@/store/expenseStore';
 import { formatCurrencyInput, parseCurrency } from '@/utils/currency';
 import { todayISO } from '@/utils/date';
-import { cn } from '@/utils/cn';
-import { Button } from '@/ui/components/Button';
-import { Dialog } from '@/ui/components/Dialog';
-import { Dropdown, type DropdownOption } from '@/ui/components/Dropdown';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { DatePicker } from '@/ui/components/DatePicker';
 
 /* ─── Form state ─── */
@@ -48,11 +50,11 @@ const EMPTY_FORM: FormState = {
 
 /* ─── Dropdown options ─── */
 
-const CATEGORY_OPTIONS: DropdownOption[] = Object.entries(EXPENSE_CATEGORY_LABELS).map(
+const CATEGORY_OPTIONS = Object.entries(EXPENSE_CATEGORY_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
-const PAYMENT_OPTIONS: DropdownOption[] = Object.entries(PAYMENT_METHOD_LABELS).map(
+const PAYMENT_OPTIONS = Object.entries(PAYMENT_METHOD_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
@@ -128,8 +130,8 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
   }, [form.description, form.amount]);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
       if (!validate()) return;
 
       setSaving(true);
@@ -176,173 +178,126 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
   }, [onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleCancel}
-      title={editExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}
-      width={640}
-      footer={
-        <>
-          <Button variant="neutral" onClick={() => { handleCancel(); }}>
-            Hủy
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleCancel(); }}>
+      <DialogContent className="max-w-[640px]" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>{editExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={(e) => { handleSubmit(e); }} noValidate>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+            {/* Date */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Ngày chi phí <span className="text-danger-fg">*</span></Label>
+              <DatePicker
+                value={form.date}
+                onChange={handleChange('date')}
+                aria-label="Ngày chi phí"
+              />
+              {errors.date && <p className="text-[10px] text-danger-fg">{errors.date}</p>}
+            </div>
+
+            {/* Category */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Danh mục <span className="text-danger-fg">*</span></Label>
+              <Select value={form.category} onValueChange={handleChange('category')}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Chọn danh mục" /></SelectTrigger>
+                <SelectContent>{CATEGORY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              {errors.category && <p className="text-[10px] text-danger-fg">{errors.category}</p>}
+            </div>
+
+            {/* Amount */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Số tiền (VND) <span className="text-danger-fg">*</span></Label>
+              <Input
+                type="text"
+                value={form.amount}
+                onChange={(e) =>
+                  handleChange('amount')(formatCurrencyInput(e.target.value))
+                }
+                onFocus={handleAmountFocus}
+                onBlur={handleAmountBlur}
+                placeholder="Nhập số tiền"
+                aria-label="Số tiền"
+                aria-invalid={!!errors.amount}
+                className={errors.amount ? 'border-danger-fg' : ''}
+              />
+              {errors.amount && <p className="text-[10px] text-danger-fg">{errors.amount}</p>}
+            </div>
+
+            {/* Payment Method */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Phương thức thanh toán</Label>
+              <Select value={form.paymentMethod} onValueChange={handleChange('paymentMethod')}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Chọn phương thức" /></SelectTrigger>
+                <SelectContent>{PAYMENT_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+              {errors.paymentMethod && <p className="text-[10px] text-danger-fg">{errors.paymentMethod}</p>}
+            </div>
+
+            {/* Description (full width) */}
+            <div className="flex flex-col gap-1 col-span-2">
+              <Label className="text-xs font-medium text-text-muted">Mô tả <span className="text-danger-fg">*</span></Label>
+              <Textarea
+                value={form.description}
+                onChange={(e) => handleChange('description')(e.target.value)}
+                placeholder="Mô tả chi phí..."
+                aria-label="Mô tả chi phí"
+                aria-invalid={!!errors.description}
+                className={errors.description ? 'border-danger-fg' : ''}
+              />
+              {errors.description && <p className="text-[10px] text-danger-fg">{errors.description}</p>}
+            </div>
+
+            {/* Supplier */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Nhà cung cấp</Label>
+              <Input
+                type="text"
+                value={form.supplier}
+                onChange={(e) => handleChange('supplier')(e.target.value)}
+                placeholder="Tên nhà cung cấp"
+                aria-label="Nhà cung cấp"
+              />
+              {errors.supplier && <p className="text-[10px] text-danger-fg">{errors.supplier}</p>}
+            </div>
+
+            {/* Tags */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium text-text-muted">Tags</Label>
+              <Input
+                type="text"
+                value={form.tags}
+                onChange={(e) => handleChange('tags')(e.target.value)}
+                placeholder="tag1, tag2, tag3 (tối đa 10)"
+                aria-label="Tags"
+              />
+              {errors.tags && <p className="text-[10px] text-danger-fg">{errors.tags}</p>}
+            </div>
+
+            {/* Notes (full width) */}
+            <div className="flex flex-col gap-1 col-span-2">
+              <Label className="text-xs font-medium text-text-muted">Ghi chú</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => handleChange('notes')(e.target.value)}
+                placeholder="Ghi chú thêm..."
+                aria-label="Ghi chú"
+              />
+              {errors.notes && <p className="text-[10px] text-danger-fg">{errors.notes}</p>}
+            </div>
+          </div>
+        </form>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel}>
+            <X size={14} /> Hủy
           </Button>
-          <Button variant="run" busy={saving} onClick={() => { handleSubmit({} as React.FormEvent); }}>
+          <Button variant="default" disabled={saving} onClick={() => { handleSubmit(); }}>
+            {saving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
             {editExpense ? 'Cập nhật' : 'Thêm'}
           </Button>
-        </>
-      }
-    >
-      <form ref={formRef} onSubmit={(e) => { handleSubmit(e); }} noValidate>
-        <div className="flex flex-col gap-5">
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Ngày chi phí{' '}
-              <span className="text-danger-fg">*</span>
-            </label>
-            <DatePicker
-              value={form.date}
-              onChange={handleChange('date')}
-              aria-label="Ngày chi phí"
-            />
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Danh mục{' '}
-              <span className="text-danger-fg">*</span>
-            </label>
-            <Dropdown
-              options={CATEGORY_OPTIONS}
-              value={form.category}
-              onChange={handleChange('category')}
-              placeholder="Chọn danh mục"
-            />
-          </div>
-
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Số tiền (VND){' '}
-              <span className="text-danger-fg">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.amount}
-              onChange={(e) =>
-                handleChange('amount')(formatCurrencyInput(e.target.value))
-              }
-              onFocus={handleAmountFocus}
-              onBlur={handleAmountBlur}
-              placeholder="Nhập số tiền"
-              aria-label="Số tiền"
-              className={cn(
-                'w-full h-9 px-3 text-sm',
-                'bg-input-bg',
-                'rounded-field',
-                'text-text-primary',
-                'focus:outline-none focus:ring-2 focus:ring-input-focus-ring',
-                'transition-colors duration-[var(--d-fast)]',
-                'hover:border-input-focus-ring',
-                errors.amount
-                  ? 'border-danger-fg'
-                  : 'border-input-border',
-              )}
-            />
-            {errors.amount && (
-              <p className="mt-1 text-xs text-danger-fg">{errors.amount}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Mô tả{' '}
-              <span className="text-danger-fg">*</span>
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => handleChange('description')(e.target.value)}
-              rows={2}
-              placeholder="Mô tả chi phí..."
-              aria-label="Mô tả chi phí"
-              className={cn(
-                'w-full px-3 py-2 text-sm resize-none',
-                'bg-input-bg',
-                'rounded-field',
-                'text-text-primary',
-                'focus:outline-none focus:ring-2 focus:ring-input-focus-ring',
-                'transition-colors duration-[var(--d-fast)]',
-                errors.description
-                  ? 'border-danger-fg'
-                  : 'border-input-border',
-              )}
-            />
-            {errors.description && (
-              <p className="mt-1 text-xs text-danger-fg">{errors.description}</p>
-            )}
-          </div>
-
-          {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Phương thức thanh toán
-            </label>
-            <Dropdown
-              options={PAYMENT_OPTIONS}
-              value={form.paymentMethod}
-              onChange={handleChange('paymentMethod')}
-              placeholder="Chọn phương thức"
-            />
-          </div>
-
-          {/* Supplier */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Nhà cung cấp
-            </label>
-            <input
-              type="text"
-              value={form.supplier}
-              onChange={(e) => handleChange('supplier')(e.target.value)}
-              placeholder="Tên nhà cung cấp"
-              aria-label="Nhà cung cấp"
-              className="w-full h-9 px-3 text-sm bg-input-bg border border-input-border rounded-field text-text-primary focus:outline-none focus:ring-2 focus:ring-input-focus-ring transition-colors duration-[var(--d-fast)] hover:border-input-focus-ring"
-            />
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Ghi chú
-            </label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => handleChange('notes')(e.target.value)}
-              rows={2}
-              placeholder="Ghi chú thêm..."
-              aria-label="Ghi chú"
-              className="w-full px-3 py-2 text-sm resize-none bg-input-bg border border-input-border rounded-field text-text-primary focus:outline-none focus:ring-2 focus:ring-input-focus-ring transition-colors duration-[var(--d-fast)]"
-            />
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Tags
-            </label>
-            <input
-              type="text"
-              value={form.tags}
-              onChange={(e) => handleChange('tags')(e.target.value)}
-              placeholder="tag1, tag2, tag3 (tối đa 10)"
-              aria-label="Tags"
-              className="w-full h-9 px-3 text-sm bg-input-bg border border-input-border rounded-field text-text-primary focus:outline-none focus:ring-2 focus:ring-input-focus-ring transition-colors duration-[var(--d-fast)] hover:border-input-focus-ring"
-            />
-          </div>
-        </div>
-      </form>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   );
 }

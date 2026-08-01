@@ -18,6 +18,13 @@ import { webLLM } from './webLLM';
 import { useAuthStore } from '@/store/authStore';
 import { createExpense } from './expenseService';
 import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory, type ExpenseStatus, type PaymentMethod } from '@/models';
+import {
+  buildFinanceContext,
+  intakeFromText,
+  persistConfirmed,
+  shouldAttachFinanceContext,
+} from './intakeService';
+import type { DraftRecord } from './draftTypes';
 
 type RequestType = 'simple' | 'medium' | 'complex';
 type AIProvider = 'local' | 'cloud';
@@ -81,6 +88,67 @@ export interface ChatAction {
 function parseLocalCommand(message: string): ChatAction | null {
   const lower = message.toLowerCase().trim();
 
+  // ── Revenue patterns (check FIRST, before expense patterns) ──
+  const revenuePatterns = [
+    // "bán kẹp tóc 20k cho Hùng" / "bán nước 15k"
+    /^bán\s+(.+?)\s+(\d+[kKmM]?)\s*(?:cho\s+(.+))?\s*$/i,
+    // "bán cho Hùng kẹp tóc 20k"
+    /^bán\s+cho\s+(.+?)\s+(.+?)\s+(\d+[kKmM]?)\s*$/i,
+    // "thu 50k từ Hùng" / "thu 100k bán kẹp tóc"
+    /^thu\s+(?:được\s+)?(\d+[kKmM]?)\s*(?:từ\s+(.+?)\s*)?(?:bán\s+(.+))?\s*$/i,
+    // "doanh thu 100k bán nước"
+    /^doanh thu\s+(\d+[kKmM]?)\s+(.+)/i,
+    // "khách Hùng trả 50k"
+    /^khách\s+(.+?)\s+trả\s+(\d+[kKmM]?)\s*(?:cho\s+(.+))?\s*$/i,
+  ];
+
+  for (const pattern of revenuePatterns) {
+    const match = lower.match(pattern);
+    if (match) {
+      // Extract amount and description based on pattern
+      let rawAmount: string, desc: string, customerName: string | undefined;
+
+      if (pattern === revenuePatterns[0]) {
+        // "bán X giá Y cho Z"
+        desc = match[1]!;
+        rawAmount = match[2]!;
+        customerName = match[3] || undefined;
+      } else if (pattern === revenuePatterns[1]) {
+        // "bán cho Z X giá Y"
+        customerName = match[1]!;
+        desc = match[2]!;
+        rawAmount = match[3]!;
+      } else if (pattern === revenuePatterns[2]) {
+        // "thu Y từ Z bán X"
+        rawAmount = match[1]!;
+        customerName = match[2] || undefined;
+        desc = match[3] || (customerName ? `Bán hàng cho ${customerName}` : 'Doanh thu');
+      } else if (pattern === revenuePatterns[3]) {
+        // "doanh thu Y X"
+        rawAmount = match[1]!;
+        desc = match[2]!;
+      } else if (pattern === revenuePatterns[4]) {
+        // "khách Z trả Y cho X"
+        customerName = match[1]!;
+        rawAmount = match[2]!;
+        desc = match[3] || `Bán hàng cho ${customerName}`;
+      } else {
+        continue;
+      }
+
+      desc = desc.replace(/\s+/g, ' ').trim();
+      const amount = parseAmount(rawAmount);
+      if (amount > 0 && desc.length > 1) {
+        return {
+          type: 'create_revenue',
+          amount,
+          description: desc,
+          customerName: customerName || undefined,
+        };
+      }
+    }
+  }
+
   const expensePatterns = [
     // Pattern 1: "thêm chi phí X do Y" / "tạo khoản chi X Y"
     /(?:thêm|tạo|thêm mới)\s+(?:chi\s*phí|khoản\s*chi)\s+(\d+[kKmM]?)\s*(?:do|cho|vì|để|:|$)\s*(.+)/i,
@@ -141,8 +209,8 @@ function parseAiAction(text: string): { cleanText: string; action?: ChatAction }
 
   try {
     const action = JSON.parse(actionMatch[1]!);
+    const cleanText = text.replace(/```action\n[\s\S]*?\n```/, '').trim();
     if (action.type === 'create_expense' && action.amount > 0 && action.description) {
-      const cleanText = text.replace(/```action\n[\s\S]*?\n```/, '').trim();
       return {
         cleanText,
         action: {
@@ -153,9 +221,19 @@ function parseAiAction(text: string): { cleanText: string; action?: ChatAction }
         },
       };
     }
+    if (action.type === 'create_revenue' && action.amount > 0 && action.description) {
+      return {
+        cleanText,
+        action: {
+          type: 'create_revenue',
+          amount: action.amount,
+          description: action.description,
+          customerName: action.customerName,
+        },
+      };
+    }
   } catch { /* ignore malformed JSON */ }
 
-  // Remove the block even if unparseable
   return { cleanText: text.replace(/```action\n[\s\S]*?\n```/, '').trim() };
 }
 
@@ -243,7 +321,13 @@ function loadThreads(): void {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as ChatThread[];
-      if (Array.isArray(parsed)) threads = parsed.slice(-MAX_THREADS);
+      if (Array.isArray(parsed)) {
+        // Drop empty placeholder threads left by older versions
+        threads = parsed
+          .filter((t) => Array.isArray(t.messages) && t.messages.length > 0)
+          .slice(-MAX_THREADS);
+        saveThreads();
+      }
     }
   } catch { /* ignore corrupt data */ }
 }
@@ -291,20 +375,23 @@ function buildHistoryContext(): string {
 function addToHistory(userMsg: string, aiMsg: string): void {
   if (!activeThreadId) {
     activeThreadId = crypto.randomUUID();
-    threads.unshift({
+  }
+  let t = threads.find((th) => th.id === activeThreadId);
+  if (!t) {
+    t = {
       id: activeThreadId,
       title: userMsg.slice(0, 60),
       createdAt: new Date().toISOString(),
       messages: [],
-    });
+    };
+    threads.unshift(t);
+  } else if (t.messages.length === 0 && t.title === 'Cuộc trò chuyện mới') {
+    t.title = userMsg.slice(0, 60);
   }
-  const t = threads.find(th => th.id === activeThreadId);
-  if (t) {
-    t.messages.push({ role: 'user', content: userMsg });
-    t.messages.push({ role: 'assistant', content: aiMsg });
-    t.messages = compactMessages(t.messages);
-    saveThreads();
-  }
+  t.messages.push({ role: 'user', content: userMsg });
+  t.messages.push({ role: 'assistant', content: aiMsg });
+  t.messages = compactMessages(t.messages);
+  saveThreads();
 }
 
 export const aiRouter = {
@@ -314,17 +401,40 @@ export const aiRouter = {
 
   // ── Thread management ─────────────────────────────────────────────────
 
-  /** Start a new chat thread */
-  newThread(): string {
+  /**
+   * Start a new chat thread.
+   * If the current thread is still empty, do not create another — returns created:false.
+   */
+  newThread(): { id: string; created: boolean } {
+    const current = activeThreadId
+      ? threads.find((th) => th.id === activeThreadId)
+      : undefined;
+
+    // Active empty thread (or no messages yet in UI-only session)
+    if (current && current.messages.length === 0) {
+      return { id: current.id, created: false };
+    }
+    // No persisted active thread yet — keep a soft id without listing empty chats
+    if (!activeThreadId || !current) {
+      // If nothing was ever said, reuse soft session instead of stacking empties
+      if (!activeThreadId) {
+        activeThreadId = crypto.randomUUID();
+        return { id: activeThreadId, created: false };
+      }
+      // active id exists but not in list (soft session after previous newThread) — still empty
+      return { id: activeThreadId, created: false };
+    }
+
     activeThreadId = crypto.randomUUID();
-    threads.unshift({
-      id: activeThreadId,
-      title: 'Cuộc trò chuyện mới',
-      createdAt: new Date().toISOString(),
-      messages: [],
-    });
-    saveThreads();
-    return activeThreadId;
+    // Do not persist empty thread until first real message (addToHistory)
+    return { id: activeThreadId, created: true };
+  },
+
+  /** True when active thread has no saved messages (still empty). */
+  isActiveThreadEmpty(): boolean {
+    if (!activeThreadId) return true;
+    const current = threads.find((th) => th.id === activeThreadId);
+    return !current || current.messages.length === 0;
   },
 
   /** Switch to an existing thread */
@@ -333,14 +443,14 @@ export const aiRouter = {
     return currentMessages();
   },
 
-  /** Get all threads (for history list) */
+  /** Get all threads (for history list) — hide empty placeholders */
   getThreads(): ChatThread[] {
-    return [...threads];
+    return threads.filter((t) => t.messages.length > 0);
   },
 
   /** Delete a thread */
   deleteThread(id: string): void {
-    threads = threads.filter(t => t.id !== id);
+    threads = threads.filter((t) => t.id !== id);
     if (activeThreadId === id) activeThreadId = null;
     saveThreads();
   },
@@ -355,70 +465,132 @@ export const aiRouter = {
   async sendMessage(
     message: string,
     context?: string,
-  ): Promise<{ text: string; source: 'local' | 'cloud'; action?: ChatAction }> {
-    // 1. Try local command parsing first (instant, no AI needed)
-    const localAction = parseLocalCommand(message);
-    if (localAction) {
-      addToHistory(message, `Đã thêm chi phí: ${localAction.description} — ${localAction.amount.toLocaleString('vi-VN')}₫`);
-      return {
-        text: `✅ Đã thêm chi phí: **${localAction.description}** — ${localAction.amount.toLocaleString('vi-VN')}₫`,
-        source: 'local',
-        action: localAction,
-      };
+  ): Promise<{
+    text: string;
+    source: 'local' | 'cloud';
+    action?: ChatAction;
+    drafts?: DraftRecord[];
+    createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+  }> {
+    // 1. Text/voice create → persist immediately (no preview)
+    const localIntake = intakeFromText(message, 'text');
+    if (localIntake?.drafts?.length) {
+      const draft = localIntake.drafts[0]!;
+      try {
+        const { ok, failed, created } = await persistConfirmed([draft]);
+        if (ok > 0) {
+          const kindLabel = draft.kind === 'expense' ? 'chi phí' : 'doanh thu';
+          const fxNote = draft.rawFx
+            ? ` (${draft.rawFx.original} ${draft.rawFx.currency})`
+            : '';
+          const customerNote =
+            draft.kind === 'revenue' && draft.customerName
+              ? ` · khách **${draft.customerName}**`
+              : '';
+          const text = `✅ Đã thêm ${kindLabel}: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫${fxNote}${customerNote}`;
+          addToHistory(message, text);
+          return {
+            text,
+            source: 'local',
+            createdRecord: created[0]
+              ? { kind: created[0].kind, id: created[0].id }
+              : undefined,
+          };
+        }
+        const errText = `❌ Không lưu được: ${failed.join('; ')}`;
+        addToHistory(message, errText);
+        return { text: errText, source: 'local' };
+      } catch (err) {
+        const errText = `❌ Lỗi lưu: ${err instanceof Error ? err.message : 'Unknown'}`;
+        addToHistory(message, errText);
+        return { text: errText, source: 'local' };
+      }
     }
 
-    // 1b. Help command — give usage guide
+    const localAction = parseLocalCommand(message);
+    if (localAction) {
+      const result = await this.executeAction(localAction);
+      const text = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+      addToHistory(message, text);
+      return { text, source: 'local' };
+    }
+
+    // 1b. Help
     const lower = message.toLowerCase().trim();
     if (lower === 'help' || lower === 'hướng dẫn' || lower === '?' || lower === 'cách dùng' || lower === 'giúp đỡ') {
       const helpText = `📋 **Hướng dẫn sử dụng AI Chat:**
 
-**Thêm chi phí** — gõ tự nhiên:
-• \`cà phê 25k\` • \`đổ xăng 30k\` • \`uống nước 10000\`
-• \`chi 50k ăn trưa\` • \`mua bút 15k\` • \`ăn sáng hết 30k\`
+**Thêm chi phí** — gõ là lưu ngay:
+• \`cà phê 25k\` • \`đổ xăng 30k\` • \`chi 50k ăn trưa\` • \`mua bút 15 USD\`
+• \`thanh toán 2tr tiền thuê\` • \`xăng 30\`
 
-**Phân tích dữ liệu:**
-• "Tổng quan tháng" — xem tổng thu chi
-• "Phân tích chi phí" — phân tích theo danh mục
-• "Dự báo" — dự đoán xu hướng
+**Thêm doanh thu** — gõ là lưu ngay:
+• \`bán kẹp tóc 20k cho Hùng\` • \`thu 50k từ Hùng\` • \`doanh thu 200k bán mỹ phẩm\`
 
-**Hỏi đáp tự do** về tài chính, quản lý chi tiêu.
+**Đính kèm (cần Xác nhận):** ảnh/PDF hóa đơn (OCR), CSV/XLS import.
 
-💡 Chat tự động nhớ lịch sử và tự tóm tắt khi dài.`;
+**Giọng nói:** bấm 🎤 → nói → gửi (lưu như text).
+
+**Phân tích:** "Tổng quan tháng" • "Phân tích chi phí" • "Lợi nhuận tháng này"`;
       addToHistory(message, helpText);
       return { text: helpText, source: 'local' };
     }
 
-    // 2. Build prompt with history + data context
+    // 2. Chat / analysis
     const history = buildHistoryContext();
     const parts: string[] = [];
-    if (context) parts.push(context);
+    const financeCtx = context ?? (shouldAttachFinanceContext(message) ? buildFinanceContext() : undefined);
+    if (financeCtx) parts.push(financeCtx);
     if (history) parts.push(`Lịch sử chat:\n${history}`);
     parts.push(`Người dùng: ${message}`);
     const fullContext = parts.join('\n\n');
     const type = classifyRequest(message);
     const provider = await getProvider(type);
 
+    const toResult = async (rawText: string, source: 'local' | 'cloud') => {
+      const { cleanText, action } = parseAiAction(rawText);
+      // Text path: AI create actions also persist immediately
+      if (action) {
+        const result = await this.executeAction(action);
+        const text = result.success
+          ? `${cleanText ? `${cleanText}\n\n` : ''}✅ ${result.message}`
+          : `${cleanText ? `${cleanText}\n\n` : ''}❌ ${result.message}`;
+        addToHistory(message, text);
+        return { text, source };
+      }
+      addToHistory(message, cleanText);
+      return { text: cleanText, source };
+    };
+
     if (provider === 'cloud' && geminiService.isConfigured) {
-      const rawText = await geminiService.generateContent(fullContext);
-      const { cleanText, action } = parseAiAction(rawText);
-      addToHistory(message, cleanText);
-      return { text: cleanText, source: 'cloud', action };
+      try {
+        const rawText = await geminiService.generateContent(fullContext);
+        if (rawText && !rawText.startsWith('Lỗi Gemini:')) {
+          return toResult(rawText, 'cloud');
+        }
+      } catch {
+        // auto-fallback
+      }
     }
 
-    if (provider === 'local' && webLLM.isLoaded) {
-      const rawText = await webLLM.generate(fullContext);
-      const { cleanText, action } = parseAiAction(rawText);
-      addToHistory(message, cleanText);
-      return { text: cleanText, source: 'local', action };
+    if (webLLM.isLoaded) {
+      try {
+        const rawText = await webLLM.generate(fullContext);
+        return toResult(rawText, 'local');
+      } catch {
+        // fall through
+      }
+    } else if (!webLLM.isLoading) {
+      void webLLM.load();
     }
 
-    const fallback = '🤖 Cả hai AI provider đều chưa sẵn sàng.\n\n• Để dùng AI offline: đợi model tải xong\n• Để dùng AI online: vào Cài đặt → nhập Gemini API key';
+    const fallback = '🤖 AI cloud không dùng được và model offline chưa sẵn sàng.\n\n• Đợi WebLLM tải xong, hoặc\n• Vào Cài đặt → nhập Gemini API key\n\nBạn vẫn thêm chi/thu bằng câu rõ (vd: `cà phê 25k`) hoặc đính kèm CSV.';
     addToHistory(message, fallback);
     return { text: fallback, source: 'local' };
   },
 
-  /** Execute a chat action (e.g. create expense from AI command). */
-  executeAction(action: ChatAction): { success: boolean; message: string } {
+  /** Execute a chat action (e.g. create expense / revenue from AI command). */
+  async executeAction(action: ChatAction): Promise<{ success: boolean; message: string }> {
     const today = new Date().toISOString().slice(0, 10);
 
     if (action.type === 'create_expense') {
@@ -435,24 +607,48 @@ export const aiRouter = {
     }
 
     if (action.type === 'create_revenue') {
-      const itemId = crypto.randomUUID();
-      import('./revenueService').then(({ createRevenue }) => {
-        createRevenue({
-          date: today,
-          customerId: 'walk-in',
-          items: [{
-            id: itemId,
-            name: action.description || 'Sản phẩm',
-            quantity: 1,
-            unitPrice: action.amount,
-            total: action.amount,
-          }],
-          discount: 0,
-          orderStatus: 'new',
-          deliveryStatus: 'pending',
-          paymentMethod: 'cash' as PaymentMethod,
-          notes: action.customerName ? `Khách: ${action.customerName}` : undefined,
-        });
+      // Auto-create customer if name provided
+      let customerId = 'walk-in';
+      if (action.customerName) {
+        const { useCustomerStore } = await import('@/store/customerStore');
+        const { generateId } = await import('@/utils/id');
+        const customers = useCustomerStore.getState().customers;
+        const existing = customers.find(c =>
+          c.name.toLowerCase() === action.customerName!.toLowerCase()
+        );
+        if (existing) {
+          customerId = existing.id;
+        } else {
+          customerId = generateId();
+          useCustomerStore.getState().addCustomer({
+            id: customerId,
+            name: action.customerName!,
+            phone: '',
+            email: '',
+            address: '',
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      const { createRevenue } = await import('./revenueService');
+      const { generateId } = await import('@/utils/id');
+      const itemId = generateId();
+      await createRevenue({
+        date: today,
+        customerId,
+        items: [{
+          id: itemId,
+          name: action.description || 'Sản phẩm',
+          quantity: 1,
+          unitPrice: action.amount,
+          total: action.amount,
+        }],
+        discount: 0,
+        orderStatus: 'new',
+        deliveryStatus: 'pending',
+        paymentMethod: 'cash' as PaymentMethod,
+        notes: action.customerName ? `Khách: ${action.customerName}` : undefined,
       });
       return { success: true, message: `Đã thêm doanh thu "${action.description}" — ${action.amount.toLocaleString('vi-VN')}₫` };
     }
@@ -473,10 +669,10 @@ export const aiRouter = {
     description: string;
     supplier: string;
   } | null> {
-    if (!geminiService.isConfigured) {
-      console.warn('OCR requires Gemini API key');
-      return null;
+    if (geminiService.isConfigured && navigator.onLine) {
+      return geminiService.ocrInvoice(imageBase64);
     }
-    return geminiService.ocrInvoice(imageBase64);
+    console.warn('OCR: Gemini unavailable — use intakeService.intakeFromFile for Tesseract fallback');
+    return null;
   },
 };

@@ -1,17 +1,13 @@
 /**
  * Auth Store — Google Drive connection, Gemini API key, user info.
  *
- * Zustand 5 + Immer for safe mutable updates.
- *
- * Usage:
- *   const { isGoogleConnected, geminiConfigured } = useAuthStore();
- *   const { setGoogleConnected, setGeminiApiKey, disconnectGoogle } = useAuthStore();
+ * Persists Gemini API key to localStorage so it survives reload.
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { geminiService } from '@/services/geminiService';
 
 export interface GoogleUser {
   id: string;
@@ -20,16 +16,12 @@ export interface GoogleUser {
   picture?: string;
 }
 
-// ── State ─────────────────────────────────────────────────────────────────────
-
 interface AuthState {
   isGoogleConnected: boolean;
   googleUser: GoogleUser | null;
   geminiApiKey: string | null;
   geminiConfigured: boolean;
 }
-
-// ── Actions ───────────────────────────────────────────────────────────────────
 
 export interface AuthActions {
   setGoogleConnected: (isGoogleConnected: boolean) => void;
@@ -38,43 +30,61 @@ export interface AuthActions {
   disconnectGoogle: () => void;
 }
 
-// ── Store ─────────────────────────────────────────────────────────────────────
-
 type AuthStore = AuthState & AuthActions;
 
+function syncGeminiService(apiKey: string | null): void {
+  if (apiKey) geminiService.configure(apiKey);
+  else geminiService.disconnect();
+}
+
 export const useAuthStore = create<AuthStore>()(
-  immer((set) => ({
-    isGoogleConnected: false,
-    googleUser: null,
-    geminiApiKey: null,
-    geminiConfigured: false,
+  persist(
+    immer((set) => ({
+      isGoogleConnected: false,
+      googleUser: null,
+      geminiApiKey: null,
+      geminiConfigured: false,
 
-    // ── Mutations ──────────────────────────────────────────────────────────
+      setGoogleConnected: (isGoogleConnected) =>
+        set((state) => {
+          state.isGoogleConnected = isGoogleConnected;
+        }),
 
-    setGoogleConnected: (isGoogleConnected) =>
-      set((state) => {
-        state.isGoogleConnected = isGoogleConnected;
+      setGoogleUser: (googleUser) =>
+        set((state) => {
+          state.googleUser = googleUser;
+          if (googleUser) state.isGoogleConnected = true;
+        }),
+
+      setGeminiApiKey: (geminiApiKey) => {
+        set((state) => {
+          state.geminiApiKey = geminiApiKey;
+          state.geminiConfigured = !!geminiApiKey;
+        });
+        syncGeminiService(geminiApiKey);
+      },
+
+      disconnectGoogle: () =>
+        set((state) => {
+          state.isGoogleConnected = false;
+          state.googleUser = null;
+        }),
+    })),
+    {
+      name: 'ql-tc-auth',
+      partialize: (state) => ({
+        geminiApiKey: state.geminiApiKey,
+        geminiConfigured: !!state.geminiApiKey,
+        // Google OAuth tokens are not persisted here yet (stub flow)
+        isGoogleConnected: state.isGoogleConnected,
+        googleUser: state.googleUser,
       }),
-
-    setGoogleUser: (googleUser) =>
-      set((state) => {
-        state.googleUser = googleUser;
-        // If a user is set, assume connected
-        if (googleUser) {
-          state.isGoogleConnected = true;
+      onRehydrateStorage: () => (state) => {
+        if (state?.geminiApiKey) {
+          syncGeminiService(state.geminiApiKey);
+          state.geminiConfigured = true;
         }
-      }),
-
-    setGeminiApiKey: (geminiApiKey) =>
-      set((state) => {
-        state.geminiApiKey = geminiApiKey;
-        state.geminiConfigured = !!geminiApiKey;
-      }),
-
-    disconnectGoogle: () =>
-      set((state) => {
-        state.isGoogleConnected = false;
-        state.googleUser = null;
-      }),
-  })),
+      },
+    },
+  ),
 );

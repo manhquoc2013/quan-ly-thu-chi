@@ -4,7 +4,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, C
 import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { formatCurrency } from '@/utils/currency';
-import { Panel } from '@components/Panel';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function ProfitReport() {
   const expenses = useExpenseStore((s) => s.records);
@@ -21,10 +21,8 @@ export function ProfitReport() {
   }, [expenses, revenues]);
   return <div className="space-y-[var(--s-lg)]">
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)]">
-      {[{l:'Doanh thu',v:formatCurrency(totalRevenue),c:'text-success-fg'},{l:'Chi phí',v:formatCurrency(totalExpense),c:'text-danger-fg'},{l:'Lợi nhuận',v:formatCurrency(profit),c:profit>=0?'text-success-fg':'text-danger-fg'},{l:'Biên lợi nhuận',v:`${margin.toFixed(1)}%`,c:'text-accent-fg'}].map(c=><Panel key={c.l} className="text-center py-4"><p className="text-xs text-text-muted">{c.l}</p><p className={`text-lg font-bold ${c.c}`}>{c.v}</p></Panel>)}
+      {[{l:'Doanh thu',v:formatCurrency(totalRevenue),c:'text-success-fg'},{l:'Chi phí',v:formatCurrency(totalExpense),c:'text-danger-fg'},{l:'Lợi nhuận',v:formatCurrency(profit),c:profit>=0?'text-success-fg':'text-danger-fg'},{l:'Biên lợi nhuận',v:`${margin.toFixed(1)}%`,c:'text-accent-fg'}].map(c=><Card key={c.l} className="text-center py-4"><CardContent><p className="text-xs text-text-muted">{c.l}</p><p className={`text-lg font-bold ${c.c}`}>{c.v}</p></CardContent></Card>)}
     </div>
-    <Panel title="Lợi nhuận theo tháng">
-      <div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><ComposedChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${v}tr`}/><Tooltip/><Bar dataKey="thu" fill="#059669" radius={[4,4,0,0]} name="Thu"/><Bar dataKey="chi" fill="#DC2626" radius={[4,4,0,0]} name="Chi"/><Line dataKey="loi" stroke="#2563EB" strokeWidth={2} dot={false} name="Lợi nhuận"/></ComposedChart></ResponsiveContainer>}</div>
-    </Panel>
+    <Card><CardHeader><CardTitle>Lợi nhuận theo tháng</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><ComposedChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${v}tr`}/><Tooltip/><Bar dataKey="thu" fill="#059669" radius={[4,4,0,0]} name="Thu"/><Bar dataKey="chi" fill="#DC2626" radius={[4,4,0,0]} name="Chi"/><Line dataKey="loi" stroke="#2563EB" strokeWidth={2} dot={false} name="Lợi nhuận"/></ComposedChart></ResponsiveContainer>}</div></CardContent></Card>
   </div>;
 }

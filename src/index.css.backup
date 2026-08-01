@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #EFF2F7;
+  --color-surface: #FAFBFC;
+  --color-surface-hover: #F1F5F9;
+  --color-surface-active: #E2E8F0;
+  --color-border: #CBD5E1;
+  --color-border-subtle: #E0E3E8;
+  --color-border-focus: #1565C0;
+  --color-text-primary: #333333;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-text-disabled: #94A3B8;
+  --color-text-inverse: #FFFFFF;
+  --color-accent-bg: #E3F2FD;
+  --color-accent-bg-hover: #BBDEFB;
+  --color-accent-fg: #1565C0;
+  --color-accent-fg-hover: #0D47A1;
+  --color-success-bg: #ECFDF5;
+  --color-success-bg-badge: #D1FAE5;
+  --color-success-fg: #065F46;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-fg: #92400E;
+  --color-danger-bg: #FFEBEE;
+  --color-danger-fg: #C62828;
+  --color-danger-fg-hover: #B71C1C;
+  --color-input-bg: #FFFFFF;
+  --color-input-border: #CBD5E1;
+  --color-input-focus-ring: #1565C0;
+  --color-input-placeholder: #94A3B8;
+  --color-input-disabled-bg: #F1F5F9;
+  --color-tooltip-bg: #1E293B;
+  --color-tooltip-fg: #F8FAFC;
+  --color-neutral-bg: #ECEFF1;
+  --color-neutral-bg-hover: #CFD8DC;
+  --color-neutral-fg: #37474F;
+  --color-run-bg: #1565C0;
+  --color-run-bg-hover: #0D47A1;
+  --color-run-fg: #FFFFFF;
+  --color-info-bg: #E0F2FE;
+  --color-info-fg: #1E3A8A;
+  --color-info-banner: #EFF6FF;
+  --color-grid-header-bg: #F1F5F9;
+  --color-grid-header-fg: #334155;
+  --color-grid-row-even: #FFFFFF;
+  --color-grid-row-odd: #FAFBFC;
+  --color-grid-row-hover: #F1F5F9;
+  --color-grid-row-selected: #E3F2FD;
+  --color-badge-online-bg: #D1FAE5;
+  --color-badge-online-fg: #065F46;
+  --color-badge-offline-bg: #E2E8F0;
+  --color-badge-offline-fg: #64748B;
+  --color-badge-warning-bg: #FEF3C7;
+  --color-badge-warning-fg: #92400E;
+  --color-badge-error-bg: #FEE2E2;
+  --color-badge-error-fg: #B91C1C;
+  --color-scrollbar-thumb: #CBD5E1;
+  --color-scrollbar-track: transparent;
+  --radius-field: 4px;
+  --radius-panel: 6px;
+  --radius-dialog: 8px;
+  --radius-badge: 12px;
+  --radius-full: 9999px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 20px;
+  --shadow-dialog: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-tooltip: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+  --animate-dialog-in: dialog-in var(--d-normal) var(--ease-out) forwards;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+:root {
+  --s-xs: 4px;
+  --s-sm: 6px;
+  --s-md: 8px;
+  --s-lg: 12px;
+  --s-xl: 16px;
+  --s-2xl: 24px;
+  --s-3xl: 32px;
+  --d-fast: 150ms;
+  --d-normal: 200ms;
+  --d-slow: 300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dimens-statusBarHeight: 32px;
+  --dimens-gridRowHeight: 48px;
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track { background: transparent; }
+}
+
+@utility text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@utility drag-none {
+  -webkit-user-drag: none;
+  user-select: none;
+}

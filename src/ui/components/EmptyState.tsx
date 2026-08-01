@@ -12,6 +12,8 @@
 
 import type { LucideIcon } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
+
 export interface EmptyStateAction {
   label: string;
   onClick: () => void;
@@ -91,33 +93,9 @@ export function EmptyState({
 
       {/* Action */}
       {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className={[
-            'inline-flex',
-            'items-center',
-            'justify-center',
-            'px-[var(--s-xl)]',
-            'py-[var(--s-sm)]',
-            'text-sm',
-            'font-medium',
-            'h-10',
-            'bg-accent-bg',
-            'text-accent-fg',
-            'border',
-            'border-accent-fg/20',
-            'rounded-field',
-            'hover:bg-accent-bg-hover',
-            'transition-colors',
-            'cursor-pointer',
-            'focus:outline-none',
-            'focus:ring-2',
-            'focus:ring-input-focus-ring',
-          ].join(' ')}
-        >
+        <Button variant="outline" onClick={action.onClick} className="h-10 bg-accent-bg text-accent-fg border-accent-fg/20 hover:bg-accent-bg-hover">
           {action.label}
-        </button>
+        </Button>
       )}
     </div>
   );

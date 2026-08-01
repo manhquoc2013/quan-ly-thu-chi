@@ -2,39 +2,32 @@
  * RevenueScreen — Main order management screen.
  *
  * Composes: Toolbar (search, date filter, status filter, "Tạo đơn hàng" button),
- * RevenueGrid, and ActionBar (bulk actions + selected total).
- * Integrates useRevenueStore for filtering, sorting, and selection.
+ * and RevenueGrid (pure display). Row click opens a detail Dialog with OrderRowCard.
+ * Integrates useRevenueStore for filtering and sorting.
  *
  * Uses: RevenueGrid, OrderDialog, OrderRowCard, useRevenueStore.
- *
- * Note: The store API uses `filteredRecords`, `selectedRecords`, `setFilters`,
- * `deleteRecords`, `clearSelection`, `selectAll`. These are aliased to readable
- * names in the component.
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
 import { useRevenueStore } from '@/store/revenueStore';
-import { useCustomerStore } from '@/store/customerStore';
+import { useUIStore } from '@/store/uiStore';
 import { getAllRevenues } from '@/services/revenueService';
 import { getAllCustomers } from '@/services/customerService';
 import { formatCurrency } from '@/utils/currency';
+import { Plus } from 'lucide-react';
 import { RevenueGrid } from './RevenueGrid';
 import { OrderDialog } from './OrderDialog';
 import { OrderRowCard } from './OrderRowCard';
-import { Toolbar } from '@ui/components/Toolbar';
-import {
-  Panel,
-  Button,
-  Badge,
-  Dropdown,
-  DatePicker,
-  type DropdownOption,
-} from '@ui/components';
-import { ActionBar } from '@ui/components/ActionBar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { DatePicker } from '@/ui/components/DatePicker';
+
 /* ─── Status filter options ─────────────────────────────────────────────── */
 
-const STATUS_FILTER_OPTIONS: DropdownOption[] = [
+const STATUS_FILTER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'new', label: 'Mới tạo' },
   { value: 'confirmed', label: 'Đã xác nhận' },
@@ -48,12 +41,9 @@ const STATUS_FILTER_OPTIONS: DropdownOption[] = [
 export function RevenueScreen() {
   const records = useRevenueStore((s) => s.records);
   const filters = useRevenueStore((s) => s.filters);
-  const selectedIds = useRevenueStore((s) => s.selectedIds);
 
   const setFilters = useRevenueStore((s) => s.setFilters);
   const deleteRecords = useRevenueStore((s) => s.deleteRecords);
-  const clearSelection = useRevenueStore((s) => s.clearSelection);
-  const selectAll = useRevenueStore((s) => s.selectAll);
 
   const filteredRecords = useMemo(() => {
     let r = [...records];
@@ -64,13 +54,9 @@ export function RevenueScreen() {
     return r;
   }, [records, filters]);
 
-  const selectedRecords = useMemo(() => records.filter(r => selectedIds.has(r.id)), [records, selectedIds]);
-
-  const selectedTotal = useMemo(() => selectedRecords.reduce((sum, r) => sum + r.finalAmount, 0), [selectedRecords]);
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRevenue, setEditingRevenue] = useState<Revenue | null>(null);
-  const [expandedRow, setExpandedRow] = useState<Revenue | null>(null);
+  const [detailRevenue, setDetailRevenue] = useState<Revenue | null>(null);
 
   /* ── Filter change handlers ─────────────────────────────────────────── */
 
@@ -98,7 +84,7 @@ export function RevenueScreen() {
   /* ── Row actions ─────────────────────────────────────────────────────── */
 
   const handleRowClick = useCallback((row: Revenue) => {
-    setExpandedRow((prev) => (prev?.id === row.id ? null : row));
+    setDetailRevenue(row);
   }, []);
 
   const handleEdit = useCallback((row: Revenue) => {
@@ -109,35 +95,27 @@ export function RevenueScreen() {
   const handleDelete = useCallback(
     (row: Revenue) => {
       deleteRecords([row.id]);
-      if (expandedRow?.id === row.id) setExpandedRow(null);
+      setDetailRevenue((prev) => (prev?.id === row.id ? null : prev));
     },
-    [deleteRecords, expandedRow],
+    [deleteRecords],
   );
-
-  /* ── Bulk actions ────────────────────────────────────────────────────── */
-
-  const handleDeleteSelected = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    deleteRecords(ids);
-    clearSelection();
-    setExpandedRow(null);
-  }, [selectedIds, deleteRecords, clearSelection]);
-
-  const handleClearSelection = useCallback(() => {
-    clearSelection();
-    setExpandedRow(null);
-  }, [clearSelection]);
-
-  const handleSelectAll = useCallback(() => {
-    selectAll();
-  }, [selectAll]);
 
   /* ── Load data from IndexedDB on mount ────────────────────────────── */
   useEffect(() => {
     getAllRevenues();
     getAllCustomers();
   }, []);
+
+  /* ── Open detail when AI chat requests it ─────────────────────────── */
+  const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);
+  const clearRecordDetailRequest = useUIStore((s) => s.clearRecordDetailRequest);
+
+  useEffect(() => {
+    if (!recordDetailRequest || recordDetailRequest.kind !== 'revenue') return;
+    const row = records.find((r) => r.id === recordDetailRequest.id);
+    if (row) setDetailRevenue(row);
+    clearRecordDetailRequest();
+  }, [recordDetailRequest, records, clearRecordDetailRequest]);
 
   /* ── Dialog lifecycle ────────────────────────────────────────────────── */
 
@@ -157,21 +135,7 @@ export function RevenueScreen() {
     <div className="flex flex-col h-full bg-background min-h-0">
       {/* ── Toolbar ──────────────────────────────────────────────────── */}
 
-      <Toolbar
-        trailing={
-          <div className="flex items-center gap-[var(--s-sm)]">
-            <div className="text-xs text-text-muted">
-              <span className="font-semibold text-text-primary">
-                {formatCurrency(filteredRecords.reduce((s, r) => s + r.finalAmount, 0))}
-              </span>
-              {' '}• {filteredRecords.length} đơn
-            </div>
-            <Button variant="run" onClick={handleCreateClick}>
-              + Tạo đơn hàng
-            </Button>
-          </div>
-        }
-      >
+      <div className="flex items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface">
         {/* Search */}
         <input
           type="text"
@@ -190,11 +154,10 @@ export function RevenueScreen() {
         />
 
         {/* Status filter */}
-        <Dropdown
-          options={STATUS_FILTER_OPTIONS}
-          value={(filters.orderStatus ?? '') as string}
-          onChange={handleStatusFilter}
-        />
+        <Select value={(filters.orderStatus ?? '') as string} onValueChange={handleStatusFilter}>
+          <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
+          <SelectContent>{STATUS_FILTER_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
 
         {/* Date range */}
         <DatePicker
@@ -207,51 +170,45 @@ export function RevenueScreen() {
           onChange={handleDateTo}
           placeholder="Đến ngày"
         />
-      </Toolbar>
+
+        {/* Trailing info */}
+        <div className="flex items-center gap-[var(--s-sm)] ml-auto">
+          <div className="text-xs text-text-muted">
+            <span className="font-semibold text-text-primary">
+              {formatCurrency(filteredRecords.reduce((s, r) => s + r.finalAmount, 0))}
+            </span>
+            {' '}• {filteredRecords.length} đơn
+          </div>
+          <Button variant="default" size="sm" onClick={handleCreateClick}>
+            <Plus size={14} /> Tạo đơn hàng
+          </Button>
+        </div>
+      </div>
 
       {/* ── Main grid panel ──────────────────────────────────────────── */}
 
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <Panel title="Quản lý đơn hàng" className="flex-1 overflow-hidden">
+        <Card className="flex-1 overflow-hidden">
           <RevenueGrid
+            records={filteredRecords}
             onRowClick={handleRowClick}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
-        </Panel>
+        </Card>
       </div>
 
-      {/* ── Expanded OrderRowCard ────────────────────────────────────── */}
+      {/* ── Revenue detail Dialog ─────────────────────────────────────── */}
 
-      {expandedRow && (
-        <div className="px-[var(--s-md)] pb-[var(--s-md)]">
-          <OrderRowCard row={expandedRow} />
-        </div>
-      )}
-
-      {/* ── ActionBar (bulk actions) ─────────────────────────────────── */}
-
-      {selectedIds.size > 0 && (
-        <ActionBar
-          selectedCount={selectedIds.size}
-          totalCount={filteredRecords.length}
-          trailing={
-            <Button variant="danger" onClick={handleDeleteSelected}>
-              Xóa ({selectedIds.size}) — {formatCurrency(selectedTotal)}
-            </Button>
-          }
-        >
-          <Button variant="neutral" onClick={handleClearSelection}>
-            Bỏ chọn
-          </Button>
-          <Button variant="accent" onClick={handleSelectAll}>
-            Chọn tất cả
-          </Button>
-          <Badge variant="accent">
-            {'Tổng: ' + formatCurrency(selectedTotal)}
-          </Badge>
-        </ActionBar>
-      )}
+      <Dialog open={detailRevenue !== null} onOpenChange={(v) => !v && setDetailRevenue(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{detailRevenue?.orderCode}</DialogTitle>
+            <DialogDescription>{detailRevenue?.date}</DialogDescription>
+          </DialogHeader>
+          {detailRevenue && <OrderRowCard row={detailRevenue} />}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Add/Edit Order Dialog ────────────────────────────────────── */}
 
@@ -263,4 +220,3 @@ export function RevenueScreen() {
     </div>
   );
 }
-

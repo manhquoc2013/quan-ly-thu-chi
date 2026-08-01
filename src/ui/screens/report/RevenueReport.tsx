@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useRevenueStore } from '@/store/revenueStore';
 import { formatCurrency } from '@/utils/currency';
-import { Panel } from '@components/Panel';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/models';
 
 export function RevenueReport() {
@@ -27,11 +27,11 @@ export function RevenueReport() {
   }, [revenues]);
   return <div className="space-y-[var(--s-lg)]">
     <div className="grid grid-cols-3 gap-[var(--s-md)]">
-      {[{l:'Tổng thu',v:formatCurrency(total)},{l:'Số đơn',v:String(revenues.length)},{l:'TB/đơn',v:formatCurrency(revenues.length?Math.round(total/revenues.length):0)}].map(c=><Panel key={c.l} className="text-center py-4"><p className="text-xs text-text-muted">{c.l}</p><p className="text-lg font-bold text-text-primary">{c.v}</p></Panel>)}
+      {[{l:'Tổng thu',v:formatCurrency(total)},{l:'Số đơn',v:String(revenues.length)},{l:'TB/đơn',v:formatCurrency(revenues.length?Math.round(total/revenues.length):0)}].map(c=><Card key={c.l} className="text-center py-4"><CardContent><p className="text-xs text-text-muted">{c.l}</p><p className="text-lg font-bold text-text-primary">{c.v}</p></CardContent></Card>)}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-[var(--s-lg)]">
-      <Panel title="Theo tháng"><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${(v/1_000_000).toFixed(0)}tr`}/><Tooltip formatter={(v:number)=>formatCurrency(v)}/><Bar dataKey="total" fill="#059669" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}</div></Panel>
-      <Panel title="Theo trạng thái"><div className="h-[280px] overflow-hidden">{byStatus.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><PieChart><Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, percent}: {name: string, percent: number}) => (name === 'Khác' ? undefined : `${name} ${(percent*100).toFixed(0)}%`)}>{byStatus.map((_,i)=><Cell key={i} fill={['#2563EB','#7C3AED','#16A34A','#D97706','#EC4899'][i%5]}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer>}</div></Panel>
+      <Card><CardHeader><CardTitle>Theo tháng</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byMonth.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><BarChart data={byMonth} barCategoryGap="30%"><CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8"/><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} tickFormatter={(v:number)=>`${(v/1_000_000).toFixed(0)}tr`}/><Tooltip formatter={(v:number)=>formatCurrency(v)}/><Bar dataKey="total" fill="#059669" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer>}</div></CardContent></Card>
+      <Card><CardHeader><CardTitle>Theo trạng thái</CardTitle></CardHeader><CardContent><div className="h-[280px] overflow-hidden">{byStatus.length===0?<div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>:<ResponsiveContainer><PieChart><Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({name, percent}: {name: string, percent: number}) => (name === 'Khác' ? undefined : `${name} ${(percent*100).toFixed(0)}%`)}>{byStatus.map((_,i)=><Cell key={i} fill={['#2563EB','#7C3AED','#16A34A','#D97706','#EC4899'][i%5]}/>)}</Pie><Tooltip/></PieChart></ResponsiveContainer>}</div></CardContent></Card>
     </div>
   </div>;
 }

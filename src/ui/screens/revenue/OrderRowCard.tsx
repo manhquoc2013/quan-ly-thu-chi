@@ -2,17 +2,19 @@
  * OrderRowCard — Expandable order row with items list, totals, payment method,
  * quick status change buttons.
  *
- * Used inside RevenueGrid expanded rows.
+ * Used inside the Revenue detail Dialog.
  *
  * Uses @models (ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS),
  * @store (useRevenueStore), @utils (formatCurrency), @ui/components.
  */
 
+import type { ReactNode } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
-import { Badge } from '@ui/components/Badge';
-import { Button } from '@ui/components/Button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2, Play, Package, X } from 'lucide-react';
 import { useRevenueStore } from '@/store/revenueStore';
 
 /* ─── Props ─── */
@@ -25,11 +27,11 @@ export interface OrderRowCardProps {
 
 /* ─── Quick status options ─── */
 
-const QUICK_STATUS_OPTIONS: Array<{ status: OrderStatus; label: string }> = [
-  { status: 'confirmed', label: 'Xác nhận' },
-  { status: 'processing', label: 'Xử lý' },
-  { status: 'completed', label: 'Hoàn thành' },
-  { status: 'cancelled', label: 'Hủy' },
+const QUICK_STATUS_OPTIONS: Array<{ status: OrderStatus; label: string; icon: ReactNode }> = [
+  { status: 'confirmed', label: 'Xác nhận', icon: <CheckCircle2 size={12} /> },
+  { status: 'processing', label: 'Xử lý', icon: <Play size={12} /> },
+  { status: 'completed', label: 'Hoàn thành', icon: <Package size={12} /> },
+  { status: 'cancelled', label: 'Hủy', icon: <X size={12} /> },
 ];
 
 /* ─── Component ─── */
@@ -58,7 +60,7 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
         <span className="ml-auto text-sm font-bold text-text-primary">
           {formatCurrency(row.finalAmount)}
         </span>
-        <Badge variant="neutral" size="sm">
+        <Badge variant="outline" className="text-xs">
           {ORDER_STATUS_LABELS[row.orderStatus]}
         </Badge>
       </div>
@@ -139,14 +141,17 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-text-muted">Thay đổi trạng thái:</span>
         <div className="flex gap-1 flex-wrap">
-          {QUICK_STATUS_OPTIONS.map(({ status, label }) => (
+          {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
             <Button
               key={status}
-              variant={row.orderStatus === status ? 'run' : 'neutral'}
+              variant={row.orderStatus === status ? 'default' : 'outline'}
               onClick={() => handleQuickStatus(status)}
-              className="!px-2 !py-0.5 !text-[10px]"
+              className="!px-2 !py-0.5 !text-[10px] whitespace-nowrap"
             >
-              {label}
+              <span className="flex items-center gap-1">
+                {icon}
+                {label}
+              </span>
             </Button>
           ))}
         </div>

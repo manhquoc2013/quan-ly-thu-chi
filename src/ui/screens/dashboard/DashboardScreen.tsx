@@ -2,18 +2,24 @@
  * DashboardScreen — Real data from expense & revenue stores.
  */
 
-import { useMemo } from 'react';
-import { Panel } from '@components/Panel';
-import { Badge } from '@components/Badge';
+import { useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Briefcase, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { formatCurrency } from '@/utils/currency';
+import { bootstrapAppData } from '@/services/bootstrap';
 
 export function DashboardScreen() {
   const expenses = useExpenseStore((s) => s.records);
   const revenues = useRevenueStore((s) => s.records);
+
+  // Ensure data is loaded even if navigated here before Layout bootstrap finishes
+  useEffect(() => {
+    void bootstrapAppData();
+  }, []);
 
   const totalExpense = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const totalRevenue = useMemo(() => revenues.reduce((s, r) => s + r.finalAmount, 0), [revenues]);
@@ -55,19 +61,26 @@ export function DashboardScreen() {
           { title: 'Lợi nhuận', value: formatCurrency(profit), icon: TrendingUp, positive: profit >= 0 },
           { title: 'Đơn chờ', value: String(pendingCount), icon: Briefcase, positive: false },
         ].map(c => (
-          <Panel key={c.title} style="translucent" className="flex flex-col gap-1 hover:shadow-lg hover:-translate-y-px transition-all">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="flex items-center justify-center w-10 h-10 rounded-field bg-surface-hover">
-                <c.icon className="w-5 h-5 text-accent-fg" />
+          <Card key={c.title} className="flex flex-col gap-1 bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-lg hover:-translate-y-px transition-all">
+            <CardContent className="flex flex-col gap-1 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center justify-center w-10 h-10 rounded-field bg-surface-hover">
+                  <c.icon className="w-5 h-5 text-accent-fg" />
+                </div>
+                <span className="text-[13px] text-text-muted">{c.title}</span>
               </div>
-              <span className="text-[13px] text-text-muted">{c.title}</span>
-            </div>
-            <p className="text-xl font-bold text-text-primary">{c.value}</p>
-          </Panel>
+              <p className="text-xl font-bold text-text-primary">{c.value}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <Panel title="Thu chi 7 ngày gần đây" titleTrailing={<Badge variant="accent">Tuần này</Badge>}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>Thu chi 7 ngày gần đây</CardTitle>
+          <Badge variant="secondary">Tuần này</Badge>
+        </CardHeader>
+        <CardContent>
         <div className="h-[200px] -mx-2">
           {chartData.every(d => d.thu === 0 && d.chi === 0) ? (
             <div className="flex items-center justify-center h-full text-xs text-text-muted">Chưa có dữ liệu</div>
@@ -84,10 +97,16 @@ export function DashboardScreen() {
             </ResponsiveContainer>
           )}
         </div>
-      </Panel>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[var(--s-lg)]">
-        <Panel title="Đơn đang chờ" titleTrailing={<Badge variant="warning">{pendingOrders.length} đơn</Badge>}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>Đơn đang chờ</CardTitle>
+            <Badge variant="secondary">{pendingOrders.length} đơn</Badge>
+          </CardHeader>
+          <CardContent>
           {pendingOrders.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">Không có đơn chờ</p>
           ) : pendingOrders.map(o => (
@@ -97,9 +116,15 @@ export function DashboardScreen() {
               <span className="font-semibold text-xs text-right">{formatCurrency(o.finalAmount)}</span>
             </div>
           ))}
-        </Panel>
+          </CardContent>
+        </Card>
 
-        <Panel title="Giao dịch gần đây" titleTrailing={<Badge variant="neutral">{recentTransactions.length} mới</Badge>}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle>Giao dịch gần đây</CardTitle>
+            <Badge variant="outline">{recentTransactions.length} mới</Badge>
+          </CardHeader>
+          <CardContent>
           {recentTransactions.length === 0 ? (
             <p className="text-xs text-text-muted py-4 text-center">Chưa có giao dịch</p>
           ) : recentTransactions.map(tx => (
@@ -118,7 +143,8 @@ export function DashboardScreen() {
               </span>
             </div>
           ))}
-        </Panel>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

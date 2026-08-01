@@ -14,8 +14,9 @@ import type { Expense, ExpenseStatus } from '@/models';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
-import { Badge } from '@/ui/components/Badge';
-import { Button } from '@/ui/components/Button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Pencil, Trash2, X, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 /* ─── Props ─── */
@@ -37,8 +38,8 @@ function statusLabel(status: ExpenseStatus): string {
   return 'Đã hủy';
 }
 
-function statusVariant(status: ExpenseStatus): 'success' | 'warning' | 'error' {
-  return status === 'paid' ? 'success' : status === 'pending' ? 'warning' : 'error';
+function statusVariant(status: ExpenseStatus): 'default' | 'secondary' | 'destructive' {
+  return status === 'paid' ? 'default' : status === 'pending' ? 'secondary' : 'destructive';
 }
 
 function paymentMethodLabel(method: string): string {
@@ -129,7 +130,7 @@ export function ExpenseRowCard({
 
         {/* Category badge */}
         <div className="w-[150px] shrink-0">
-          <Badge variant="neutral">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
+          <Badge variant="outline">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
         </div>
 
         {/* Description */}
@@ -152,45 +153,45 @@ export function ExpenseRowCard({
         {/* Actions */}
         <div className="w-[160px] shrink-0 flex items-center gap-1 ml-3">
           <Button
-            variant="neutral"
+            variant="outline"
             onClick={() => {
               onEdit(expense);
             }}
             className="px-2 py-0.5 text-xs"
           >
-            Sửa
+            <Pencil size={14} /> Sửa
           </Button>
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <Button
-                variant="danger"
+                variant="destructive"
                 onClick={() => {
                   onDelete(expense);
                   setConfirmDelete(false);
                 }}
                 className="px-2 py-0.5 text-xs"
               >
-                Xóa
+                <Trash2 size={14} /> Xóa
               </Button>
               <Button
-                variant="neutral"
+                variant="outline"
                 onClick={() => {
                   setConfirmDelete(false);
                 }}
                 className="px-2 py-0.5 text-xs"
               >
-                Hủy
+                <X size={14} /> Hủy
               </Button>
             </div>
           ) : (
             <Button
-              variant="danger"
+              variant="destructive"
               onClick={() => {
                 setConfirmDelete(true);
               }}
               className="px-2 py-0.5 text-xs"
             >
-              Xóa
+              <Trash2 size={14} /> Xóa
             </Button>
           )}
         </div>
@@ -210,7 +211,7 @@ export function ExpenseRowCard({
             </div>
             <div>
               <span className="text-text-muted">Danh mục:{' '}</span>
-              <Badge variant="neutral">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
+              <Badge variant="outline">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
             </div>
             <div>
               <span className="text-text-muted">Số tiền:{' '}</span>
@@ -261,43 +262,43 @@ export function ExpenseRowCard({
           {/* Detail actions */}
           <div className="flex items-center gap-2 mt-4">
             <Button
-              variant="run"
+              variant="default"
               onClick={() => {
                 onEdit(expense);
               }}
               className="px-3 py-1 text-xs"
             >
-              Chỉnh sửa
+              <Pencil size={14} /> Chỉnh sửa
             </Button>
             <Button
-              variant="danger"
+              variant="destructive"
               onClick={() => {
                 onDelete(expense);
               }}
               className="px-3 py-1 text-xs"
             >
-              Xóa
+              <Trash2 size={14} /> Xóa
             </Button>
             {expense.status === 'pending' && (
               <Button
-                variant="accent"
+                variant="secondary"
                 onClick={() => {
                   onStatusChange(expense.id, 'paid');
                 }}
                 className="px-3 py-1 text-xs"
               >
-                Đã thanh toán
+                <CheckCircle2 size={14} /> Đã thanh toán
               </Button>
             )}
             {expense.status === 'paid' && (
               <Button
-                variant="neutral"
+                variant="outline"
                 onClick={() => {
                   onStatusChange(expense.id, 'pending');
                 }}
                 className="px-3 py-1 text-xs"
               >
-                Chờ thanh toán
+                <Clock size={14} /> Chờ thanh toán
               </Button>
             )}
             {expense.status === 'cancelled' && (

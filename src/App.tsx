@@ -7,6 +7,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { Layout } from '@ui/Layout';
+import { Toaster } from '@/components/ui/sonner';
 
 const DashboardScreen = lazy(
   () => import('@screens/dashboard/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
@@ -50,6 +51,7 @@ export function App() {
           </Route>
         </Routes>
       </Suspense>
+      <Toaster richColors position="top-right" closeButton />
     </BrowserRouter>
   );
 }

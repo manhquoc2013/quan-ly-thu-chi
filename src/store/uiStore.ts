@@ -1,17 +1,9 @@
 /**
  * UI Store — global UI state (sidebar, tabs, toasts, FAB, dialogs).
- *
- * Zustand 5 + Immer for safe mutable updates.
- *
- * Usage:
- *   const { sidebarOpen, activeTab } = useUIStore();
- *   const { toggleSidebar, addToast, showDialog } = useUIStore();
  */
 
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ToastItem {
   id: string;
@@ -31,7 +23,7 @@ export interface DialogConfig {
   dismissible?: boolean;
 }
 
-// ── State ─────────────────────────────────────────────────────────────────────
+export type RecordDetailKind = 'expense' | 'revenue';
 
 interface UIState {
   sidebarOpen: boolean;
@@ -39,9 +31,8 @@ interface UIState {
   toasts: ToastItem[];
   fabOpen: boolean;
   globalDialog: DialogConfig | null;
+  recordDetailRequest: { kind: RecordDetailKind; id: string } | null;
 }
-
-// ── Actions ───────────────────────────────────────────────────────────────────
 
 export interface UIActions {
   toggleSidebar: () => void;
@@ -49,17 +40,16 @@ export interface UIActions {
   addToast: (toast: Omit<ToastItem, 'id'>) => void;
   removeToast: (id: string) => void;
   toggleFab: () => void;
+  setFabOpen: (open: boolean) => void;
   showDialog: (config: DialogConfig) => void;
   closeDialog: () => void;
+  requestRecordDetail: (kind: RecordDetailKind, id: string) => void;
+  clearRecordDetailRequest: () => void;
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
-
-// ── Store ─────────────────────────────────────────────────────────────────────
 
 type UIStore = UIState & UIActions;
 
@@ -70,8 +60,7 @@ export const useUIStore = create<UIStore>()(
     toasts: [],
     fabOpen: false,
     globalDialog: null,
-
-    // ── Mutations ──────────────────────────────────────────────────────────
+    recordDetailRequest: null,
 
     toggleSidebar: () =>
       set((state) => {
@@ -89,7 +78,6 @@ export const useUIStore = create<UIStore>()(
       set((state) => {
         state.toasts.push({ ...toast, id });
       });
-      // Auto-remove after duration
       setTimeout(() => {
         get().removeToast(id);
       }, duration);
@@ -105,6 +93,11 @@ export const useUIStore = create<UIStore>()(
         state.fabOpen = !state.fabOpen;
       }),
 
+    setFabOpen: (open) =>
+      set((state) => {
+        state.fabOpen = open;
+      }),
+
     showDialog: (config) =>
       set((state) => {
         state.globalDialog = config;
@@ -113,6 +106,16 @@ export const useUIStore = create<UIStore>()(
     closeDialog: () =>
       set((state) => {
         state.globalDialog = null;
+      }),
+
+    requestRecordDetail: (kind, id) =>
+      set((state) => {
+        state.recordDetailRequest = { kind, id };
+      }),
+
+    clearRecordDetailRequest: () =>
+      set((state) => {
+        state.recordDetailRequest = null;
       }),
   })),
 );
