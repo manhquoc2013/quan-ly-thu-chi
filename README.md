@@ -83,8 +83,8 @@ npm run dev
 # Build production
 npm run build
 
-# Deploy lên GitHub Pages
-npm run deploy
+# Phát hành phiên bản (deploy GitHub Pages qua tag)
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
 ## ⚖️ License

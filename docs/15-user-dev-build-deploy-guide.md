@@ -367,21 +367,22 @@ docker compose up -d
 npm run deploy
 # → Build với base=/quan-ly-thu-chi/ → dist/
 
-# Deploy tự động qua CI/CD
-git push origin main
+# Deploy tự động qua CI/CD (tag phiên bản)
+git tag v1.0.0
+git push origin v1.0.0
 # → GitHub Actions tự build + deploy lên GitHub Pages
 ```
 
 **CI/CD Pipeline** (`.github/workflows/deploy.yml`):
-1. Push lên `main` → trigger workflow
+1. Push tag `v*` → trigger workflow
 2. Checkout → Setup Node.js 22 → `npm ci`
 3. Typecheck (`tsc --noEmit`) + Test (`vitest run`)
 4. Build với `--base=/quan-ly-thu-chi/`
 5. Deploy lên GitHub Pages qua `peaceiris/actions-gh-pages@v4`
 
-**URL**: `https://tranquoc.github.io/quan-ly-thu-chi/`
+**URL**: `https://manhquoc2013.github.io/quan-ly-thu-chi/`
 
-> **Lưu ý**: Cần bật GitHub Pages trong repo Settings → Pages → Source: GitHub Actions.
+> **Lưu ý**: Cần bật GitHub Pages trong repo Settings → Pages → Source: Deploy from a branch (`gh-pages`).
 
 ### 4.3 GitHub Releases (Portable Desktop)
 
