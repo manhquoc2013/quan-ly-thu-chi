@@ -122,7 +122,7 @@ export function Layout() {
         {/* Brand */}
         <div className="flex items-center gap-2 min-w-0 flex-1 md:flex-initial">
           <img
-            src="/logo.svg"
+            src={`${import.meta.env.BASE_URL}logo.svg`}
             alt=""
             width={28}
             height={28}

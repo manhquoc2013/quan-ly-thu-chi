@@ -1,5 +1,5 @@
 // Service Worker for Quản Lý Tài Chính PWA
-const CACHE_NAME = 'thuchi-v1.0.1';
+const CACHE_NAME = 'thuchi-v1.0.2';
 
 self.addEventListener('install', (event) => {
   const base = self.registration.scope;
