@@ -45,9 +45,11 @@ function LoadingFallback() {
   );
 }
 
+const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename === '/' ? undefined : routerBasename}>
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route element={<Layout />}>

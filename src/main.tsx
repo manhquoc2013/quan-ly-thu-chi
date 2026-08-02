@@ -4,15 +4,17 @@
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/geist';
 import { App } from './App';
 import './index.css';
+
+const swUrl = `${import.meta.env.BASE_URL}sw.js`;
 
 // Register service worker for PWA offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(
+    navigator.serviceWorker.register(swUrl).then(
       (registration) => {
-        console.log('SW registered:', registration.scope);
         // Auto-update: when new SW found, reload
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;

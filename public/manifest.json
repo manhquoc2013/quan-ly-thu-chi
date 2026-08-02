@@ -1,12 +1,13 @@
 {
   "name": "Quản Lý Tài Chính",
   "short_name": "ThuChi",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#EFF2F7",
   "theme_color": "#1565C0",
   "description": "Ứng dụng quản lý thu chi cá nhân và doanh nghiệp nhỏ",
   "icons": [
-    { "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "./logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }
