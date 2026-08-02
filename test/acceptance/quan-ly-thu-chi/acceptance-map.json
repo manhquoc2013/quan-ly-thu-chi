@@ -1,0 +1,417 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Acceptance Map — Email-First Auth Flow",
+  "module": "M-001-quan-ly-thu-chi",
+  "feature": "local-email-auth",
+  "total_acs": 27,
+  "test_file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+  "layer": "gray-box",
+  "last_updated": "2026-08-02",
+  "cases": [
+    {
+      "ac_id": "AC-AUTH-01",
+      "feature": "local-email-auth",
+      "title": "Màn hình nhập email: chỉ hiển thị ô nhập email và nút Tiếp tục khi chưa xác thực",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-01: AuthScreen renders only email input + Continue button initially (UI rendering)",
+      "layer": "gray-box",
+      "tags": ["ui", "email-input", "todo"],
+      "priority": "critical",
+      "steps": {
+        "given": "Ứng dụng được mở và người dùng chưa xác thực (không có session token hợp lệ)",
+        "when": "AuthScreen hiển thị",
+        "then": "Chỉ có ô nhập email và nút \"Tiếp tục\" được hiển thị. Không có ô nhập mật khẩu, không có liên kết \"Quên mật khẩu?\", không có ô nhập OTP."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-02",
+      "feature": "local-email-auth",
+      "title": "Xác thực email: từ chối email rỗng, sai định dạng, hoặc thiếu @",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-02: rejects empty email",
+      "layer": "gray-box",
+      "tags": ["validation", "email-input", "negative"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình nhập email",
+        "when": "Người dùng nhập email rỗng, sai định dạng (thiếu @), hoặc chuỗi không phải email",
+        "then": "Hiển thị lỗi \"Vui lòng nhập địa chỉ email hợp lệ\". Không có yêu cầu mạng nào được gửi. Người dùng vẫn ở màn hình nhập email."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-03",
+      "feature": "local-email-auth",
+      "title": "Email đã đăng ký + có mật khẩu: người dùng được chuyển đến màn hình đăng nhập mật khẩu",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-03: registered user with password has hasPassword=true",
+      "layer": "gray-box",
+      "tags": ["branching", "password-login"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng với email 'existing@example.com' đã được lưu trong multi-user map với hasPassword: true và passwordHash: \"abc:def\"",
+        "when": "Người dùng nhập 'existing@example.com' và nhấn \"Tiếp tục\"",
+        "then": "Giao diện chuyển sang trạng thái password-login. Hiển thị ô nhập mật khẩu, nút \"Đăng nhập\", và liên kết \"Quên mật khẩu?\"."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-04",
+      "feature": "local-email-auth",
+      "title": "Đăng nhập bằng mật khẩu thành công: xác thực mật khẩu đúng → đăng nhập",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-04: hashPassword + verifyPassword round-trip succeeds",
+      "layer": "gray-box",
+      "tags": ["password-login", "happy-path"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-login với email 'existing@example.com' đã được điền sẵn",
+        "when": "Người dùng nhập mật khẩu đúng và nhấn \"Đăng nhập\"",
+        "then": "verifyPassword thành công. authStore.login() được gọi. Session token được tạo và lưu. Giao diện chuyển đến Dashboard. Hiển thị toast \"Đăng nhập thành công!\"."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-05",
+      "feature": "local-email-auth",
+      "title": "Đăng nhập sai mật khẩu: hiển thị lỗi và giữ nguyên màn hình",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-05: verifyPassword returns false for wrong password",
+      "layer": "gray-box",
+      "tags": ["password-login", "negative"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-login",
+        "when": "Người dùng nhập mật khẩu sai và nhấn \"Đăng nhập\"",
+        "then": "Hiển thị toast lỗi \"Mật khẩu không đúng\". Người dùng vẫn ở màn hình password-login. Không có session token nào được tạo."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-06",
+      "feature": "local-email-auth",
+      "title": "Email đã đăng ký + không có mật khẩu (OTP-only): gửi OTP và chuyển đến màn hình xác thực OTP",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-06: OTP sent to registered OTP-only user → otp-verify state (requires EmailJS + UI)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "otp-only", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng với email 'otpuser@example.com' đã được lưu với hasPassword: false và passwordHash: \"\"",
+        "when": "Người dùng nhập 'otpuser@example.com' và nhấn \"Tiếp tục\"",
+        "then": "OTP được tạo, gửi qua sendOTPEmail(), và giao diện chuyển sang trạng thái otp-verify. Hiển thị ô nhập OTP 6 chữ số. Đếm ngược 60 giây bắt đầu. Email được hiển thị phía trên ô nhập OTP."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-07",
+      "feature": "local-email-auth",
+      "title": "Email chưa đăng ký: gửi OTP để đăng ký và chuyển đến màn hình xác thực OTP",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-07: OTP sent to unregistered email → otp-verify state with registration context (requires EmailJS + UI)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "registration", "todo"],
+      "priority": "critical",
+      "steps": {
+        "given": "Không có người dùng nào với email 'newuser@example.com' trong multi-user store",
+        "when": "Người dùng nhập 'newuser@example.com' và nhấn \"Tiếp tục\"",
+        "then": "OTP được tạo, gửi qua sendOTPEmail(), và giao diện chuyển sang trạng thái otp-verify. Trải nghiệm giống AC-AUTH-06 nhưng nội bộ đây là luồng đăng ký."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-08",
+      "feature": "local-email-auth",
+      "title": "OTP đúng (luồng đăng ký): chuyển đến màn hình tạo mật khẩu",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-08: correct OTP on registration path → password-setup screen (requires UI state machine)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "registration", "todo"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify sau khi nhập email mới/chưa đăng ký. OTP đúng đã được tạo và lưu trong component state.",
+        "when": "Người dùng nhập đủ 6 chữ số đúng",
+        "then": "registerUser(email, undefined, { storeName: '', email }) được gọi (chưa có mật khẩu). Giao diện chuyển sang màn hình password-setup."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-09",
+      "feature": "local-email-auth",
+      "title": "OTP đúng (luồng đăng nhập OTP-only): đăng nhập thành công",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-09: correct OTP on OTP-only login path → dashboard (requires authStore.login + UI)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "otp-only", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify sau khi nhập email của người dùng OTP-only đã đăng ký",
+        "when": "Người dùng nhập đủ 6 chữ số đúng",
+        "then": "authStore.login() được gọi. Giao diện chuyển đến Dashboard."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-10",
+      "feature": "local-email-auth",
+      "title": "OTP sai: hiển thị lỗi và xóa ô nhập OTP",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-10: wrong OTP → error toast + OTP input cleared (requires UI interaction)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "negative", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify",
+        "when": "Người dùng nhập mã OTP sai",
+        "then": "Hiển thị toast lỗi \"Mã xác thực không đúng\". Ô nhập OTP được xóa. Người dùng vẫn ở màn hình otp-verify."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-11",
+      "feature": "local-email-auth",
+      "title": "Gửi lại OTP sau khi hết đếm ngược: tạo OTP mới và đặt lại đếm ngược",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-11: OTP resend after countdown → new OTP + countdown reset (requires UI + EmailJS)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "resend", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify và đếm ngược 60 giây đã kết thúc",
+        "when": "Người dùng nhấn \"Gửi lại mã\"",
+        "then": "OTP mới được tạo, gửi qua email, đếm ngược đặt lại về 60 giây, OTP cũ trong component state được thay thế."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-12",
+      "feature": "local-email-auth",
+      "title": "Gửi lại OTP trong khi đang đếm ngược: nút bị vô hiệu hóa",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-12: OTP resend during countdown → button disabled with countdown text (requires UI)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "resend", "todo"],
+      "priority": "medium",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify và đếm ngược đang ở 30 giây",
+        "when": "Người dùng cố gắng nhấn \"Gửi lại mã\"",
+        "then": "Nút bị vô hiệu hóa với văn bản \"Gửi lại mã (30s)\". Không có email nào được gửi."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-13",
+      "feature": "local-email-auth",
+      "title": "Tạo mật khẩu: lưu mật khẩu đã băm và chuyển đến màn hình onboarding",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-13: registerUser with password stores hashed password and hasPassword=true",
+      "layer": "gray-box",
+      "tags": ["password-setup", "happy-path"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-setup sau khi xác thực OTP thành công (luồng đăng ký)",
+        "when": "Người dùng nhập mật khẩu (≥6 ký tự), xác nhận, và nhấn \"Tiếp tục\"",
+        "then": "Mật khẩu được băm qua hashPassword(). Mục StoredCredentials của người dùng được cập nhật với passwordHash và hasPassword: true. Giao diện chuyển sang màn hình onboarding."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-14",
+      "feature": "local-email-auth",
+      "title": "Bỏ qua tạo mật khẩu: người dùng vẫn là OTP-only và chuyển đến onboarding",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-14: registerUser is idempotent — calling twice returns same user",
+      "layer": "gray-box",
+      "tags": ["password-setup", "skip", "otp-only"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-setup",
+        "when": "Người dùng nhấn \"Bỏ qua\" (skip)",
+        "then": "Người dùng vẫn là OTP-only (hasPassword: false, passwordHash: \"\"). Giao diện chuyển sang màn hình onboarding. Không có mật khẩu nào được lưu."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-15",
+      "feature": "local-email-auth",
+      "title": "Xác thực mật khẩu: từ chối mật khẩu < 6 ký tự",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "BR-AUTH-06: hasPassword is computed from passwordHash (truth table)",
+      "layer": "gray-box",
+      "tags": ["password-setup", "validation", "negative"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-setup",
+        "when": "Người dùng nhập mật khẩu < 6 ký tự hoặc xác nhận không khớp",
+        "then": "Hiển thị lỗi xác thực. Người dùng vẫn ở màn hình password-setup. Không có gì được lưu."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-16",
+      "feature": "local-email-auth",
+      "title": "Onboarding: từ chối storeName rỗng",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-16: onboarding — empty storeName → validation error (requires OnboardingScreen UI)",
+      "layer": "gray-box",
+      "tags": ["onboarding", "validation", "todo"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình onboarding sau khi đăng ký",
+        "when": "Người dùng gửi form với storeName rỗng",
+        "then": "Hiển thị lỗi xác thực \"Vui lòng nhập tên cửa hàng\". Người dùng vẫn ở màn hình onboarding."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-17",
+      "feature": "local-email-auth",
+      "title": "Onboarding thành công: lưu hồ sơ và chuyển đến Dashboard",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-17: onboarding — valid storeName → profile saved → dashboard (requires OnboardingScreen UI)",
+      "layer": "gray-box",
+      "tags": ["onboarding", "happy-path", "todo"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở màn hình onboarding",
+        "when": "Người dùng nhập storeName hợp lệ (và tùy chọn địa chỉ/số điện thoại), và nhấn \"Vào ứng dụng\"",
+        "then": "Hồ sơ được lưu qua updateProfile(). authStore.login() được gọi. Giao diện chuyển đến Dashboard."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-18",
+      "feature": "local-email-auth",
+      "title": "Onboarding: làm mới trang sẽ quay lại màn hình onboarding khi storeName rỗng",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-18: onboarding — page refresh returns to onboarding when storeName empty (requires AuthGuard + UI)",
+      "layer": "gray-box",
+      "tags": ["onboarding", "auth-guard", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở màn hình onboarding (đã xác thực nhưng hồ sơ chưa hoàn chỉnh)",
+        "when": "Người dùng làm mới trang hoặc điều hướng quay lại",
+        "then": "Họ quay lại màn hình onboarding (không phải dashboard), vì isAuthenticated: true nhưng userProfile.storeName rỗng. AuthGuard điều hướng họ đến OnboardingScreen."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-19",
+      "feature": "local-email-auth",
+      "title": "EmailJS chưa được cấu hình: hiển thị lỗi khi nhấn Tiếp tục",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-19: EmailJS not configured → error toast, no email sent (requires authStore EmailJS config + UI)",
+      "layer": "gray-box",
+      "tags": ["email-input", "emailjs", "todo"],
+      "priority": "high",
+      "steps": {
+        "given": "EmailJS CHƯA được cấu hình (không có serviceId/templateId/publicKey trong authStore)",
+        "when": "Người dùng nhập bất kỳ email nào (đã đăng ký hoặc chưa) và nhấn \"Tiếp tục\"",
+        "then": "Hiển thị toast lỗi: \"EmailJS chưa được cấu hình. Vui lòng liên hệ quản trị viên.\" Không có email nào được gửi. Người dùng vẫn ở màn hình nhập email."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-20",
+      "feature": "local-email-auth",
+      "title": "Quên mật khẩu: từ chối email chưa đăng ký",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-20: userExists returns false for unregistered email (forgot-password check)",
+      "layer": "gray-box",
+      "tags": ["forgot-password", "validation", "negative"],
+      "priority": "high",
+      "steps": {
+        "given": "Người dùng đang ở bước nhập email của luồng quên mật khẩu (điều hướng từ password-login)",
+        "when": "Người dùng nhập email KHÔNG có trong multi-user store",
+        "then": "Toast lỗi: \"Email này chưa được đăng ký.\" Không có OTP nào được gửi."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-21",
+      "feature": "local-email-auth",
+      "title": "Quên mật khẩu: đặt lại mật khẩu thành công và quay lại màn hình nhập email",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-21: resetPassword updates passwordHash and sets hasPassword=true",
+      "layer": "gray-box",
+      "tags": ["forgot-password", "happy-path"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng đang ở bước xác thực OTP của luồng quên mật khẩu với OTP hợp lệ",
+        "when": "Người dùng nhập mật khẩu mới (≥6 ký tự) và nhấn \"Đặt lại mật khẩu\"",
+        "then": "resetPassword() cập nhật người dùng trong multi-user map với passwordHash mới và hasPassword: true. Hiển thị toast thành công. Giao diện quay về trạng thái email-input."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-22",
+      "feature": "local-email-auth",
+      "title": "Quay lại từ màn hình đăng nhập mật khẩu: trở về màn hình nhập email với email đã điền sẵn",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-22: back from password-login → email-input with pre-filled email (requires UI state)",
+      "layer": "gray-box",
+      "tags": ["navigation", "back", "todo"],
+      "priority": "medium",
+      "steps": {
+        "given": "Người dùng đang ở màn hình password-login",
+        "when": "Người dùng nhấn nút \"← Quay lại\" (back)",
+        "then": "Giao diện quay về trạng thái email-input. Email được điền sẵn nhưng có thể chỉnh sửa."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-23",
+      "feature": "local-email-auth",
+      "title": "Quay lại từ màn hình xác thực OTP: trở về màn hình nhập email, OTP bị hủy",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-23: back from otp-verify → email-input, OTP discarded (requires UI state)",
+      "layer": "gray-box",
+      "tags": ["navigation", "back", "todo"],
+      "priority": "medium",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify",
+        "when": "Người dùng nhấn nút \"← Quay lại\"",
+        "then": "Giao diện quay về trạng thái email-input. Email được điền sẵn nhưng có thể chỉnh sửa. OTP đã tạo trong component state bị hủy."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-24",
+      "feature": "local-email-auth",
+      "title": "Đa người dùng: hai tài khoản trên cùng thiết bị, dữ liệu độc lập",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-24: two users are independently stored and retrievable",
+      "layer": "gray-box",
+      "tags": ["multi-user", "isolation"],
+      "priority": "high",
+      "steps": {
+        "given": "Hai người dùng đã đăng ký: 'alice@example.com' (hasPassword) và 'bob@example.com' (OTP-only) trong multi-user map",
+        "when": "Alice đăng nhập bằng mật khẩu → sử dụng ứng dụng → đăng xuất. Sau đó Bob nhập email → nhận OTP → xác thực → đăng nhập.",
+        "then": "Cả hai phiên độc lập. Dữ liệu của Alice được cô lập dưới userId của cô ấy. Dữ liệu của Bob được cô lập dưới userId của anh ấy. Đăng nhập bằng tài khoản này không ghi đè thông tin của tài khoản kia."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-25",
+      "feature": "local-email-auth",
+      "title": "XSS / Bảo mật: từ chối email chứa mã script",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-25: rejects email containing script injection (<script>)",
+      "layer": "gray-box",
+      "tags": ["security", "xss", "validation"],
+      "priority": "critical",
+      "steps": {
+        "given": "Người dùng nhập '<script>alert(1)</script>@test.com' vào ô nhập email",
+        "when": "Nhấn nút \"Tiếp tục\"",
+        "then": "Đầu vào bị từ chối bởi xác thực email (isValidEmail trả về false). Không có script nào thực thi. Giao diện không hiển thị đầu vào dưới dạng HTML."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-26",
+      "feature": "local-email-auth",
+      "title": "OTP brute-force: nhập sai OTP 5+ lần liên tiếp",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-26: OTP brute-force — 5+ incorrect attempts → input cleared each time, no rate limit (requires UI)",
+      "layer": "gray-box",
+      "tags": ["otp-verify", "security", "brute-force", "todo"],
+      "priority": "medium",
+      "steps": {
+        "given": "Người dùng đang ở màn hình otp-verify",
+        "when": "Người dùng nhập OTP sai 5+ lần liên tiếp",
+        "then": "OTP KHÔNG bị giới hạn tốc độ ở lớp này (frontend-only — serverless), nhưng mỗi lần sai sẽ xóa ô nhập và hiển thị toast lỗi. OTP vẫn hợp lệ cho đến khi hết hạn hoặc được tạo lại."
+      }
+    },
+    {
+      "ac_id": "AC-AUTH-27",
+      "feature": "local-email-auth",
+      "title": "Trạng thái rỗng sau khi clearAuth: mọi email được coi là chưa đăng ký",
+      "file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
+      "test_name": "AC-AUTH-27: getAllUsers returns empty array when storage is empty",
+      "layer": "gray-box",
+      "tags": ["storage", "empty-state", "edge-case"],
+      "priority": "high",
+      "steps": {
+        "given": "Tất cả dữ liệu xác thực đã bị xóa (multi-user map rỗng)",
+        "when": "Nhập bất kỳ email nào",
+        "then": "Email được coi là CHƯA đăng ký → luồng đăng ký OTP. Không có lỗi hoặc crash."
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "triage_id": "TRI-1785666372527-ffe1",
+  "created_at": 1785666372527,
+  "request_summary": "Pre-split câu + LLM mảng intent - escalated từ C0 do 3 files",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/splitMultiTx.ts"
+    ],
+    "impact_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/splitMultiTx.ts"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chat input → aiRouter.sendMessage → split → LLM → parse mảng",
+  "blast_radius": 3,
+  "done_oracle": "Input \"bán cho Hoa kẹp tóc 90k, uống nước 50k\" tạo được 2 giao dịch riêng biệt",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/services/aiRouter.ts",
+    "src/services/llmIntentExtractor.ts",
+    "src/services/splitMultiTx.ts"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785666301288-3afa",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785666372572
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

@@ -15,8 +15,11 @@ import type { ReactNode } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { LayoutDashboard, Receipt, Coins, BarChart3, Settings, Bot, Users, Package, Store } from 'lucide-react';
 import { useUIStore } from '@store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { ChatPanel } from '@screens/ai/ChatPanel';
+import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { bootstrapAppData } from '@/services/bootstrap';
+import { webLLM } from '@/services/webLLM';
 
 const tabs = [
   { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },
@@ -87,6 +90,12 @@ export function Layout() {
       cancelled = true;
     };
   }, []);
+
+  // Sync WebLLM disabled state from store
+  const enableWebLLM = useAuthStore((s) => s.enableWebLLM);
+  useEffect(() => {
+    webLLM.setDisabled(!enableWebLLM);
+  }, [enableWebLLM]);
 
   // Live clock
   useEffect(() => {
@@ -219,6 +228,9 @@ export function Layout() {
 
       {/* ── AI Chat Panel ──────────────────────────────────────────── */}
       {fabOpen && <ChatPanel />}
+
+      {/* ── Mascot Overlay ──────────────────────────────────────────── */}
+      <MascotOverlay />
     </div>
   );
 }

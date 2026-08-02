@@ -1,12 +1,8 @@
 /**
- * AI Router — Hybrid AI: WebLLM local + Gemini Cloud, with local command parsing.
+ * AI Router — Hybrid AI: WebLLM local + Gemini Cloud.
  *
- * Routing logic (docs/11-hybrid-ai-design.md):
- *   1. SIMPLE (chat cơ bản, tổng hợp, hỏi đáp) → WebLLM Local
- *   2. MEDIUM (phân tích, so sánh) → Gemini nếu có API key + online, else WebLLM
- *   3. COMPLEX (OCR, dự báo, tạo báo cáo) → Gemini nếu có, else báo lỗi
- *
- * Command parsing: detects "thêm chi phí X do Y" etc. locally without AI, for instant data entry.
+ * Chat messages always go through LLM intent extract (Gemini → WebLLM).
+ * Only structured paste (order table / multi-line bulk list) uses deterministic parsers.
  *
  * Usage:
  *   import { aiRouter } from '@/services/aiRouter';
@@ -16,10 +12,10 @@
 import { geminiService } from './geminiService';
 import { webLLM } from './webLLM';
 import { useAuthStore } from '@/store/authStore';
-import { EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from '@/models';
+import { useMascotStore } from '@/store/mascotStore';
+import type { ExpenseCategory } from '@/models';
 import {
   buildFinanceContext,
-  intakeFromText,
   persistConfirmed,
   shouldAttachFinanceContext,
 } from './intakeService';
@@ -37,21 +33,20 @@ import {
 } from './chatIntent';
 import {
   extractChatIntent,
+  extractMultiChatIntents,
   generateChatReply,
   mergeIntentWithLlm,
 } from './llmIntentExtractor';
 import { extractBulkDrafts } from './llmBulkDraftExtractor';
 import {
-  isHighConfidenceDraft,
   looksLikeBulkLineList,
-  looksLikeCustomerSale,
   parseLineListDrafts,
-  parseTextToDraft,
-  shouldDeferCreateToLlm,
 } from './textDraftParser';
 import { parseOrderTableDrafts } from './orderTableParser';
 import { executeChatIntent, executeLegacyCreate } from './chatTools';
 import { formatEntityPickMessage } from './entityResolve';
+import { splitMultiTx } from './splitMultiTx';
+import { sanitizeIntentAgainstMessage } from './intentSanitize';
 
 type RequestType = 'simple' | 'medium' | 'complex';
 type AIProvider = 'local' | 'cloud';
@@ -106,244 +101,157 @@ export interface ChatAction {
   customerName?: string;
 }
 
-// ─── Local Command Parser ──────────────────────────────────────────────────────
+/**
+ * Category mapping from Vietnamese (Mèo Lucky) expense categories to internal ExpenseCategory codes.
+ */
+function mapVnExpenseCategory(danhMuc: string): ExpenseCategory {
+  const map: Record<string, ExpenseCategory> = {
+    'Nhập hàng': 'supplies',
+    'Tiền nhà/Điện nước': 'utilities',
+    'Bao bì/Đóng gói': 'supplies',
+    'Chi khác': 'other',
+  };
+  return map[danhMuc] ?? 'other';
+}
 
 /**
- * Parse Vietnamese natural-language commands for instant data entry.
- * Handles: "thêm chi phí X do Y", "tạo khoản chi X Y"
- * Prefer shared textDraftParser so "{khách} mua/lấy …" is never misclassified.
+ * Parse AI response for embedded ```action JSON block.
+ * Supports both old English format (type: create_expense/create_revenue)
+ * and new Vietnamese Mèo Lucky format (action: BAN_HANG/CHI_PHI/XEM_BAO_CAO/TAN_GAU).
+ * Also tries top-level JSON when no ```action block is found.
  */
-function parseLocalCommand(message: string): ChatAction | null {
-  const draft = parseTextToDraft(message);
-  if (draft?.kind === 'revenue' && draft.amount > 0 && draft.description) {
-    return {
-      type: 'create_revenue',
-      amount: draft.amount,
-      description: draft.description,
-      customerName: draft.customerName,
-    };
-  }
-  if (draft?.kind === 'expense' && draft.amount > 0 && draft.description) {
-    return {
-      type: 'create_expense',
-      amount: draft.amount,
-      description: draft.description,
-      category: draft.category ?? guessCategory(draft.description),
-    };
+function parseAiAction(text: string): { cleanText: string; action?: ChatAction } {
+  // ── Try ```action block ──────────────────────────────────────
+  const actionMatch = text.match(/```action\n([\s\S]*?)\n```/);
+  const jsonStr = actionMatch?.[1]?.trim();
+  const cleanBase = actionMatch
+    ? text.replace(/```action\n[\s\S]*?\n```/, '').trim()
+    : text;
+
+  if (jsonStr) {
+    const parsed = tryParseVnAction(jsonStr);
+    if (parsed) return parsed;
+
+    const legacy = tryParseLegacyAction(jsonStr);
+    if (legacy) return { cleanText: cleanBase, action: legacy };
   }
 
-  const lower = message.toLowerCase().trim();
-  // Legacy catch-all below must not eat customer-sale phrases
-  if (looksLikeCustomerSale(lower)) return null;
+  // ── Try top-level JSON (no ```action wrapping) ───────────────
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{')) {
+    const parsed = tryParseVnAction(trimmed);
+    if (parsed) return parsed;
 
-  // ── Revenue patterns (check FIRST, before expense patterns) ──
-  const revenuePatterns = [
-    // "bán kẹp tóc 20k cho Hùng" / "bán nước 15k"
-    /^bán\s+(.+?)\s+(\d+[kKmM]?)\s*(?:cho\s+(.+))?\s*$/i,
-    // "bán cho Hùng kẹp tóc 20k"
-    /^bán\s+cho\s+(.+?)\s+(.+?)\s+(\d+[kKmM]?)\s*$/i,
-    // "thu 50k từ Hùng" / "thu 100k bán kẹp tóc"
-    /^thu\s+(?:được\s+)?(\d+[kKmM]?)\s*(?:từ\s+(.+?)\s*)?(?:bán\s+(.+))?\s*$/i,
-    // "doanh thu 100k bán nước"
-    /^doanh thu\s+(\d+[kKmM]?)\s+(.+)/i,
-    // "khách Hùng trả 50k"
-    /^khách\s+(.+?)\s+trả\s+(\d+[kKmM]?)\s*(?:cho\s+(.+))?\s*$/i,
-  ];
-
-  for (const pattern of revenuePatterns) {
-    const match = lower.match(pattern);
-    if (match) {
-      // Extract amount and description based on pattern
-      let rawAmount: string, desc: string, customerName: string | undefined;
-
-      if (pattern === revenuePatterns[0]) {
-        // "bán X giá Y cho Z"
-        desc = match[1]!;
-        rawAmount = match[2]!;
-        customerName = match[3] || undefined;
-      } else if (pattern === revenuePatterns[1]) {
-        // "bán cho Z X giá Y"
-        customerName = match[1]!;
-        desc = match[2]!;
-        rawAmount = match[3]!;
-      } else if (pattern === revenuePatterns[2]) {
-        // "thu Y từ Z bán X"
-        rawAmount = match[1]!;
-        customerName = match[2] || undefined;
-        desc = match[3] || (customerName ? `Bán hàng cho ${customerName}` : 'Doanh thu');
-      } else if (pattern === revenuePatterns[3]) {
-        // "doanh thu Y X"
-        rawAmount = match[1]!;
-        desc = match[2]!;
-      } else if (pattern === revenuePatterns[4]) {
-        // "khách Z trả Y cho X"
-        customerName = match[1]!;
-        rawAmount = match[2]!;
-        desc = match[3] || `Bán hàng cho ${customerName}`;
-      } else {
-        continue;
-      }
-
-      desc = desc.replace(/\s+/g, ' ').trim();
-      const amount = parseAmount(rawAmount);
-      if (amount > 0 && desc.length > 1) {
-        return {
-          type: 'create_revenue',
-          amount,
-          description: desc,
-          customerName: customerName || undefined,
-        };
-      }
+    const legacy = tryParseLegacyAction(trimmed);
+    if (legacy?.type === 'create_expense' || legacy?.type === 'create_revenue') {
+      return { cleanText: '', action: legacy };
     }
   }
 
-  const expensePatterns = [
-    // Pattern 1: "thêm chi phí X do Y" / "tạo khoản chi X Y"
-    /(?:thêm|tạo|thêm mới)\s+(?:chi\s*phí|khoản\s*chi)\s+(\d+[kKmM]?)\s*(?:do|cho|vì|để|:|$)\s*(.+)/i,
-    /(?:thêm|tạo|thêm mới)\s+(.+)\s+(\d+[kKmM]?)\s*(?:đồng|k|vnđ)?\s*$/i,
-    // Pattern 2: "đổ xăng 30k" / "uống nước 12k" / "cà phê 25k" / "uống nước 10000"
-    /^(.+)\s+(\d+[kKmM]?)\s*$/i,
-    // Pattern 3: "30k đổ xăng" / "12000 nước"
-    /^(\d+[kKmM]?)\s+(.+)$/i,
-    // Pattern 4: "chi 30k xăng" / "trả 50000 tiền điện"
-    /^(?:chi|trả|thanh toán|đóng)\s+(\d+[kKmM]?)\s+(.+)/i,
-    // Pattern 5: "mua nước 12k" / "mua cà phê 30000"
-    /^mua\s+(.+)\s+(\d+[kKmM]?)\s*$/i,
-    // Pattern 6: "đổ xăng hết 30k" / "ăn sáng hết 25000"
-    /^(.+)\s+hết\s+(\d+[kKmM]?)\s*$/i,
-  ];
+  return { cleanText: cleanBase };
+}
 
-  for (const pattern of expensePatterns) {
-    const match = lower.match(pattern);
-    if (match) {
-      const hasAmountFirst = pattern === expensePatterns[0] || pattern === expensePatterns[3] || pattern === expensePatterns[4];
-      const hasAmountLast = pattern === expensePatterns[2] || pattern === expensePatterns[5] || pattern === expensePatterns[6];
-      let rawAmount: string, desc: string;
-
-      if (hasAmountFirst) {
-        rawAmount = match[1]!;
-        desc = (match[2] ?? match[1]!).trim();
-        // If pattern 3 or 4, desc might have extra words after amount — already handled
-        if (pattern === expensePatterns[3] || pattern === expensePatterns[4]) {
-          desc = match[2]!;
-        }
-      } else if (hasAmountLast) {
-        desc = match[1]!;
-        rawAmount = match[2]!;
-      } else {
-        // Pattern 1: amount first, desc second
-        rawAmount = match[1]!;
-        desc = match[2]!;
-        if (pattern === expensePatterns[1]) {
-          desc = match[1]!;
-          rawAmount = match[2]!;
-        }
-      }
-
-      desc = desc.replace(/\s+/g, ' ').trim();
-      const amount = parseAmount(rawAmount);
-      if (amount > 0 && desc.length > 1) {
-        return { type: 'create_expense', amount, description: desc, category: guessCategory(desc) };
-      }
+/** Try old English format: { type: "create_expense"|"create_revenue", amount, description, ... } */
+function tryParseLegacyAction(jsonStr: string): ChatAction | null {
+  try {
+    const a = JSON.parse(jsonStr);
+    if (a.type === 'create_expense' && a.amount > 0 && a.description) {
+      triggerMascot(a.mascot_say, a.mascot_emotion);
+      return {
+        type: 'create_expense',
+        amount: a.amount,
+        description: a.description,
+        category: a.category || 'other',
+      };
     }
-  }
+    if (a.type === 'create_revenue' && a.amount > 0 && a.description) {
+      triggerMascot(a.mascot_say, a.mascot_emotion);
+      return {
+        type: 'create_revenue',
+        amount: a.amount,
+        description: a.description,
+        customerName: a.customerName,
+      };
+    }
+  } catch { /* ignore */ }
   return null;
 }
 
-/** Parse AI response for embedded ```action JSON block */
-function parseAiAction(text: string): { cleanText: string; action?: ChatAction } {
-  const actionMatch = text.match(/```action\n([\s\S]*?)\n```/);
-  if (!actionMatch) return { cleanText: text };
-
+/** Try new Vietnamese Mèo Lucky format: { action: "BAN_HANG"|"CHI_PHI"|"XEM_BAO_CAO"|"TAN_GAU", data, mascot_say, mascot_emotion } */
+function tryParseVnAction(jsonStr: string): { cleanText: string; action?: ChatAction } | null {
   try {
-    const action = JSON.parse(actionMatch[1]!);
-    const cleanText = text.replace(/```action\n[\s\S]*?\n```/, '').trim();
-    if (action.type === 'create_expense' && action.amount > 0 && action.description) {
-      return {
-        cleanText,
-        action: {
-          type: 'create_expense',
-          amount: action.amount,
-          description: action.description,
-          category: action.category || 'other',
-        },
-      };
+    const a = JSON.parse(jsonStr);
+    if (!a.action || typeof a.action !== 'string') return null;
+
+    triggerMascot(a.mascot_say, a.mascot_emotion);
+
+    // BAN_HANG → create_revenue
+    if (a.action === 'BAN_HANG' && a.data) {
+      const d = a.data;
+      const customerName: string | undefined = d.khach_hang || undefined;
+      const donHang: Array<{ ten_hang?: string; so_luong?: number; gia_ban?: number }> =
+        Array.isArray(d.don_hang) ? d.don_hang : [];
+      const totalAmount = donHang.reduce(
+        (sum: number, item: { ten_hang?: string; so_luong?: number; gia_ban?: number }) =>
+          sum + (item.gia_ban ?? 0) * (item.so_luong ?? 1),
+        0,
+      );
+      const description = donHang
+        .map((item: { ten_hang?: string }) => item.ten_hang ?? '')
+        .filter(Boolean)
+        .join(', ') || (d.don_hang?.length ? 'Đơn hàng' : '');
+
+      if (totalAmount > 0 && description) {
+        return {
+          cleanText: '',
+          action: {
+            type: 'create_revenue',
+            amount: totalAmount,
+            description,
+            customerName,
+          },
+        };
+      }
+      return null;
     }
-    if (action.type === 'create_revenue' && action.amount > 0 && action.description) {
-      return {
-        cleanText,
-        action: {
-          type: 'create_revenue',
-          amount: action.amount,
-          description: action.description,
-          customerName: action.customerName,
-        },
-      };
+
+    // CHI_PHI → create_expense
+    if (a.action === 'CHI_PHI' && a.data?.chi_tiet_chi) {
+      const chi = a.data.chi_tiet_chi;
+      const amount = Number(chi.so_tien) || 0;
+      const description: string = chi.ghi_chu || '';
+      if (amount > 0 && description) {
+        return {
+          cleanText: '',
+          action: {
+            type: 'create_expense',
+            amount,
+            description,
+            category: mapVnExpenseCategory(chi.danh_muc),
+          },
+        };
+      }
+      return null;
     }
-  } catch { /* ignore malformed JSON */ }
 
-  return { cleanText: text.replace(/```action\n[\s\S]*?\n```/, '').trim() };
-}
-
-function parseAmount(raw: string): number {
-  if (/^\d+k$/i.test(raw)) return parseFloat(raw) * 1000;
-  if (/^\d+m$/i.test(raw)) return parseFloat(raw) * 1_000_000;
-  const n = parseInt(raw, 10);
-  return (n > 0 && n < 1000 && raw.length <= 3) ? n * 1000 : n;
-}
-
-function guessCategory(desc: string): ExpenseCategory {
-  // Comprehensive keyword mapping based on actual category definitions
-  const catMap: [string, ExpenseCategory][] = [
-    // office — Văn phòng phẩm
-    ['văn phòng', 'office'], ['bút', 'office'], ['giấy', 'office'], ['mực in', 'office'],
-    ['in ấn', 'office'], ['photo', 'office'], ['văn phòng phẩm', 'office'],
-    ['ăn sáng', 'office'], ['ăn trưa', 'office'], ['ăn tối', 'office'], ['ăn vặt', 'office'],
-    ['cà phê', 'office'], ['cafe', 'office'], ['trà', 'office'], ['nước uống', 'office'],
-    ['nước', 'office'], ['đồ ăn', 'office'], ['bữa ăn', 'office'], ['tiếp khách', 'office'],
-    // rent — Thuê mặt bằng
-    ['thuê nhà', 'rent'], ['thuê mặt bằng', 'rent'], ['tiền thuê', 'rent'],
-    ['mặt bằng', 'rent'], ['nhà xưởng', 'rent'], ['kho', 'rent'],
-    // utilities — Điện, nước, internet
-    ['tiền điện', 'utilities'], ['hóa đơn điện', 'utilities'], ['điện', 'utilities'],
-    ['nước máy', 'utilities'], ['internet', 'utilities'], ['mạng', 'utilities'],
-    ['wifi', 'utilities'], ['cước', 'utilities'], ['điện thoại', 'utilities'],
-    // salary — Lương nhân viên
-    ['lương', 'salary'], ['thưởng', 'salary'], ['nhân viên', 'salary'],
-    ['bảo hiểm', 'salary'], ['bhxh', 'salary'], ['công lao động', 'salary'],
-    // marketing — Marketing, quảng cáo
-    ['quảng cáo', 'marketing'], ['marketing', 'marketing'], ['pr', 'marketing'],
-    ['tờ rơi', 'marketing'], ['facebook ads', 'marketing'], ['google ads', 'marketing'],
-    ['seo', 'marketing'], ['truyền thông', 'marketing'], ['sự kiện', 'marketing'],
-    // supplies — Nguyên vật liệu
-    ['nguyên liệu', 'supplies'], ['vật liệu', 'supplies'], ['vật tư', 'supplies'],
-    ['nguyên vật liệu', 'supplies'], ['dụng cụ', 'supplies'], ['thiết bị', 'supplies'],
-    ['mua sắm', 'supplies'],
-    // transportation — Vận chuyển, xăng xe
-    ['xăng', 'transportation'], ['dầu', 'transportation'], ['xe', 'transportation'],
-    ['vận chuyển', 'transportation'], ['ship', 'transportation'], ['giao hàng', 'transportation'],
-    ['gửi xe', 'transportation'], ['taxi', 'transportation'], ['grab', 'transportation'],
-    ['cước vận', 'transportation'], ['phí đường', 'transportation'],
-    // maintenance — Bảo trì, sửa chữa
-    ['sửa', 'maintenance'], ['bảo trì', 'maintenance'], ['bảo dưỡng', 'maintenance'],
-    ['sửa chữa', 'maintenance'], ['thay thế', 'maintenance'], ['hỏng', 'maintenance'],
-    // tax — Thuế, phí
-    ['thuế', 'tax'], ['phí ngân hàng', 'tax'], ['phí dịch vụ', 'tax'],
-    ['phí thường niên', 'tax'], ['lệ phí', 'tax'],
-  ];
-
-  const lower = desc.toLowerCase();
-  for (const [kw, cat] of catMap) {
-    if (lower.includes(kw)) return cat;
+    // XEM_BAO_CAO → lookup (no immediate action, handled by intent extractor)
+    // TAN_GAU → chat (no action)
+    return { cleanText: '', action: undefined };
+  } catch {
+    return null;
   }
-  return 'other';
 }
 
-/** Build category list string for AI system prompts */
-function buildCategoryList(): string {
-  return Object.entries(EXPENSE_CATEGORY_LABELS)
-    .map(([key, label]) => `  - ${key} = ${label}`)
-    .join('\n');
+/** Trigger mascot overlay if mascot_say and mascot_emotion are present in the parsed JSON. */
+function triggerMascot(mascotSay?: string, mascotEmotion?: string): void {
+  if (mascotSay && mascotEmotion) {
+    const validEmotions = ['happy', 'sad', 'warning', 'celebrate', 'thinking', 'idle'] as const;
+    type MascotEmotion = (typeof validEmotions)[number];
+    const emotion: MascotEmotion = (validEmotions as readonly string[]).includes(mascotEmotion)
+      ? (mascotEmotion as MascotEmotion)
+      : 'happy';
+    useMascotStore.getState().speak(mascotSay, emotion);
+  }
 }
 
 // ─── Chat History & Auto-Compact ────────────────────────────────────────────────
@@ -427,15 +335,6 @@ function setPending(state: PendingChatState | null): void {
     return;
   }
   pendingByThread.set(activeThreadId, { ...state, updatedAt: Date.now() });
-}
-
-function looksLikeToolIntent(message: string): boolean {
-  const lower = message.toLowerCase();
-  return (
-    /\b(thêm|tạo|ghi|chi|thu|bán|mua|lấy|đặt|nhập|order|sửa|cập nhật|xóa|xoá|đổi|hủy đơn|huỷ đơn|tra|tìm|liệt kê|tổng quan|phân tích|bao nhiêu|zalo|shopee)\b/i.test(
-      lower,
-    ) || shouldDeferCreateToLlm(lower)
-  );
 }
 
 async function persistBulkDrafts(
@@ -664,7 +563,8 @@ export const aiRouter = {
       return { text: 'Bạn chưa nhập gì.', source: 'local' };
     }
 
-    const financeCtx = context ?? (shouldAttachFinanceContext(trimmed) ? buildFinanceContext() : buildFinanceContext());
+    const financeCtx =
+      context ?? (shouldAttachFinanceContext(trimmed) ? buildFinanceContext() : '');
     const history = buildHistoryContext();
 
     // ── 0. Pending multi-turn (slot-fill / delete confirm) ───────────────
@@ -691,33 +591,40 @@ export const aiRouter = {
       if (pending.awaitingEntityPick) {
         const idx = parseEntityPickIndex(trimmed);
         const { kind, query, options } = pending.awaitingEntityPick;
-        if (idx === null || idx < 0 || idx > options.length) {
-          const text = formatEntityPickMessage(kind, query, options);
+        const createNew =
+          idx === 0 || /^(tạo(\s+mới)?|moi|new)$/i.test(trimmed);
+        if (!createNew && (idx === null || idx < 0 || idx > options.length)) {
+          const text = [
+            `⚠️ Số không hợp lệ — chỉ nhận **0** (tạo mới) hoặc **1–${options.length}**.`,
+            formatEntityPickMessage(kind, query, options),
+          ].join('\n');
           addToHistory(trimmed, text);
           return { text, source: 'local' };
         }
         const nextIntent: ChatIntent = { ...pending.intent };
         if (kind === 'customer') {
-          if (idx === 0) {
+          if (createNew) {
             nextIntent.forceNewCustomer = true;
             nextIntent.customerId = undefined;
           } else {
-            nextIntent.customerId = options[idx - 1]!.id;
+            nextIntent.customerId = options[idx! - 1]!.id;
             nextIntent.forceNewCustomer = false;
           }
         } else if (kind === 'product') {
-          if (idx === 0) {
+          if (createNew) {
             nextIntent.forceNewProduct = true;
             nextIntent.productId = undefined;
+            // Ensure create uses clean short name, not polluted description
+            if (query.length >= 2) nextIntent.description = query;
           } else {
-            nextIntent.productId = options[idx - 1]!.id;
+            nextIntent.productId = options[idx! - 1]!.id;
             nextIntent.forceNewProduct = false;
           }
-        } else if (idx === 0) {
+        } else if (createNew) {
           nextIntent.forceNewPlatform = true;
           nextIntent.platformId = undefined;
         } else {
-          nextIntent.platformId = options[idx - 1]!.id;
+          nextIntent.platformId = options[idx! - 1]!.id;
           nextIntent.forceNewPlatform = false;
         }
         const out = await runIntentTool(nextIntent);
@@ -742,27 +649,12 @@ export const aiRouter = {
       return out;
     }
 
-    // ── 1. Regex fast-path create (supports multi-clause + line-list) ───
-    const localIntake = intakeFromText(trimmed, 'text');
-    let bulkDrafts = localIntake?.drafts?.length ? localIntake.drafts : null;
-    let bulkSkipped: string[] = [];
-
-    // Soft/catch-all (confidence thấp) hoặc câu mơ hồ bị parse thành expense → LLM
-    if (bulkDrafts?.length === 1) {
-      const only = bulkDrafts[0]!;
-      if (!isHighConfidenceDraft(only)) {
-        bulkDrafts = null;
-      } else if (only.kind === 'expense' && shouldDeferCreateToLlm(trimmed)) {
-        bulkDrafts = null;
-      }
-    }
-
-    // Order table paste: attach skipped rows (thiếu tiền)
+    // ── 1. Structured paste only (order table / multi-line bulk list) ────
+    // Single-line chat always continues to LLM below.
     const orderTableMeta = parseOrderTableDrafts(trimmed, 'text');
-    if (orderTableMeta.isTable && orderTableMeta.drafts.length) {
-      bulkDrafts = orderTableMeta.drafts;
-      bulkSkipped = orderTableMeta.skipped;
-    }
+    let bulkDrafts =
+      orderTableMeta.isTable && orderTableMeta.drafts.length ? orderTableMeta.drafts : null;
+    let bulkSkipped: string[] = orderTableMeta.isTable ? orderTableMeta.skipped : [];
 
     if (!bulkDrafts && looksLikeBulkLineList(trimmed)) {
       const lineAttempt = parseLineListDrafts(trimmed, 'text');
@@ -772,8 +664,7 @@ export const aiRouter = {
       } else {
         const llmBulk = await extractBulkDrafts(trimmed, 'text');
         if (llmBulk?.drafts.length) {
-          bulkDrafts = llmBulk.drafts;
-          const persisted = await persistBulkDrafts(bulkDrafts, []);
+          const persisted = await persistBulkDrafts(llmBulk.drafts, []);
           addToHistory(trimmed, persisted.text);
           return {
             text: persisted.text,
@@ -795,7 +686,6 @@ export const aiRouter = {
         if (lineMeta.drafts.length >= 2) bulkSkipped = lineMeta.skipped;
       }
       try {
-        // Order table (kể cả 1 dòng) hoặc nhiều draft → persist giữ orderItems
         if (
           isOrderTablePaste ||
           bulkDrafts.length >= 2 ||
@@ -812,7 +702,6 @@ export const aiRouter = {
 
         if (bulkDrafts.length === 1 && bulkDrafts[0]!.kind === 'revenue') {
           const only = bulkDrafts[0]!;
-          // Giữ cọc / ship / orderItems — không qua draftToCreateIntent rút gọn
           if (
             (only.shippingFee ?? 0) > 0 ||
             (only.depositAmount ?? 0) > 0 ||
@@ -869,28 +758,25 @@ export const aiRouter = {
       }
     }
 
-    const localAction = parseLocalCommand(trimmed);
-    if (localAction) {
-      const result = await this.executeAction(localAction);
-      const text = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
-      addToHistory(trimmed, text);
-      return { text, source: 'local' };
-    }
-
     // ── 1b. Help ──────────────────────────────────────────────────────────
     const lower = trimmed.toLowerCase();
-    if (lower === 'help' || lower === 'hướng dẫn' || lower === '?' || lower === 'cách dùng' || lower === 'giúp đỡ') {
+    if (
+      lower === 'help' ||
+      lower === 'hướng dẫn' ||
+      lower === '?' ||
+      lower === 'cách dùng' ||
+      lower === 'giúp đỡ'
+    ) {
       const helpText = `📋 **Trợ lý Tài Chính — hướng dẫn**
 
-**Thêm nhanh** (regex, lưu ngay — có thể nhiều lệnh một tin):
+**Ghi sổ qua AI** (Gemini/WebLLM — mọi câu chat đều đi qua LLM):
 • \`cà phê 25k\` · \`bán cho Hoa 3 cái kẹp tóc giá 40k\`
-• Nhiều dòng / paste Excel: \`thêm chi phí:\\nLen SS5 798.000₫\\nBông 98.000₫\`
-• Nhiều lệnh một dòng: \`bán cho Hoa … 40k bán cho Hà … 120k mua len 500k\`
-
-**Thông minh (Gemini/WebLLM):**
 • Câu tự nhiên: *"chi tiền tiếp khách hôm nay khoảng 200 nghìn"*
-• Sửa/xóa: *"xóa chi phí nhậu"*, *"đổi đơn DH-… sang hoàn thành"*
-• Tra cứu: *"tổng quan"*, *"đơn đang chờ"*, *"chi phí tháng này"*
+• Nhiều dòng / paste Excel: \`thêm chi phí:\\nLen SS5 798.000₫\\nBông 98.000₫\`
+
+**Sửa / xóa / tra cứu:**
+• *"xóa chi phí nhậu"*, *"đổi đơn DH-… sang hoàn thành"*
+• *"tổng quan"*, *"đơn đang chờ"*, *"chi phí tháng này"*
 • Thiếu thông tin → bot hỏi lại; xóa cần gõ **xác nhận**
 
 **File:** ảnh/PDF/CSV/XLS → preview → Xác nhận.`;
@@ -898,37 +784,72 @@ export const aiRouter = {
       return { text: helpText, source: 'local' };
     }
 
-    // ── 2. LLM intent → tools ─────────────────────────────────────────────
-    if (looksLikeToolIntent(trimmed)) {
-      const extracted = await extractChatIntent(trimmed, financeCtx);
-      if (extracted && extracted.intent.intent !== 'chat') {
-        const intent = extracted.intent;
+    // ── 2. LLM intent → tools (all normal chat messages) ─────────────────
+    const segments = splitMultiTx(trimmed);
+    if (segments.length > 1) {
+      // One LLM call for all segments (parallel WebLLM freezes the machine)
+      const multi = await extractMultiChatIntents(segments, financeCtx || undefined);
+      const multiResults: string[] = [];
+      let source: 'local' | 'cloud' = multi?.source ?? 'local';
+      let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
 
-        if (intent.missing.length > 0) {
-          setPending({ intent, updatedAt: Date.now() });
-          const text = clarifyQuestion(intent);
-          addToHistory(trimmed, text);
-          return { text, source: extracted.source };
-        }
-
-        if (
-          intent.intent === 'lookup' ||
-          intent.intent.startsWith('create_') ||
-          intent.intent.startsWith('update_') ||
-          intent.intent.startsWith('delete_')
-        ) {
-          const out = await runIntentTool(intent);
-          if (intent.intent === 'lookup' && /phân tích|so sánh|xu hướng|bất thường/.test(lower)) {
-            const aiExtra = await generateChatReply(trimmed, financeCtx, history);
-            if (aiExtra?.text) {
-              const text = `${out.text}\n\n${aiExtra.text}`;
-              addToHistory(trimmed, text);
-              return { text, source: aiExtra.source };
-            }
+      if (multi?.intents.length) {
+        for (const intent of multi.intents) {
+          if (intent.intent === 'chat') continue;
+          if (intent.mascotSay) {
+            triggerMascot(intent.mascotSay, intent.mascotEmotion);
           }
-          addToHistory(trimmed, out.text);
-          return { ...out, source: extracted.source === 'cloud' ? 'cloud' : out.source };
+          if (intent.missing.length > 0) {
+            setPending({ intent, updatedAt: Date.now() });
+            multiResults.push(clarifyQuestion(intent));
+            break;
+          }
+          const out = await runIntentTool(intent);
+          multiResults.push(out.text);
+          if (out.createdRecord) lastCreated = out.createdRecord;
+          source = multi.source;
+          if (getPending()?.awaitingEntityPick) break;
         }
+      }
+
+      if (multiResults.length > 0) {
+        const text = multiResults.join('\n');
+        addToHistory(trimmed, text);
+        return { text, source, createdRecord: lastCreated };
+      }
+    }
+
+    const extracted = await extractChatIntent(trimmed, financeCtx || undefined);
+    if (extracted && extracted.intent.intent !== 'chat') {
+      const intent = sanitizeIntentAgainstMessage(trimmed, extracted.intent);
+      if (intent.mascotSay) {
+        triggerMascot(intent.mascotSay, intent.mascotEmotion);
+      }
+
+      if (intent.missing.length > 0) {
+        setPending({ intent, updatedAt: Date.now() });
+        const text = clarifyQuestion(intent);
+        addToHistory(trimmed, text);
+        return { text, source: extracted.source };
+      }
+
+      if (
+        intent.intent === 'lookup' ||
+        intent.intent.startsWith('create_') ||
+        intent.intent.startsWith('update_') ||
+        intent.intent.startsWith('delete_')
+      ) {
+        const out = await runIntentTool(intent);
+        if (intent.intent === 'lookup' && /phân tích|so sánh|xu hướng|bất thường/.test(lower)) {
+          const aiExtra = await generateChatReply(trimmed, financeCtx, history);
+          if (aiExtra?.text) {
+            const text = `${out.text}\n\n${aiExtra.text}`;
+            addToHistory(trimmed, text);
+            return { text, source: aiExtra.source };
+          }
+        }
+        addToHistory(trimmed, out.text);
+        return { ...out, source: extracted.source === 'cloud' ? 'cloud' : out.source };
       }
     }
 
@@ -1000,7 +921,7 @@ export const aiRouter = {
     }
 
     const fallback =
-      '🤖 Chưa gọi được AI (Gemini/WebLLM).\n\n• Cấu hình Gemini ở Cài đặt, hoặc đợi WebLLM tải\n• Vẫn thêm nhanh: `cà phê 25k` / `bán cho Hoa 3 kẹp tóc giá 15k`';
+      '🤖 Chưa gọi được AI (Gemini/WebLLM).\n\n• Cấu hình Gemini ở Cài đặt, hoặc đợi WebLLM tải\n• Gửi lại sau khi model sẵn sàng: `cà phê 25k` / `bán cho Hoa 3 kẹp tóc giá 15k`';
     addToHistory(trimmed, fallback);
     return { text: fallback, source: 'local' };
   },

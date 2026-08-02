@@ -2,11 +2,14 @@
  * App — Root component with React Router 7.
  *
  * Uses lazy-loaded route components with Suspense fallback.
+ * Wrap in AuthProvider for token auto-refresh; AuthGuard for auth gate.
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { Layout } from '@ui/Layout';
+import { AuthGuard } from '@ui/components/AuthGuard';
+import { AuthProvider } from '@ui/components/AuthProvider';
 import { Toaster } from '@/components/ui/sonner';
 
 const DashboardScreen = lazy(
@@ -50,21 +53,25 @@ const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 export function App() {
   return (
     <BrowserRouter basename={routerBasename === '/' ? undefined : routerBasename}>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<DashboardScreen />} />
-            <Route path="expense" element={<ExpenseScreen />} />
-            <Route path="revenue" element={<RevenueScreen />} />
-            <Route path="customers" element={<CustomerScreen />} />
-            <Route path="products" element={<ProductScreen />} />
-            <Route path="platforms" element={<PlatformScreen />} />
-            <Route path="report" element={<ReportScreen />} />
-            <Route path="ai" element={<AIChatScreen />} />
-            <Route path="settings" element={<SettingsScreen />} />
-          </Route>
-        </Routes>
-      </Suspense>
+      <AuthProvider>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route element={<AuthGuard />}>
+              <Route element={<Layout />}>
+                <Route index element={<DashboardScreen />} />
+                <Route path="expense" element={<ExpenseScreen />} />
+                <Route path="revenue" element={<RevenueScreen />} />
+                <Route path="customers" element={<CustomerScreen />} />
+                <Route path="products" element={<ProductScreen />} />
+                <Route path="platforms" element={<PlatformScreen />} />
+                <Route path="report" element={<ReportScreen />} />
+                <Route path="ai" element={<AIChatScreen />} />
+                <Route path="settings" element={<SettingsScreen />} />
+              </Route>
+            </Route>
+          </Routes>
+        </Suspense>
+      </AuthProvider>
       <Toaster richColors position="top-right" closeButton />
     </BrowserRouter>
   );

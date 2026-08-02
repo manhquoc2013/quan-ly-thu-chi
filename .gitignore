@@ -32,3 +32,6 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# SQLite WASM (self-hosted, large binary)
+public/sql-wasm.wasm

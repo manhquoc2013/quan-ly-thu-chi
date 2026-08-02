@@ -1,0 +1,82 @@
+{
+  "triage_id": "TRI-1785654613365-fb2c",
+  "created_at": 1785654613365,
+  "request_summary": "Viết lại flow login: email-first (nhập email trước, kiểm tra đã đăng ký chưa), thêm flow register qua OTP (mật khẩu tùy chọn), thêm màn hình onboarding sau đăng ký",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/authService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/auth/AuthScreen.tsx",
+      "src/ui/screens/onboarding/OnboardingScreen.tsx"
+    ],
+    "impact_files": [
+      "src/services/authService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/auth/AuthScreen.tsx",
+      "src/ui/screens/onboarding/OnboardingScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "src/ui/screens/auth/AuthScreen.tsx"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:src/ui/screens/auth/AuthScreen.tsx — floors at C3 regardless of size (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "AuthScreen - màn hình login đầu tiên khi mở app",
+  "blast_radius": 4,
+  "done_oracle": "Typecheck sạch, AuthScreen hiển thị đúng các state: email-only, password (đã đăng ký), OTP (chưa đăng ký), onboarding sau đăng ký",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 116,
+      "quote": "  const [authState, setAuthState] = useState<'login' | 'forgotPassword'>('login');",
+      "source_hash": "fc54d15d0fd1635b9f685c8ab525932dafe6eb57f6e24931f13f07d50eea87be",
+      "quote_hash": "d3671bef1d748a10b7b8cb5071b20d48a11ad581d5e5db2312a65a16e15e551e",
+      "note": "AuthScreen state machine - will expand to include email-check, register, onboarding"
+    },
+    {
+      "file": "src/services/authService.ts",
+      "line": 152,
+      "quote": "export function getUserCredentials(): StoredCredentials | null {",
+      "source_hash": "656545ebd83c3de75cf8739b3fb9e4d8d10122cafd05ef9eb955499c74fdba2f",
+      "quote_hash": "457a0a41c05f443ed7765cc505282611c0f9da05f4e0f754b4dcafddd41b66ce",
+      "note": "Core credential storage - auth flow entry point"
+    },
+    {
+      "file": "src/services/authService.ts",
+      "line": 172,
+      "quote": "export function userExists(email: string): boolean {",
+      "source_hash": "656545ebd83c3de75cf8739b3fb9e4d8d10122cafd05ef9eb955499c74fdba2f",
+      "quote_hash": "10d03111ffb39e870cd02e3958b85e17cc6a2cbc95d97d25f9664307d32b74e8",
+      "note": "User existence check - gate for login vs register"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 164,
+      "quote": "      login: async (email, profile) => {",
+      "source_hash": "b71374768cfae0a260d382a43ae4bf9c8ffb5c71594171764a2376dfa3d22acb",
+      "quote_hash": "25f766fbd96465f87e4f3512164eaf98b9e034a8961e229ef3c5c207dd76a2e8",
+      "note": "Auth store login action - session creation and DB init"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785654613395
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

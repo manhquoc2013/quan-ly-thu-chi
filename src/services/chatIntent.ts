@@ -45,6 +45,9 @@ export interface ChatIntent {
   missing: string[];
   /** Short Vietnamese summary of what was understood */
   summaryVi?: string;
+  /** Optional mascot line from LLM extract */
+  mascotSay?: string;
+  mascotEmotion?: string;
 }
 
 export interface PendingChatState {
@@ -149,6 +152,8 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     confidence,
     missing: missingRaw,
     summaryVi: str(o.summaryVi),
+    mascotSay: str(o.mascot_say) ?? str(o.mascotSay),
+    mascotEmotion: str(o.mascot_emotion) ?? str(o.mascotEmotion),
   };
 
   return fillMissingSlots(intentObj);
@@ -220,6 +225,8 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     confidence: Math.max(base.confidence, patch.confidence),
     missing: [],
     summaryVi: patch.summaryVi ?? base.summaryVi,
+    mascotSay: patch.mascotSay ?? base.mascotSay,
+    mascotEmotion: patch.mascotEmotion ?? base.mascotEmotion,
   });
 }
 

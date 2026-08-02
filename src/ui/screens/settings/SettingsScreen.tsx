@@ -1,6 +1,7 @@
 /**
  * SettingsScreen — Application settings page.
  *
+ * - Tài khoản (profile, change password, logout)
  * - Google Drive (real GIS OAuth + app-data.json sync)
  * - Gemini API (API key + connectivity test)
  * - About
@@ -10,8 +11,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { geminiService } from '@/services/geminiService';
+import { clearToken } from '@/services/tokenService';
 import {
   connectGoogleDrive,
   disconnectDrive,
@@ -21,17 +24,25 @@ import {
   getDriveUser,
 } from '@/services/googleDrive';
 import { reloadAppData } from '@/services/bootstrap';
+import { ProfileDialog } from '@/ui/screens/settings/ProfileDialog';
+import { ChangePasswordDialog } from '@/ui/screens/settings/ChangePasswordDialog';
 import { toast } from 'sonner';
 import {
   Key,
   Info,
   Cloud,
+  User,
+  Mail,
   Settings as SettingsIcon,
   CheckCircle,
   XCircle,
   Loader2,
   RefreshCw,
   Download,
+  Pencil,
+  Lock,
+  LogOut,
+  Bot,
 } from 'lucide-react';
 
 export function SettingsScreen() {
@@ -40,20 +51,99 @@ export function SettingsScreen() {
     googleUser,
     geminiApiKey,
     geminiConfigured,
+    userProfile,
     setGoogleConnected,
     setGoogleUser,
     setGeminiApiKey,
     disconnectGoogle,
+    logout,
+    emailjsServiceId,
+    emailjsTemplateId,
+    emailjsPublicKey,
+    emailjsConfigured,
+    setEmailJSConfig,
+    clearEmailJSConfig,
+    isAdmin,
+    enableWebLLM,
+    setEnableWebLLM,
   } = useAuthStore();
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
   const [driveBusy, setDriveBusy] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const driveConfigured = isGoogleDriveConfigured();
+
+  // EmailJS state
+  const [ejServiceId, setEjServiceId] = useState(emailjsServiceId ?? '');
+  const [ejTemplateId, setEjTemplateId] = useState(emailjsTemplateId ?? '');
+  const [ejPublicKey, setEjPublicKey] = useState(emailjsPublicKey ?? '');
+  const [ejTesting, setEjTesting] = useState(false);
 
   useEffect(() => {
     setApiKey(geminiApiKey ?? '');
   }, [geminiApiKey]);
+
+  useEffect(() => {
+    setEjServiceId(emailjsServiceId ?? '');
+    setEjTemplateId(emailjsTemplateId ?? '');
+    setEjPublicKey(emailjsPublicKey ?? '');
+  }, [emailjsServiceId, emailjsTemplateId, emailjsPublicKey]);
+
+  // ── EmailJS handlers ──
+  function handleSaveEmailJS(): void {
+    const sid = ejServiceId.trim();
+    const tid = ejTemplateId.trim();
+    const pk = ejPublicKey.trim();
+    if (!sid) { toast.error('Vui lòng nhập Service ID.'); return; }
+    if (!tid) { toast.error('Vui lòng nhập Template ID.'); return; }
+    if (!pk) { toast.error('Vui lòng nhập Public Key.'); return; }
+    setEmailJSConfig({ serviceId: sid, templateId: tid, publicKey: pk });
+    toast.success('Đã lưu cấu hình EmailJS.');
+  }
+
+  async function handleTestEmailJS(): Promise<void> {
+    const sid = ejServiceId.trim();
+    const tid = ejTemplateId.trim();
+    const pk = ejPublicKey.trim();
+    if (!sid || !tid || !pk) {
+      toast.error('Vui lòng nhập đầy đủ Service ID, Template ID và Public Key.');
+      return;
+    }
+    setEjTesting(true);
+    try {
+      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: sid,
+          template_id: tid,
+          user_id: pk,
+          template_params: { to_email: 'test@example.com', user_name: 'Test', otp_code: '000000' },
+        }),
+      });
+      if (res.ok) {
+        setEmailJSConfig({ serviceId: sid, templateId: tid, publicKey: pk });
+        toast.success('Kết nối EmailJS thành công.');
+      } else {
+        const text = await res.text().catch(() => '');
+        toast.error(`Lỗi kết nối (HTTP ${res.status}): ${text || 'kiểm tra lại thông tin.'}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không thể kết nối EmailJS.');
+    } finally {
+      setEjTesting(false);
+    }
+  }
+
+  function handleClearEmailJS(): void {
+    clearEmailJSConfig();
+    setEjServiceId('');
+    setEjTemplateId('');
+    setEjPublicKey('');
+    toast.message('Đã xóa cấu hình EmailJS.');
+  }
 
   async function handleConnectDrive(): Promise<void> {
     if (!driveConfigured) {
@@ -187,8 +277,70 @@ export function SettingsScreen() {
     toast.message('Đã xóa Gemini API key');
   }
 
+  function handleLogout(): void {
+    logout();
+    clearToken();
+    toast.message('Đã đăng xuất.');
+  }
+
   return (
     <div className="p-[var(--s-md)] space-y-[var(--s-lg)]">
+      {/* ── Tài khoản ─────────────────────────────────────────────── */}
+      <section aria-label="Account settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-accent-fg" />
+              <CardTitle>Tài khoản</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-sm)]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">Cửa hàng</span>
+                <span className="text-xs font-medium text-text-primary">
+                  {userProfile?.storeName ?? '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-muted">Email</span>
+                <span className="text-xs font-medium text-text-primary">
+                  {userProfile?.email ?? '—'}
+                </span>
+              </div>
+              {userProfile?.phone && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Số điện thoại</span>
+                  <span className="text-xs text-text-primary">{userProfile.phone}</span>
+                </div>
+              )}
+              {userProfile?.address && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Địa chỉ</span>
+                  <span className="text-xs text-text-primary truncate max-w-[60%]">
+                    {userProfile.address}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-[var(--s-xs)] pt-2">
+                <Button variant="secondary" size="sm" onClick={() => setProfileOpen(true)}>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  Sửa thông tin
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setChangePasswordOpen(true)}>
+                  <Lock className="mr-1.5 h-3.5 w-3.5" />
+                  Đổi mật khẩu
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleLogout}>
+                  <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                  Đăng xuất
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section aria-label="Google Drive settings">
         <Card>
           <CardHeader>
@@ -339,6 +491,161 @@ export function SettingsScreen() {
         </Card>
       </section>
 
+      {isAdmin && (
+        <section aria-label="EmailJS settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-accent-fg" />
+                <CardTitle>EmailJS</CardTitle>
+              </div>
+              {emailjsConfigured ? (
+                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
+                  <CheckCircle size={12} className="inline" aria-hidden="true" />
+                  Đã cấu hình
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1">
+                  <XCircle size={12} className="inline" aria-hidden="true" />
+                  Chưa cấu hình
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-md)]">
+              <p className="text-xs text-text-muted">
+                Cấu hình EmailJS để gửi mã OTP qua email.{' '}
+                <a
+                  href="https://dashboard.emailjs.com/admin"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-fg underline"
+                >
+                  Vào EmailJS Dashboard
+                </a>
+                {' '}→ tạo Service + Template với các biến{' '}
+                <code className="text-[11px]">{'{{to_email}}'}</code>,{' '}
+                <code className="text-[11px]">{'{{user_name}}'}</code>,{' '}
+                <code className="text-[11px]">{'{{otp_code}}'}</code>.
+              </p>
+
+              <div>
+                <Label htmlFor="ej-service-id" className="text-xs">Service ID</Label>
+                <input
+                  id="ej-service-id"
+                  value={ejServiceId}
+                  onChange={(e) => setEjServiceId(e.target.value)}
+                  placeholder="service_xxxxxx"
+                  className={
+                    'w-full bg-input-bg border border-input-border ' +
+                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
+                    'text-text-primary placeholder:text-input-placeholder ' +
+                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
+                  }
+                  aria-label="EmailJS Service ID"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ej-template-id" className="text-xs">Template ID</Label>
+                <input
+                  id="ej-template-id"
+                  value={ejTemplateId}
+                  onChange={(e) => setEjTemplateId(e.target.value)}
+                  placeholder="template_xxxxxx"
+                  className={
+                    'w-full bg-input-bg border border-input-border ' +
+                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
+                    'text-text-primary placeholder:text-input-placeholder ' +
+                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
+                  }
+                  aria-label="EmailJS Template ID"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ej-public-key" className="text-xs">Public Key</Label>
+                <input
+                  id="ej-public-key"
+                  type="password"
+                  value={ejPublicKey}
+                  onChange={(e) => setEjPublicKey(e.target.value)}
+                  placeholder="xxxxxxxxxxxxxxx"
+                  className={
+                    'w-full bg-input-bg border border-input-border ' +
+                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
+                    'text-text-primary placeholder:text-input-placeholder ' +
+                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
+                  }
+                  aria-label="EmailJS Public Key"
+                />
+              </div>
+
+              <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
+                <Button onClick={handleSaveEmailJS}>Lưu cấu hình</Button>
+                <Button
+                  variant="secondary"
+                  disabled={!ejServiceId.trim() || !ejTemplateId.trim() || !ejPublicKey.trim() || ejTesting}
+                  onClick={() => void handleTestEmailJS()}
+                >
+                  {ejTesting
+                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kiểm tra…</>
+                    : <><SettingsIcon className="mr-2 h-4 w-4" />Kiểm tra kết nối</>}
+                </Button>
+                {emailjsConfigured && (
+                  <Button variant="destructive" onClick={handleClearEmailJS}>
+                    Xóa cấu hình
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        </section>
+      )}
+
+      {/* ── WebLLM toggle ──────────────────────────────────────────── */}
+      <section aria-label="Local AI settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bot className="h-4 w-4 text-accent-fg" />
+              <CardTitle>AI Cục Bộ (WebLLM)</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-sm)]">
+              <p className="text-xs text-text-muted">
+                Chạy model AI Qwen3-4B trực tiếp trên máy qua WebGPU. Có thể gây giật lag trên máy yếu.
+                Tắt nếu không cần — app sẽ dùng Gemini cloud hoặc xử lý văn bản cục bộ.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-primary">Bật AI cục bộ</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enableWebLLM}
+                  onClick={() => setEnableWebLLM(!enableWebLLM)}
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
+                    (enableWebLLM ? 'bg-accent-fg' : 'bg-input-bg border-input-border')
+                  }
+                >
+                  <span
+                    className={
+                      'pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ' +
+                      (enableWebLLM ? 'translate-x-4' : 'translate-x-0')
+                    }
+                  />
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section aria-label="About">
         <Card>
           <CardHeader>
@@ -369,6 +676,10 @@ export function SettingsScreen() {
           </CardContent>
         </Card>
       </section>
+
+      {/* Dialogs */}
+      <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </div>
   );
 }

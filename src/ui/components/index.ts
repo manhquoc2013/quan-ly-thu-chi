@@ -50,3 +50,4 @@ export { ImagePreview, type ImagePreviewProps } from './ImagePreview';
 export { EmptyState } from './EmptyState';
 export { MarkdownText } from './MarkdownText';
 export { StatusBar } from './StatusBar';
+export { AuthProvider } from './AuthProvider';

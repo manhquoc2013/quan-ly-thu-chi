@@ -11,8 +11,9 @@ import {
   type ChatIntent,
   emptyIntent,
 } from './chatIntent';
+import { sanitizeIntentAgainstMessage } from './intentSanitize';
 
-const EXTRACT_PROMPT = `Bạn là bộ phân loại intent cho app quản lý thu chi (tiếng Việt).
+const EXTRACT_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng, đang phân loại intent cho app "Quản lý thu chi" (tiếng Việt).
 CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích.
 
 Schema:
@@ -33,7 +34,9 @@ Schema:
   "query": string|null,
   "confidence": 0.0-1.0,
   "missing": string[],
-  "summaryVi": string
+  "summaryVi": string,
+  "mascot_say": "1 câu ngắn Lucky nói, phù hợp giao dịch (khen nếu nhỏ, nhắc nếu to, mừng nếu thu nhập)",
+  "mascot_emotion": "happy"|"sad"|"warning"|"celebrate"|"thinking"
 }
 
 ## Tiền tệ (amount / unitPrice luôn VND số nguyên)
@@ -159,7 +162,7 @@ async function callLlmLocal(
     // raw: intent JSON (không chồng system). chat: trả lời hội thoại.
     const text = await webLLM.generate(prompt, {
       mode,
-      maxTokens: mode === 'raw' ? 512 : 1024,
+      maxTokens: mode === 'raw' ? 256 : 512,
     });
     if (
       text &&
@@ -203,7 +206,7 @@ export async function extractChatIntent(
   const { geminiConfigured } = useAuthStore.getState();
   const useCloud =
     geminiConfigured && navigator.onLine && geminiService.isConfigured;
-  const ctxLimit = useCloud ? 3500 : 1200;
+  const ctxLimit = useCloud ? 3500 : 400;
   const ctx = financeContext
     ? `\n\nNgữ cảnh dữ liệu:\n${financeContext.slice(0, ctxLimit)}`
     : '';
@@ -212,7 +215,82 @@ export async function extractChatIntent(
   if (!res) return null;
   const parsed = normalizeIntent(extractJsonObject(res.text));
   if (!parsed) return { intent: emptyIntent('chat'), source: res.source };
-  return { intent: parsed, source: res.source };
+  return {
+    intent: sanitizeIntentAgainstMessage(message, parsed),
+    source: res.source,
+  };
+}
+
+/**
+ * One LLM call for multi-transaction messages (avoids N× WebLLM freezes).
+ * `segments` from splitMultiTx — returns one sanitized intent per segment when possible.
+ */
+export async function extractMultiChatIntents(
+  segments: string[],
+  financeContext?: string,
+): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' } | null> {
+  if (segments.length < 2) {
+    const one = await extractChatIntent(segments[0] ?? '', financeContext);
+    return one ? { intents: [one.intent], source: one.source } : null;
+  }
+
+  const { geminiConfigured } = useAuthStore.getState();
+  const useCloud =
+    geminiConfigured && navigator.onLine && geminiService.isConfigured;
+  // Multi-create: skip heavy store context (hallucinations). Only pass tiny ctx if any.
+  const ctx =
+    financeContext && useCloud
+      ? `\n\nNgữ cảnh (tham khảo, KHÔNG bịa tên khách/kênh nếu tin không có):\n${financeContext.slice(0, 800)}`
+      : '';
+
+  const listed = segments
+    .map((s, i) => `${i + 1}. """${s.slice(0, 400)}"""`)
+    .join('\n');
+
+  const prompt = `${EXTRACT_PROMPT}${ctx}
+
+Tin nhắn có ${segments.length} giao dịch RIÊNG (đã tách). Trả về ĐÚNG 1 JSON:
+{"intents":[ /* ${segments.length} object cùng schema intent ở trên, theo đúng thứ tự */ ]}
+
+Quy tắc:
+- Phần có "bán/thu/khách … mua" → create_revenue.
+- Phần có "uống/ăn/chi/mua (không tên khách)/nhập" → create_expense.
+- KHÔNG gộp 2 phần thành 1. KHÔNG bịa platformName/customerName nếu phần đó không nhắc.
+- Mỗi phần chỉ lấy số tiền/SL trong chính phần đó.
+
+Các phần:
+${listed}
+
+JSON:`;
+
+  const res = await callLlm(prompt);
+  if (!res) return null;
+
+  const raw = extractJsonObject(res.text);
+  let list: unknown[] = [];
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    if (Array.isArray(o.intents)) list = o.intents;
+    else if (Array.isArray(o)) list = o as unknown[];
+    else if (o.intent) list = [o];
+  }
+
+  if (list.length === 0) return null;
+
+  const intents: ChatIntent[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!;
+    const normalized = i < list.length ? normalizeIntent(list[i]) : null;
+    if (!normalized || normalized.intent === 'chat') {
+      // Fallback: extract that segment alone (queued, not parallel)
+      const alone = await extractChatIntent(seg, undefined);
+      if (alone && alone.intent.intent !== 'chat') intents.push(alone.intent);
+      continue;
+    }
+    intents.push(sanitizeIntentAgainstMessage(seg, normalized));
+  }
+
+  return intents.length ? { intents, source: res.source } : null;
 }
 
 /** Merge pending intent with user clarify reply via LLM when possible */

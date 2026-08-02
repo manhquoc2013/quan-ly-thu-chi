@@ -1,0 +1,53 @@
+{
+  "triage_id": "TRI-1785657922644-7c67",
+  "created_at": 1785657922644,
+  "request_summary": "Đổi toàn bộ system prompt AI thành nhân vật Lucky (mèo may mắn) với output JSON có mascot_say + mascot_emotion",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/geminiService.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmBulkDraftExtractor.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmIntentExtractor.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/webLLM.ts"
+    ],
+    "impact_files": [
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/geminiService.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmBulkDraftExtractor.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmIntentExtractor.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/webLLM.ts"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chat input → WebLLM/Gemini generate → system prompt",
+  "blast_radius": 4,
+  "done_oracle": "Typecheck sạch, AI phản hồi với giọng Lucky, output có mascot_say và mascot_emotion",
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/geminiService.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmBulkDraftExtractor.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/llmIntentExtractor.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/webLLM.ts"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785657864524-834e",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785657922677
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

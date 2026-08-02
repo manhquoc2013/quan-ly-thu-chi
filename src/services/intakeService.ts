@@ -191,10 +191,13 @@ ${recentRev || '  (trống)'}`;
 }
 
 export function shouldAttachFinanceContext(message: string): boolean {
+  // Do NOT attach for create — store entities bleed into small local models
+  // (hallucinated customer/platform). Create only needs the user message.
   return (
     looksLikeAnalysisIntent(message) ||
-    looksLikeCreateIntent(message) ||
-    /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu)\b/i.test(message)
+    /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu|tổng quan|công nợ)\b/i.test(
+      message,
+    )
   );
 }
 

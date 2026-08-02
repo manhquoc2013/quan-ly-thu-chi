@@ -1,10 +1,11 @@
 /**
  * Entity resolve — customer / product matching for AI order create.
  *
- * Rules (spec C + exact shortcut):
+ * Rules:
  * - Unique exact name → auto-use
- * - 0 partial matches → auto-create
- * - Otherwise (≥1 partial, or duplicate exact) → ambiguous (user picks)
+ * - Unique single partial match → auto-use (avoid pick loop for 1 hit)
+ * - 0 matches → auto-create
+ * - ≥2 matches → ambiguous (user picks 1..n or 0 = create new)
  */
 
 import type { Customer, Product, OrderPlatform } from '@/models';
@@ -44,12 +45,31 @@ function norm(s: string): string {
   return s.trim().toLowerCase().normalize('NFC');
 }
 
-/** Strip leading "2 × " / qty from product description for matching */
+/**
+ * Strip qty / price / multi-tx tails so "3 × kẹp tóc giá 90k sau đó lại uống…" → "kẹp tóc".
+ */
 export function productQueryFromDescription(description: string): string {
-  return description
-    .replace(/^\d+\s*[×x]\s*/i, '')
-    .replace(/^SL\s*\d+\s*/i, '')
-    .trim();
+  let s = description.trim();
+  s = s.replace(/^\d+\s*[×x]\s*/i, '');
+  s = s.replace(/^SL\s*\d+\s*/i, '');
+  // Drop second clause of multi-tx leftovers
+  s = s.replace(/\s*(?:sau đó|rồi(?:\s+lại)?|và rồi)\b[\s\S]*$/i, '');
+  // Drop price clauses
+  s = s.replace(
+    /\s*(?:giá(?:\s*mỗi\s*cái)?|hết|tổng|thành tiền|đơn giá)\s*:?\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m)?/gi,
+    '',
+  );
+  // Drop bare money tokens
+  s = s.replace(/\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m|₫|đ|vnd)?\b/gi, ' ');
+  // Drop qty phrases
+  s = s.replace(/\b\d+\s*(?:cái|chiếc|bộ|cặp|set|ly|chai|hộp)\b/gi, ' ');
+  // Drop sale boilerplate
+  s = s.replace(
+    /\b(?:tôi|mình|em|vừa|bán(?:\s+cho)?|cho\s+[A-Za-zÀ-ỹ]+|khách)\b/gi,
+    ' ',
+  );
+  s = s.replace(/\s+/g, ' ').trim();
+  return s.length >= 2 ? s : description.trim();
 }
 
 function partialMatches<T extends { name: string; code?: string }>(items: T[], query: string): T[] {
@@ -91,7 +111,7 @@ export function formatEntityPickMessage(
     `Có ${options.length} ${noun} khớp “${query}”:`,
     ...lines,
     `0. Tạo ${noun} mới “${query}”`,
-    'Trả lời **số** để chọn (hoặc `hủy`).',
+    `Trả lời **0** (tạo mới) hoặc **1–${options.length}** (hoặc \`hủy\`).`,
   ].join('\n');
 }
 
@@ -195,6 +215,18 @@ export async function resolveProductForOrder(
 
   if (exact.length === 1) {
     const p = exact[0]!;
+    return {
+      status: 'resolved',
+      id: p.id,
+      name: p.name,
+      created: false,
+      defaultUnitPrice: p.defaultUnitPrice,
+    };
+  }
+
+  // Unique partial hit → auto-use (1 option pick loops when user types "2")
+  if (matches.length === 1) {
+    const p = matches[0]!;
     return {
       status: 'resolved',
       id: p.id,

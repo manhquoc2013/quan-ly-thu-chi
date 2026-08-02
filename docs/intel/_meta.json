@@ -5,6 +5,21 @@
       "last_modified": "2026-08-01T08:39:43Z",
       "last_producer": "ai-kit/scaffold_workspace",
       "version": 1
+    },
+    "docs/modules/M-001-quan-ly-thu-chi/_state.md": {
+      "content_hash": "sha256:a5623f3dbf5968acee625268403479d10e386659931af7f9551d0c853b15ee1d",
+      "last_modified": "2026-08-02T08:29:15Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 2
+    },
+    "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:82881b175cf7e86d297b7164b7bcd36c95aa7a80eb384941bb6fe1b926cc6095",
+      "last_modified": "2026-08-02T08:45:04Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 2
     }
   },
   "created_at": "2026-08-01T08:39:43Z",

@@ -14,21 +14,22 @@ import {
 } from './draftTypes';
 import { guessCategory } from './textDraftParser';
 
-const BULK_PROMPT = `Bạn là bộ trích xuất danh sách thu/chi từ tin nhắn tiếng Việt (thường paste nhiều dòng).
+const BULK_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân của cửa hàng, đang giúp chủ tiệm trích xuất danh sách thu/chi từ paste nhiều dòng.
 CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích.
 
 Schema:
 {
   "kind": "expense"|"revenue",
-  "items": [ { "description": string, "amount": number } ]
+  "items": [ { "description": string, "amount": number } ],
+  "mascot_say": "1 câu ngắn Lucky nhận xét tổng quan danh sách",
+  "mascot_emotion": "happy"|"thinking"|"warning"|"celebrate"
 }
 
 Quy tắc:
 - Mỗi dòng hàng + tiền → 1 item. amount luôn là VND số nguyên (798.000 → 798000, 25k → 25000).
 - Bỏ header kiểu "thêm chi phí:", "thêm doanh thu:".
-- kind=expense nếu ngữ cảnh chi phí / mua nguyên liệu; revenue nếu bán/thu.
-- Bỏ dòng không có tiền hoặc không có mô tả.
-- Không gộp nhiều dòng thành 1 item.`;
+- kind=expense nếu ngữ cảnh chi phí; revenue nếu bán/thu.
+- Bỏ dòng không có tiền hoặc không có mô tả.`;
 
 function extractJsonObject(text: string): unknown | null {
   const cleaned = text

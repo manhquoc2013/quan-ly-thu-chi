@@ -9,6 +9,7 @@ import { getAllProducts } from '@/services/productService';
 import { getAllPlatforms } from '@/services/platformService';
 import { restoreDriveToken, getDriveUser, isDriveConnected } from '@/services/googleDrive';
 import { useAuthStore } from '@/store/authStore';
+import { initAdminAccount } from '@/services/authService';
 
 let bootstrapped = false;
 let bootstrapPromise: Promise<void> | null = null;
@@ -46,6 +47,8 @@ export function bootstrapAppData(): Promise<void> {
 
   bootstrapPromise = (async () => {
     try {
+      // Auto-create admin account on first launch
+      await initAdminAccount();
       await hydrateDriveAuth();
       await hydrateStores();
       bootstrapped = true;

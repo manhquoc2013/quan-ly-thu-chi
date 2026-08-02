@@ -1,0 +1,1 @@
+Moved: docs/modules/M-001-app, docs/modules/M-001-core, docs/modules/M-001-report-analytics, docs/modules/M-001-revenue-management, docs/modules/M-001 -> docs/modules/_trash/ (pending bash mv commands)

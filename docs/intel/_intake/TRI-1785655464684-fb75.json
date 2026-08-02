@@ -1,0 +1,57 @@
+{
+  "triage_id": "TRI-1785655464684-fb75",
+  "created_at": 1785655464684,
+  "request_summary": "Rút gọn parseLocalCommand từ 16 regex (~140 dòng) xuống 7 pattern có guard (~90 dòng), đổi WebLLM model từ Qwen3-4B sang Qwen2.5-1.5B (1 dòng)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/aiRouter.ts",
+      "src/services/webLLM.ts"
+    ],
+    "impact_files": [
+      "src/services/aiRouter.ts",
+      "src/services/webLLM.ts"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chat input → aiRouter.sendMessage() → parseLocalCommand hoặc LLM",
+  "blast_radius": 2,
+  "done_oracle": "Typecheck sạch, parseLocalCommand trả về action cho E1-E4/R1-R3, từ chối đúng guard case, LLM fallback cho input không khớp",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/services/aiRouter.ts",
+      "line": 116,
+      "quote": "function parseLocalCommand(message: string): ChatAction | null {",
+      "source_hash": "a1e4096e75971c5fc24c132c6dc6e48e14e16971a484ae358f51efcb5e28684b",
+      "quote_hash": "9a6bb7f753a94650dce58b8edc3927888ea269ad0ef03202f67470c9d7bebed9",
+      "note": "Full regex parser ~140 lines to be replaced with streamlined 7-pattern version"
+    },
+    {
+      "file": "src/services/webLLM.ts",
+      "line": 15,
+      "quote": "const MODEL_ID = 'Qwen3-4B-q4f16_1-MLC';",
+      "source_hash": "863872a6600b357eb2ed6c8cf2cb47275f9bd5b26aaec3c8fef50db6842c23b2",
+      "quote_hash": "fb9100983d93cae205d5b92bb8e1d0137d84e057888fb1d848e46dec68992d8e",
+      "note": "Model ID to change to Qwen2.5-1.5B"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785655464738
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

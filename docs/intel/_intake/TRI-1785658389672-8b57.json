@@ -1,0 +1,89 @@
+{
+  "triage_id": "TRI-1785658389672-8b57",
+  "created_at": 1785658389672,
+  "request_summary": "Đổi system prompt sang format chuyên nghiệp Lucky + thêm mascot overlay CSS animation",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/aiRouter.ts",
+      "src/services/geminiService.ts",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/webLLM.ts",
+      "src/store/mascotStore.ts",
+      "src/ui/components/MascotOverlay.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "impact_files": [
+      "src/services/aiRouter.ts",
+      "src/services/geminiService.ts",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/webLLM.ts",
+      "src/store/mascotStore.ts",
+      "src/ui/components/MascotOverlay.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 8 edit-target files exceed the inline gate (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chat input → AI generate + MascotOverlay trong Layout",
+  "blast_radius": 8,
+  "done_oracle": "Typecheck sạch, prompt mới áp dụng, mascot overlay hoạt động",
+  "change_type": "business_rule",
+  "seam_claims": [
+    {
+      "file": "src/services/webLLM.ts",
+      "line": 31,
+      "quote": "const CHAT_SYSTEM = `Bạn là Lucky, một chú mèo may mắn, trợ lý tài chính trong app \"Quản lý thu chi\".",
+      "source_hash": "b1a4ec14da77a9a33c36bc01a362c3eacbce585d8ad4986e5023aacd10301dac",
+      "quote_hash": "222ef2ddaa6ff4dccc5070f04376eed4bba2405b585b0107aeaa88c040162243",
+      "note": "WebLLM system prompt"
+    },
+    {
+      "file": "src/services/geminiService.ts",
+      "line": 21,
+      "quote": "const SYSTEM_INSTRUCTION = `Bạn là Lucky, một chú mèo may mắn, trợ lý tài chính trong app \"Quản lý thu chi\".",
+      "source_hash": "0e414236fbf860929c52f6c2954a1ee0ec1bb837559ff662d988b5c8e3af47b9",
+      "quote_hash": "46af4d4b1b732ac08ece89dd28a1971ffa2eccc7eb52cb134f1c1426ab316f04",
+      "note": "Gemini system prompt"
+    },
+    {
+      "file": "src/services/llmIntentExtractor.ts",
+      "line": 15,
+      "quote": "const EXTRACT_PROMPT = `Bạn là Lucky, mèo may mắn trợ lý tài chính, đang phân loại intent cho app \"Quản lý thu chi\" (tiếng Việt).",
+      "source_hash": "2c594080e135e5c87b7e98def6a0824ce80729c75e3eaa60faee645e797599c6",
+      "quote_hash": "5ee31e093bfa89bf4fe5e4ba1a8b05e148f1ac1b62914118da8805630db16512",
+      "note": "Intent extraction prompt"
+    },
+    {
+      "file": "src/services/aiRouter.ts",
+      "line": 172,
+      "quote": "function parseAiAction(text: string): { cleanText: string; action?: ChatAction } {",
+      "source_hash": "faf8a60d7e2359ca7d25a0b8eb5b840d80125d5edc9fd534b65662eeed0a5bc5",
+      "quote_hash": "d8a4e696f15bdac13fd99c9279f8dcdfd540d96c1bddc65356203ee75e1d9ff9",
+      "note": "Parse AI action JSON"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785658296896-9618",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785658389710
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

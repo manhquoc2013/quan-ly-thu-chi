@@ -65,7 +65,22 @@ describe('entityResolve', () => {
     }
   });
 
-  it('asks on partial product match', async () => {
+  it('auto-uses unique partial product match', async () => {
+    useProductStore.getState().setProducts([
+      {
+        id: 'p1',
+        name: 'Kẹp tóc giá 90k sau đó lại uống nước',
+        defaultUnitPrice: 16667,
+        unit: 'cái',
+        createdAt: '',
+      },
+    ]);
+    const r = await resolveProductForOrder('3 × kẹp tóc giá 90k', { silent: true });
+    expect(r.status).toBe('resolved');
+    if (r.status === 'resolved') expect(r.id).toBe('p1');
+  });
+
+  it('asks when multiple partial product matches', async () => {
     useProductStore.getState().setProducts([
       {
         id: 'p1',

@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-08-02T07:26:42.710Z",
+  "last_modified_at": "2026-08-02T09:09:42.222Z",
+  "modules": {
+    "M-000": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "M-000",
+      "slug": "engineering-frontend-implementation",
+      "risk_path": "M"
+    },
+    "M-001": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "done",
+      "claimed_by": "tab-b10d2f03b1b36ac5",
+      "claimed_at": "2026-08-02T08:25:38.978Z",
+      "heartbeat_at": "2026-08-02T09:09:42.222Z",
+      "current_stage": null,
+      "started_at": "2026-08-02T07:26:46.045Z",
+      "completed_at": "2026-08-02T09:09:42.222Z",
+      "auto_pass_count": 0,
+      "attempt": 3,
+      "name": "Quản Lý Tài Chính",
+      "slug": "quan-ly-thu-chi",
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-b10d2f03b1b36ac5"
+    },
+    "M-003": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "M-003",
+      "slug": "expense-mgmt",
+      "risk_path": "M"
+    },
+    "M-006": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": null,
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "M-006",
+      "slug": "reports-and-ai",
+      "risk_path": "M"
+    }
+  },
+  "tabs": {
+    "tab-b10d2f03b1b36ac5": {
+      "started_at": "2026-08-02T07:26:46.045Z",
+      "last_seen": "2026-08-02T09:09:42.222Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-001"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-e868d2a22ba3d43d": {
+      "started_at": "2026-08-02T08:18:13.002Z",
+      "last_seen": "2026-08-02T08:25:35.004Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-001"
+      ],
+      "skipped_modules": []
+    }
+  }
+}

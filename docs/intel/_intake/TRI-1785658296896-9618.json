@@ -1,0 +1,52 @@
+{
+  "triage_id": "TRI-1785658296896-9618",
+  "created_at": 1785658296896,
+  "request_summary": "Thêm linh vật Lucky (mèo may mắn) overlay nổi trên màn hình, CSS animation, gọi WebLLM riêng để sinh phản ứng khi có giao dịch mới",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/aiRouter.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/mascotService.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/store/mascotStore.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/components/MascotOverlay.tsx",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/Layout.tsx"
+    ],
+    "impact_files": [
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/aiRouter.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/mascotService.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/store/mascotStore.ts",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/components/MascotOverlay.tsx",
+      "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/Layout.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "MascotOverlay component tích hợp trong Layout, trigger từ aiRouter khi tạo transaction thành công",
+  "blast_radius": 5,
+  "done_oracle": "Mascot overlay hiển thị ở góc phải màn hình, nhảy ra với animation khi có giao dịch mới, nói câu mascot_say từ WebLLM, emotion thay đổi theo giao dịch",
+  "change_type": "scope_expansion",
+  "declared_write_scope": [
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/aiRouter.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/services/mascotService.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/store/mascotStore.ts",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/components/MascotOverlay.tsx",
+    "/Users/tranquoc/Developer/quan-ly-thu-chi/src/ui/Layout.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "9ce1f5b133e195684d8bb8cbd5d0181c0ae2dfc7",
+    "dirty": true,
+    "captured_at": 1785658296924
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
