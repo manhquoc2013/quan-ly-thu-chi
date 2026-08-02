@@ -75,9 +75,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         geminiApiKey: state.geminiApiKey,
         geminiConfigured: !!state.geminiApiKey,
-        // Google OAuth tokens are not persisted here yet (stub flow)
-        isGoogleConnected: state.isGoogleConnected,
-        googleUser: state.googleUser,
+        // Drive session restored from IndexedDB token via bootstrap (not zustand)
       }),
       onRehydrateStorage: () => (state) => {
         if (state?.geminiApiKey) {

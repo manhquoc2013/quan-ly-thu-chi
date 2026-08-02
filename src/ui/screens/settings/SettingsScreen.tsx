@@ -1,10 +1,9 @@
 /**
  * SettingsScreen — Application settings page.
  *
- * Contains 3 Panel sections:
- * - Google Drive (connect/disconnect, status)
- * - Gemini API (API key input + save + real connectivity test)
- * - About (app name, version, description)
+ * - Google Drive (real GIS OAuth + app-data.json sync)
+ * - Gemini API (API key + connectivity test)
+ * - About
  */
 
 import { useState, useEffect } from 'react';
@@ -13,6 +12,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import { geminiService } from '@/services/geminiService';
+import {
+  connectGoogleDrive,
+  disconnectDrive,
+  syncAppData,
+  restoreFromDrive,
+  isGoogleDriveConfigured,
+  getDriveUser,
+} from '@/services/googleDrive';
+import { reloadAppData } from '@/services/bootstrap';
 import { toast } from 'sonner';
 import {
   Key,
@@ -22,34 +30,113 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  RefreshCw,
+  Download,
 } from 'lucide-react';
 
 export function SettingsScreen() {
   const {
     isGoogleConnected,
+    googleUser,
     geminiApiKey,
     geminiConfigured,
     setGoogleConnected,
+    setGoogleUser,
     setGeminiApiKey,
     disconnectGoogle,
   } = useAuthStore();
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
+  const [driveBusy, setDriveBusy] = useState(false);
+  const driveConfigured = isGoogleDriveConfigured();
 
-  // Sync input after localStorage rehydrate
   useEffect(() => {
     setApiKey(geminiApiKey ?? '');
   }, [geminiApiKey]);
 
-  function handleConnectDrive(): void {
-    setGoogleConnected(true);
-    toast.success('Đã kết nối Google Drive (stub)');
+  async function handleConnectDrive(): Promise<void> {
+    if (!driveConfigured) {
+      toast.error('Chưa cấu hình Google Client ID', {
+        description: 'Thêm VITE_GOOGLE_CLIENT_ID vào .env.local hoặc GitHub Actions secrets.',
+      });
+      return;
+    }
+    setDriveBusy(true);
+    try {
+      await connectGoogleDrive();
+      const user = getDriveUser();
+      setGoogleConnected(true);
+      setGoogleUser(
+        user
+          ? { id: user.email, name: user.name, email: user.email, picture: user.picture }
+          : null,
+      );
+      const result = await syncAppData();
+      if (result.direction === 'pulled') {
+        await reloadAppData();
+        toast.success('Đã kết nối — đã tải dữ liệu từ Google Drive');
+      } else {
+        toast.success(
+          user?.email
+            ? `Đã kết nối ${user.email} — đã sao lưu lên Drive`
+            : 'Đã kết nối Google Drive — đã sao lưu',
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Kết nối thất bại';
+      toast.error(msg);
+    } finally {
+      setDriveBusy(false);
+    }
   }
 
-  function handleDisconnectDrive(): void {
-    disconnectGoogle();
-    toast.message('Đã ngắt kết nối Google Drive');
+  async function handleDisconnectDrive(): Promise<void> {
+    setDriveBusy(true);
+    try {
+      await disconnectDrive();
+      disconnectGoogle();
+      toast.message('Đã ngắt kết nối Google Drive');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ngắt kết nối thất bại';
+      toast.error(msg);
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
+  async function handleSyncNow(): Promise<void> {
+    setDriveBusy(true);
+    try {
+      const result = await syncAppData();
+      if (result.direction === 'pulled') {
+        await reloadAppData();
+        toast.success('Đã đồng bộ — lấy bản mới hơn từ Drive');
+      } else if (result.direction === 'pushed') {
+        toast.success('Đã đẩy dữ liệu lên Google Drive');
+      } else {
+        toast.message('Dữ liệu đã đồng bộ');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Đồng bộ thất bại';
+      toast.error(msg);
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
+  async function handleRestoreFromDrive(): Promise<void> {
+    setDriveBusy(true);
+    try {
+      await restoreFromDrive();
+      await reloadAppData();
+      toast.success('Đã khôi phục dữ liệu từ Google Drive');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Khôi phục thất bại';
+      toast.error(msg);
+    } finally {
+      setDriveBusy(false);
+    }
   }
 
   function handleSaveGeminiKey(): void {
@@ -126,22 +213,51 @@ export function SettingsScreen() {
           <CardContent>
             <div className="space-y-[var(--s-md)]">
               <p className="text-xs text-text-muted">
-                Kết nối Google Drive để đồng bộ hóa dữ liệu tự động.
+                Kết nối Google Drive để sao lưu / khôi phục dữ liệu (folder{' '}
+                <code className="text-[11px]">QuanLyThuChi</code> trên Drive của bạn).
               </p>
+
+              {!driveConfigured && (
+                <p className="text-xs text-warning-fg bg-warning-bg rounded-field px-2 py-1.5">
+                  Chưa có <code>VITE_GOOGLE_CLIENT_ID</code> — OAuth sẽ không chạy được trên bản build này.
+                </p>
+              )}
 
               {isGoogleConnected ? (
                 <div className="space-y-[var(--s-xs)]">
+                  {googleUser?.email && (
+                    <div className="flex items-center justify-between py-[var(--s-xs)]">
+                      <span className="text-xs text-text-muted">Tài khoản</span>
+                      <span className="text-xs text-text-primary truncate max-w-[60%]">
+                        {googleUser.email}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between py-[var(--s-xs)]">
                     <span className="text-xs text-text-muted">Trạng thái</span>
-                    <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge">Đang hoạt động</Badge>
+                    <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge">
+                      Đang hoạt động
+                    </Badge>
                   </div>
-                  <Button variant="destructive" onClick={handleDisconnectDrive}>
-                    Ngắt kết nối
-                  </Button>
+                  <div className="flex flex-wrap gap-[var(--s-xs)]">
+                    <Button variant="secondary" disabled={driveBusy} onClick={() => void handleSyncNow()}>
+                      {driveBusy
+                        ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang xử lý…</>
+                        : <><RefreshCw className="mr-2 h-4 w-4" />Đồng bộ ngay</>}
+                    </Button>
+                    <Button variant="outline" disabled={driveBusy} onClick={() => void handleRestoreFromDrive()}>
+                      <Download className="mr-2 h-4 w-4" />Khôi phục từ Drive
+                    </Button>
+                    <Button variant="destructive" disabled={driveBusy} onClick={() => void handleDisconnectDrive()}>
+                      Ngắt kết nối
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <Button variant="default" onClick={handleConnectDrive}>
-                  <Cloud className="mr-2 h-4 w-4" />Kết nối Google Drive
+                <Button variant="default" disabled={driveBusy || !driveConfigured} onClick={() => void handleConnectDrive()}>
+                  {driveBusy
+                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kết nối…</>
+                    : <><Cloud className="mr-2 h-4 w-4" />Kết nối Google Drive</>}
                 </Button>
               )}
             </div>
@@ -241,7 +357,7 @@ export function SettingsScreen() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Phiên bản</span>
-                <span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">1.0.0</span>
+                <span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">1.0.3</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Mô tả</span>

@@ -40,6 +40,8 @@ jobs:
         run: npm run test
 
       - name: Build
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: npx vite build --base=/quan-ly-thu-chi/
 
       - name: SPA fallback for GitHub Pages

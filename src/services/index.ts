@@ -68,11 +68,22 @@ export {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
-export { bootstrapAppData, isAppDataReady } from './bootstrap';
+export { bootstrapAppData, reloadAppData, isAppDataReady } from './bootstrap';
 
 // ── Google Drive ─────────────────────────────────────────────────────────────
 
-export { connectGoogleDrive, syncFromDrive, syncToDrive, isDriveConnected, uploadInvoiceImage } from './googleDrive';
+export {
+  connectGoogleDrive,
+  disconnectDrive,
+  syncFromDrive,
+  syncToDrive,
+  syncAppData,
+  restoreFromDrive,
+  isDriveConnected,
+  isGoogleDriveConfigured,
+  uploadInvoiceImage,
+  getDriveUser,
+} from './googleDrive';
 
 // ── AI ───────────────────────────────────────────────────────────────────────
 

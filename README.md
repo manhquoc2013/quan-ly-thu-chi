@@ -1,6 +1,6 @@
 # Quản Lý Tài Chính
 
-> **Trạng thái**: Đang phát triển · **Phiên bản**: 1.0.2 · **Cập nhật**: 2026-08-02
+> **Trạng thái**: Đang phát triển · **Phiên bản**: 1.0.3 · **Cập nhật**: 2026-08-02
 
 Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI, lưu trữ dữ liệu local (SQLite/IndexedDB) + Google Drive sync. Hỗ trợ PWA (cài như app native) và CI/CD tự động deploy lên GitHub Pages.
 
