@@ -29,6 +29,8 @@ Schema:
   "depositAmount": number|null,
   "shippingFee": number|null,
   "shippingPayer": "customer"|"shop"|null,
+  "paymentStatus": "paid"|"unpaid"|null,
+  "paymentMethod": "cash"|"bank_transfer"|"credit_card"|"e_wallet"|null,
   "orderStatus": "new"|"confirmed"|"processing"|"completed"|"cancelled"|null,
   "targetHint": string|null,
   "query": string|null,
@@ -74,9 +76,14 @@ Thu / trả tiền:
 - "thu 50k từ Hùng" / "thu được 100k bán kẹp tóc" / "nhận 50k từ Hoa" / "Hoa ck 200k"
 - "doanh thu 200k bán mỹ phẩm" / "thêm doanh thu 100k …" / "ghi thu 50k …"
 - "order kẹp tóc 40k cho Hoa" / "đơn thú len 120k của Hà" / "đơn hàng Hoa 90k"
-Công nợ / đã thanh toán (gợi ý summaryVi; app mặc định unpaid nếu không nói):
-- "… chưa thanh toán" / "công nợ" / "ghi nợ" → summaryVi="chưa thanh toán".
-- "… đã trả" / "đã thanh toán" / "rồi" sau số tiền đơn → summaryVi="đã thanh toán".
+Công nợ / đã thanh toán (paymentStatus + paymentMethod; app mặc định unpaid/cash nếu không nói):
+- "… chưa thanh toán" / "công nợ" / "ghi nợ" → paymentStatus=unpaid.
+- "… đã thanh toán" / "đã trả" / "paid" → paymentStatus=paid.
+- "chuyển khoản" / "ck" / "transfer" → paymentMethod=bank_transfer (+ paid nếu nói đã thanh toán/ck).
+- "tiền mặt" / "cash" → paymentMethod=cash.
+- "momo" / "zalopay" / "ví" → paymentMethod=e_wallet.
+- Ví dụ: "bán cho Hoa 3 kẹp tóc giá 90k, đã thanh toán bằng chuyển khoản"
+  → create_revenue; paid; bank_transfer; amount=90000; qty=3.
 Mô tả & SL:
 - description = tên SP ngắn; BỎ: tên khách, qua/ở/trên/tại/kênh/bên + tên sàn, "giá", "mua/bán cho".
 - qty mặc định 1; "3" / "3 cái/chiếc/bộ/cặp/set" → quantity=3.

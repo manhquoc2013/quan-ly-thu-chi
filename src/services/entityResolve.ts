@@ -63,9 +63,9 @@ export function productQueryFromDescription(description: string): string {
   s = s.replace(/\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m|₫|đ|vnd)?\b/gi, ' ');
   // Drop qty phrases
   s = s.replace(/\b\d+\s*(?:cái|chiếc|bộ|cặp|set|ly|chai|hộp)\b/gi, ' ');
-  // Drop sale boilerplate
+  // Drop sale / payment boilerplate
   s = s.replace(
-    /\b(?:tôi|mình|em|vừa|bán(?:\s+cho)?|cho\s+[A-Za-zÀ-ỹ]+|khách)\b/gi,
+    /\b(?:tôi|mình|em|vừa|bán(?:\s+cho)?|cho\s+[A-Za-zÀ-ỹ]+|khách|đã\s*thanh\s*toán|thanh\s*toán|bằng\s*chuyển\s*khoản|chuyển\s*khoản|\bck\b|tiền\s*mặt)\b/gi,
     ' ',
   );
   s = s.replace(/\s+/g, ' ').trim();

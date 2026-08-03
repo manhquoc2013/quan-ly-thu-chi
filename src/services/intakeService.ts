@@ -422,7 +422,7 @@ async function persistRevenueDraft(draft: DraftRecord) {
         : undefined,
       orderStatus: draft.orderStatus ?? 'new',
       deliveryStatus: 'pending',
-      paymentMethod: 'cash' as PaymentMethod,
+      paymentMethod: (draft.paymentMethod ?? 'cash') as PaymentMethod,
       paymentStatus: draft.paymentStatus ?? 'unpaid',
       paidAt: draft.paymentStatus === 'paid' ? draft.date : undefined,
       notes: noteBits.join(' · ') || undefined,

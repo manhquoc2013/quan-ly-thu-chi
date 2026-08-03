@@ -222,9 +222,15 @@ export async function executeChatIntent(
         const platLabel =
           plat.status === 'resolved' ? ` · kênh **${plat.name}**` : '';
         const qtyLabel = (draft.quantity ?? 1) > 1 ? ` · SL **${draft.quantity}**` : '';
+        const payLabel =
+          draft.paymentStatus === 'paid'
+            ? draft.paymentMethod === 'bank_transfer'
+              ? ' · **đã TT · CK**'
+              : ' · **đã thanh toán**'
+            : '';
         return {
           ok: true,
-          message: `Đã thêm doanh thu: **${prod.status === 'resolved' ? prod.name : draft.description}** — ${formatCurrency(draft.amount)}${qtyLabel}${custLabel}${platLabel}`,
+          message: `Đã thêm doanh thu: **${prod.status === 'resolved' ? prod.name : draft.description}** — ${formatCurrency(draft.amount)}${qtyLabel}${custLabel}${platLabel}${payLabel}`,
           createdRecord: { kind: created[0].kind, id: created[0].id },
         };
       }

@@ -1,11 +1,12 @@
 /**
  * Post-process LLM intents against the source message to strip hallucinations
- * common with small local models (wrong kind, qty, platform, customer).
+ * common with small local models (wrong kind, qty, platform, customer, payment).
  */
 
 import { extractMoneyFromText, parseMoney } from './amountParser';
 import { fillMissingSlots, type ChatIntent } from './chatIntent';
 import { productQueryFromDescription } from './entityResolve';
+import type { PaymentMethod, PaymentStatus } from '@/models';
 
 const PLATFORM_ALIASES: Record<string, string[]> = {
   Shopee: ['shopee', 'shope', 'shoppe'],
@@ -22,7 +23,6 @@ function looksLikeExpenseOnly(lower: string): boolean {
   const revenueCue =
     /\b(bán(\s+cho)?|thu\s+\d|doanh thu|khách\s+\S+\s+(mua|lấy|đặt))\b/i.test(lower) ||
     /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower);
-  // "mua len" at start = expense; "Hoa mua" = revenue (caught above)
   const shopBuy = /^(?:tôi|mình|em|shop)?\s*(?:vừa\s+)?(?:mua|nhập|chi)\b/i.test(lower);
   return (expenseCue && !revenueCue) || shopBuy;
 }
@@ -64,8 +64,35 @@ function platformMentioned(lower: string, platformName: string): boolean {
   return aliases.some((a) => lower.includes(a));
 }
 
+export function extractPaymentFromMessage(message: string): {
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+} {
+  const lower = message.toLowerCase();
+  let paymentStatus: PaymentStatus | undefined;
+  if (/\b(chưa thanh toán|công nợ|ghi nợ|chưa trả)\b/i.test(lower)) {
+    paymentStatus = 'unpaid';
+  } else if (/\b(đã thanh toán|đã trả|paid|thanh toán rồi)\b/i.test(lower)) {
+    paymentStatus = 'paid';
+  }
+
+  let paymentMethod: PaymentMethod | undefined;
+  if (/\b(chuyển khoản|chuyen khoan|\bck\b|transfer|banking)\b/i.test(lower)) {
+    paymentMethod = 'bank_transfer';
+    paymentStatus ??= 'paid';
+  } else if (/\b(tiền mặt|tien mat|cash)\b/i.test(lower)) {
+    paymentMethod = 'cash';
+  } else if (/\b(thẻ|the tin dung|credit card|visa|mastercard)\b/i.test(lower)) {
+    paymentMethod = 'credit_card';
+  } else if (/\b(momo|zalopay|ví điện tử|e-?wallet)\b/i.test(lower)) {
+    paymentMethod = 'e_wallet';
+  }
+
+  return { paymentStatus, paymentMethod };
+}
+
 /**
- * Correct kind / amount / qty / entities using only the user message.
+ * Correct kind / amount / qty / entities / payment using only the user message.
  */
 export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent): ChatIntent {
   const lower = message.toLowerCase();
@@ -107,14 +134,12 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
   if (qty != null) {
     next = { ...next, quantity: qty };
   } else if (next.quantity && next.quantity > 1) {
-    // No qty word in message → drop hallucinated SL (e.g. SL 10)
     next = { ...next, quantity: 1 };
   }
 
   const amount = extractPrimaryAmountVnd(message);
   if (amount != null) {
     if (next.intent === 'create_revenue' && (next.quantity ?? 1) > 1) {
-      // "3 cái giá 90k" → amount is TOTAL (90k), unitPrice = total/qty
       next = {
         ...next,
         amount,
@@ -125,19 +150,22 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
     }
   }
 
-  // Description: clean product / expense text (drop multi-tx + price noise)
   if (next.intent === 'create_revenue') {
+    const pay = extractPaymentFromMessage(message);
+    next = {
+      ...next,
+      paymentStatus: pay.paymentStatus ?? next.paymentStatus,
+      paymentMethod: pay.paymentMethod ?? next.paymentMethod,
+    };
     const rawDesc = next.description ?? message;
     const cleaned = productQueryFromDescription(rawDesc);
     if (cleaned.length >= 2) next = { ...next, description: cleaned };
   } else if (next.intent === 'create_expense') {
     const raw = next.description && next.description.length >= 2 ? next.description : message;
-    const cleaned = productQueryFromDescription(raw)
-      .replace(/\b(uống|ăn)\b/gi, (m) => m)
-      .trim();
+    const cleaned = productQueryFromDescription(raw).trim();
     const fallback = message
       .replace(/\d[\d.,]*\s*(k|nghìn|ngàn|tr|triệu|m)?/gi, '')
-      .replace(/\b(hết|giá|tôi|vừa|lại|sau đó|rồi)\b/gi, '')
+      .replace(/\b(hết|giá|tôi|vừa|lại|sau đó|rồi|đã thanh toán|chuyển khoản)\b/gi, '')
       .trim();
     const desc = (cleaned.length >= 2 ? cleaned : fallback).slice(0, 80);
     if (desc.length >= 2) next = { ...next, description: desc };

@@ -2,7 +2,13 @@
  * Chat intent types — structured actions the LLM/regex produce for tools.
  */
 
-import type { ExpenseCategory, OrderStatus, ShippingPayer } from '@/models';
+import type {
+  ExpenseCategory,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  ShippingPayer,
+} from '@/models';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { newDraftId, todayIso, type DraftRecord } from './draftTypes';
 
@@ -33,6 +39,8 @@ export interface ChatIntent {
   depositAmount?: number;
   shippingFee?: number;
   shippingPayer?: ShippingPayer;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
   forceNewCustomer?: boolean;
   forceNewProduct?: boolean;
   forceNewPlatform?: boolean;
@@ -134,6 +142,22 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
   const shippingPayer: ShippingPayer | undefined =
     payerRaw === 'shop' || payerRaw === 'customer' ? payerRaw : undefined;
 
+  const payStatusRaw = str(o.paymentStatus);
+  const paymentStatus: PaymentStatus | undefined =
+    payStatusRaw === 'paid' || payStatusRaw === 'unpaid' ? payStatusRaw : undefined;
+
+  const payMethodRaw = str(o.paymentMethod);
+  const paymentMethods = new Set([
+    'cash',
+    'bank_transfer',
+    'credit_card',
+    'e_wallet',
+  ]);
+  const paymentMethod: PaymentMethod | undefined =
+    payMethodRaw && paymentMethods.has(payMethodRaw)
+      ? (payMethodRaw as PaymentMethod)
+      : undefined;
+
   const intentObj: ChatIntent = {
     intent,
     amount: num(o.amount),
@@ -146,6 +170,8 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     depositAmount: num(o.depositAmount),
     shippingFee: num(o.shippingFee),
     shippingPayer,
+    paymentStatus,
+    paymentMethod,
     orderStatus,
     targetHint: str(o.targetHint),
     query: str(o.query),
@@ -216,6 +242,8 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     depositAmount: patch.depositAmount ?? base.depositAmount,
     shippingFee: patch.shippingFee ?? base.shippingFee,
     shippingPayer: patch.shippingPayer ?? base.shippingPayer,
+    paymentStatus: patch.paymentStatus ?? base.paymentStatus,
+    paymentMethod: patch.paymentMethod ?? base.paymentMethod,
     forceNewCustomer: patch.forceNewCustomer ?? base.forceNewCustomer,
     forceNewProduct: patch.forceNewProduct ?? base.forceNewProduct,
     forceNewPlatform: patch.forceNewPlatform ?? base.forceNewPlatform,
@@ -347,7 +375,8 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
       shippingPayer: intent.shippingFee
         ? intent.shippingPayer ?? 'customer'
         : undefined,
-      paymentStatus: 'unpaid',
+      paymentStatus: intent.paymentStatus ?? 'unpaid',
+      paymentMethod: intent.paymentMethod,
       source,
       confidence: intent.confidence,
     };
@@ -416,6 +445,8 @@ export function draftToCreateIntent(draft: DraftRecord): ChatIntent {
     depositAmount: draft.depositAmount,
     shippingFee: draft.shippingFee,
     shippingPayer: draft.shippingPayer,
+    paymentStatus: draft.paymentStatus,
+    paymentMethod: draft.paymentMethod,
     confidence: draft.confidence ?? 0.9,
     missing: [],
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { emptyIntent, type ChatIntent } from './chatIntent';
 import {
+  extractPaymentFromMessage,
   extractPrimaryAmountVnd,
   sanitizeIntentAgainstMessage,
 } from './intentSanitize';
@@ -15,6 +16,26 @@ describe('splitMultiTx', () => {
       'tôi vừa bán cho hoa 3 cái kẹp tóc giá 90k',
       'uống nước hết 50k',
     ]);
+  });
+
+  it('keeps payment clause on the sale segment', () => {
+    const parts = splitMultiTx(
+      'tôi vừa bán cho hoa 3 cái kẹp tóc giá 90k, và đã thanh toán bằng chuyển khoản sau đó lại uống nước hết 50k',
+    );
+    expect(parts).toHaveLength(2);
+    expect(parts[0]).toMatch(/bán cho hoa.*90k/i);
+    expect(parts[0]).toMatch(/thanh toán.*chuyển khoản/i);
+    expect(parts[1]).toBe('uống nước hết 50k');
+  });
+});
+
+describe('extractPaymentFromMessage', () => {
+  it('detects paid + bank transfer', () => {
+    const pay = extractPaymentFromMessage(
+      'bán cho hoa 3 cái kẹp tóc giá 90k, đã thanh toán bằng chuyển khoản',
+    );
+    expect(pay.paymentStatus).toBe('paid');
+    expect(pay.paymentMethod).toBe('bank_transfer');
   });
 });
 
@@ -38,7 +59,7 @@ describe('sanitizeIntentAgainstMessage', () => {
     expect(fixed.amount).toBe(50000);
   });
 
-  it('keeps revenue for bán cho Hoa with qty + total giá', () => {
+  it('keeps revenue for bán cho Hoa with qty + total giá + paid CK', () => {
     const bad: ChatIntent = {
       ...emptyIntent('create_revenue'),
       amount: 90000,
@@ -49,13 +70,15 @@ describe('sanitizeIntentAgainstMessage', () => {
       confidence: 0.9,
       missing: [],
     };
-    const msg = 'tôi vừa bán cho hoa 3 cái kẹp tóc giá 90k';
+    const msg = 'tôi vừa bán cho hoa 3 cái kẹp tóc giá 90k, đã thanh toán bằng chuyển khoản';
     const fixed = sanitizeIntentAgainstMessage(msg, bad);
     expect(fixed.intent).toBe('create_revenue');
     expect(fixed.customerName?.toLowerCase()).toBe('hoa');
     expect(fixed.platformName).toBeUndefined();
     expect(fixed.quantity).toBe(3);
     expect(fixed.amount).toBe(90000);
+    expect(fixed.paymentStatus).toBe('paid');
+    expect(fixed.paymentMethod).toBe('bank_transfer');
     expect(fixed.description?.toLowerCase()).toContain('kẹp tóc');
     expect(fixed.description?.toLowerCase()).not.toContain('uống');
   });

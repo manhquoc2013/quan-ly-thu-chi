@@ -5,6 +5,7 @@
 import type {
   ExpenseCategory,
   OrderStatus,
+  PaymentMethod,
   PaymentStatus,
   ShippingPayer,
 } from '@/models';
@@ -42,6 +43,7 @@ export interface DraftRecord {
   orderItems?: DraftOrderItem[];
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
   /** Số cọc (VND) khi khách đặt cọc */
   depositAmount?: number;
   depositedAt?: string;
