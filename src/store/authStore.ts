@@ -9,10 +9,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { geminiService } from '@/services/geminiService';
+import { kiloService } from '@/services/kiloService';
 import type { UserProfile } from '@/services/authService';
 import { getUserCredentials, getUserByEmail } from '@/services/authService';
 import { generateToken, storeToken, clearToken, getStoredToken, isTokenExpired } from '@/services/tokenService';
-import { closeDatabase, deriveEncryptionKey, initDatabase, getOrCreateEncryptionKey, rewrapEncryptionKey } from '@/services/database';
+import { closeDatabase, initDatabase, getOrCreateEncryptionKey } from '@/services/database';
 import { setCacheUserId } from '@/services/cacheManager';
 
 const encoder = new TextEncoder();
@@ -47,6 +48,9 @@ interface AuthState {
   isAdmin: boolean;
   // WebLLM toggle
   enableWebLLM: boolean;
+  // Kilo Free cloud (default on when online)
+  enableKiloFree: boolean;
+  kiloApiKey: string | null;
 }
 
 export interface AuthActions {
@@ -60,6 +64,9 @@ export interface AuthActions {
   clearEmailJSConfig: () => void;
   // WebLLM toggle
   setEnableWebLLM: (v: boolean) => void;
+  // Kilo Free
+  setEnableKiloFree: (v: boolean) => void;
+  setKiloApiKey: (key: string | null) => void;
   // Local email auth actions (Wave 1)
   login: (email: string, profile: UserProfile) => void;
   logout: () => void;
@@ -74,6 +81,11 @@ type AuthStore = AuthState & AuthActions;
 function syncGeminiService(apiKey: string | null): void {
   if (apiKey) geminiService.configure(apiKey);
   else geminiService.disconnect();
+}
+
+function syncKiloService(opts: { enabled: boolean; apiKey: string | null }): void {
+  kiloService.setEnabled(opts.enabled);
+  kiloService.configure(opts.apiKey);
 }
 
 /** Derive a user ID from an email address using SHA-256. */
@@ -101,6 +113,9 @@ export const useAuthStore = create<AuthStore>()(
       emailjsConfigured: false,
       // WebLLM toggle (default: enabled)
       enableWebLLM: true,
+      // Kilo Free (default: on — cloud free before Gemini/WebLLM)
+      enableKiloFree: true,
+      kiloApiKey: null,
       // Local email auth state (Wave 1)
       isAuthenticated: false,
       userProfile: null,
@@ -160,6 +175,22 @@ export const useAuthStore = create<AuthStore>()(
         set((state) => {
           state.enableWebLLM = enableWebLLM;
         }),
+
+      setEnableKiloFree: (enableKiloFree) => {
+        set((state) => {
+          state.enableKiloFree = enableKiloFree;
+        });
+        const { kiloApiKey } = useAuthStore.getState();
+        syncKiloService({ enabled: enableKiloFree, apiKey: kiloApiKey });
+      },
+
+      setKiloApiKey: (kiloApiKey) => {
+        set((state) => {
+          state.kiloApiKey = kiloApiKey;
+        });
+        const { enableKiloFree } = useAuthStore.getState();
+        syncKiloService({ enabled: enableKiloFree !== false, apiKey: kiloApiKey });
+      },
 
       // Local email auth actions (Wave 1)
       login: async (email, profile) => {
@@ -242,6 +273,8 @@ export const useAuthStore = create<AuthStore>()(
         emailjsPrivateKey: state.emailjsPrivateKey,
         emailjsConfigured: state.emailjsConfigured,
         enableWebLLM: state.enableWebLLM,
+        enableKiloFree: state.enableKiloFree,
+        kiloApiKey: state.kiloApiKey,
         isAuthenticated: state.isAuthenticated,
         userProfile: state.userProfile,
         userId: state.userId,
@@ -252,6 +285,13 @@ export const useAuthStore = create<AuthStore>()(
         if (state?.geminiApiKey) {
           syncGeminiService(state.geminiApiKey);
           state.geminiConfigured = true;
+        }
+        syncKiloService({
+          enabled: state?.enableKiloFree !== false,
+          apiKey: state?.kiloApiKey ?? null,
+        });
+        if (state && state.enableKiloFree === undefined) {
+          state.enableKiloFree = true;
         }
         if (state?.userId && state?.isAuthenticated) {
           const storedToken = getStoredToken();

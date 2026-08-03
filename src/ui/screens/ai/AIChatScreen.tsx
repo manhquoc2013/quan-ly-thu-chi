@@ -18,13 +18,14 @@ import { useUIStore } from '@/store/uiStore';
 import { MarkdownText } from '@components/MarkdownText';
 import { DataEntryHelper } from './DataEntryHelper';
 import { toast } from 'sonner';
+import { llmSourceLabel } from '@/services/llmCall';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
   timestamp: Date;
-  source?: 'local' | 'cloud' | 'tesseract';
+  source?: 'local' | 'cloud' | 'kilo' | 'gemini' | 'tesseract';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue'; id: string };
@@ -243,11 +244,7 @@ export function AIChatScreen() {
               {msg.role === 'user' ? msg.text : <MarkdownText text={msg.text} />}
               {msg.source && (
                 <div className="mt-1 text-[10px] text-text-muted">
-                  {msg.source === 'cloud'
-                    ? '🟢 Gemini Cloud'
-                    : msg.source === 'tesseract'
-                      ? '🔤 Tesseract OCR'
-                      : '⚡ Local'}
+                  {llmSourceLabel(msg.source)}
                 </div>
               )}
               {msg.createdRecord && (

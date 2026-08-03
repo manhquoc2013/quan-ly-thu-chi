@@ -1,7 +1,7 @@
 /**
- * AI Router — Hybrid AI: WebLLM local + Gemini Cloud.
+ * AI Router — Hybrid AI: Kilo Free → Gemini → WebLLM.
  *
- * Chat messages always go through LLM intent extract (Gemini → WebLLM).
+ * Chat messages go through LLM intent extract (cloud preferred).
  * Only structured paste (order table / multi-line bulk list) uses deterministic parsers.
  *
  * Usage:
@@ -9,9 +9,10 @@
  *   const { text, source, action } = await aiRouter.sendMessage('Phân tích chi phí');
  */
 
+import { callLlmCascade } from './llmCall';
 import { geminiService } from './geminiService';
+import { kiloService } from './kiloService';
 import { webLLM } from './webLLM';
-import { useAuthStore } from '@/store/authStore';
 import { useMascotStore } from '@/store/mascotStore';
 import type { ExpenseCategory } from '@/models';
 import {
@@ -41,6 +42,7 @@ import { extractBulkDrafts } from './llmBulkDraftExtractor';
 import {
   looksLikeBulkLineList,
   parseLineListDrafts,
+  parseTextToDraft,
 } from './textDraftParser';
 import { parseOrderTableDrafts } from './orderTableParser';
 import { executeChatIntent, executeLegacyCreate } from './chatTools';
@@ -48,49 +50,28 @@ import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
 
-type RequestType = 'simple' | 'medium' | 'complex';
-type AIProvider = 'local' | 'cloud';
+export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'gemini' | 'tesseract';
 
-function classifyRequest(message: string): RequestType {
-  const complexKeywords = ['ocr', 'đọc ảnh', 'hóa đơn', 'ảnh', 'dự báo', 'dự đoán', 'báo cáo tổng hợp'];
-  const mediumKeywords = ['phân tích', 'so sánh', 'bất thường', 'xu hướng', 'thống kê', 'tổng hợp'];
-
-  const lower = message.toLowerCase();
-  if (complexKeywords.some((k) => lower.includes(k))) return 'complex';
-  if (mediumKeywords.some((k) => lower.includes(k))) return 'medium';
-  return 'simple';
-}
-
-function isOnline(): boolean {
-  return navigator.onLine;
-}
-
-async function getProvider(type: RequestType): Promise<AIProvider> {
-  const { geminiConfigured } = useAuthStore.getState();
-  const online = isOnline();
-
-  switch (type) {
-    case 'simple':
-      // Prefer Gemini for better Vietnamese responses, fallback to local when offline
-      if (geminiConfigured && online) return 'cloud';
-      if (!webLLM.isLoaded && !webLLM.isLoading) {
-        await webLLM.load();
-      }
-      return webLLM.isLoaded ? 'local' : 'cloud';
-
-    case 'medium':
-      // Prefer cloud if available, fallback to local
-      if (geminiConfigured && online) return 'cloud';
-      if (!webLLM.isLoaded && !webLLM.isLoading) await webLLM.load();
-      return webLLM.isLoaded ? 'local' : 'cloud';
-
-    case 'complex':
-      // Must use cloud
-      if (geminiConfigured && online) return 'cloud';
-      // Can't do complex without cloud — try local anyway
-      if (!webLLM.isLoaded && !webLLM.isLoading) await webLLM.load();
-      return webLLM.isLoaded ? 'local' : 'cloud';
+/** When LLM returns prose/chat, rebuild create intents from split segments via local parsers. */
+function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
+  const intents: ChatIntent[] = [];
+  for (const seg of segments) {
+    const draft = parseTextToDraft(seg, 'text');
+    if (!draft) continue;
+    intents.push(sanitizeIntentAgainstMessage(seg, draftToCreateIntent(draft)));
   }
+  return intents;
+}
+
+function isRunnableCreate(intent: ChatIntent): boolean {
+  return (
+    (intent.intent === 'create_expense' || intent.intent === 'create_revenue') &&
+    intent.missing.length === 0
+  );
+}
+
+function isCloudSource(source: string | undefined): boolean {
+  return source === 'cloud' || source === 'kilo' || source === 'gemini';
 }
 
 export interface ChatAction {
@@ -416,7 +397,7 @@ async function runIntentTool(
   opts?: { deleteConfirmed?: boolean },
 ): Promise<{
   text: string;
-  source: 'local' | 'cloud';
+  source: ChatReplySource;
   createdRecord?: { kind: 'expense' | 'revenue'; id: string };
 }> {
   const result = await executeChatIntent(intent, opts);
@@ -480,7 +461,13 @@ function addToHistory(userMsg: string, aiMsg: string): void {
 
 export const aiRouter = {
   get isConfigured(): boolean {
-    return geminiService.isConfigured || webLLM.isLoaded;
+    return (
+      (typeof navigator !== 'undefined' &&
+        navigator.onLine &&
+        kiloService.isEnabled) ||
+      geminiService.isConfigured ||
+      webLLM.isLoaded
+    );
   },
 
   // ── Thread management ─────────────────────────────────────────────────
@@ -553,7 +540,7 @@ export const aiRouter = {
     context?: string,
   ): Promise<{
     text: string;
-    source: 'local' | 'cloud';
+    source: ChatReplySource;
     action?: ChatAction;
     drafts?: DraftRecord[];
     createdRecord?: { kind: 'expense' | 'revenue'; id: string };
@@ -789,27 +776,32 @@ export const aiRouter = {
     if (segments.length > 1) {
       // One LLM call for all segments (parallel WebLLM freezes the machine)
       const multi = await extractMultiChatIntents(segments, financeCtx || undefined);
+      let intents = (multi?.intents ?? []).filter((i) => i.intent !== 'chat');
+      // Free models / Gemini often reply with a prose summary instead of JSON —
+      // fall back to local parsers so creates still persist.
+      if (!intents.some(isRunnableCreate)) {
+        const local = localCreateIntentsFromSegments(segments);
+        if (local.length) intents = local;
+      }
       const multiResults: string[] = [];
-      let source: 'local' | 'cloud' = multi?.source ?? 'local';
+      let source: ChatReplySource = multi?.source ?? 'local';
       let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
 
-      if (multi?.intents.length) {
-        for (const intent of multi.intents) {
-          if (intent.intent === 'chat') continue;
-          if (intent.mascotSay) {
-            triggerMascot(intent.mascotSay, intent.mascotEmotion);
-          }
-          if (intent.missing.length > 0) {
-            setPending({ intent, updatedAt: Date.now() });
-            multiResults.push(clarifyQuestion(intent));
-            break;
-          }
-          const out = await runIntentTool(intent);
-          multiResults.push(out.text);
-          if (out.createdRecord) lastCreated = out.createdRecord;
-          source = multi.source;
-          if (getPending()?.awaitingEntityPick) break;
+      for (const intent of intents) {
+        if (intent.mascotSay) {
+          triggerMascot(intent.mascotSay, intent.mascotEmotion);
         }
+        if (intent.missing.length > 0) {
+          setPending({ intent, updatedAt: Date.now() });
+          multiResults.push(clarifyQuestion(intent));
+          break;
+        }
+        const out = await runIntentTool(intent);
+        multiResults.push(out.text);
+        if (out.createdRecord) lastCreated = out.createdRecord;
+        if (multi?.source) source = multi.source;
+        else source = 'local';
+        if (getPending()?.awaitingEntityPick) break;
       }
 
       if (multiResults.length > 0) {
@@ -849,11 +841,32 @@ export const aiRouter = {
           }
         }
         addToHistory(trimmed, out.text);
-        return { ...out, source: extracted.source === 'cloud' ? 'cloud' : out.source };
+        return { ...out, source: isCloudSource(extracted.source) ? extracted.source : out.source };
+      }
+    }
+
+    // Single-segment create that LLM classified as chat — try local draft once
+    if (segments.length === 1) {
+      const localOne = localCreateIntentsFromSegments([trimmed]);
+      if (localOne.some(isRunnableCreate)) {
+        const lines: string[] = [];
+        let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
+        for (const intent of localOne) {
+          if (!isRunnableCreate(intent)) continue;
+          const out = await runIntentTool(intent);
+          lines.push(out.text);
+          if (out.createdRecord) lastCreated = out.createdRecord;
+        }
+        if (lines.length) {
+          const text = lines.join('\n');
+          addToHistory(trimmed, text);
+          return { text, source: 'local', createdRecord: lastCreated };
+        }
       }
     }
 
     // ── 3. Free chat / analysis ───────────────────────────────────────────
+    // Do not summarize multi-tx bookkeeping as chat — already tried creates above.
     const ai = await generateChatReply(trimmed, financeCtx, history);
     if (ai?.text) {
       const { cleanText, action } = parseAiAction(ai.text);
@@ -870,58 +883,33 @@ export const aiRouter = {
     }
 
     // Legacy provider path as last resort
-    const type = classifyRequest(trimmed);
-    const provider = await getProvider(type);
     const parts: string[] = [];
     if (financeCtx) parts.push(financeCtx);
     if (history) parts.push(`Lịch sử chat:\n${history}`);
     parts.push(`Người dùng: ${trimmed}`);
     const fullContext = parts.join('\n\n');
 
-    if (provider === 'cloud' && geminiService.isConfigured) {
-      try {
-        const rawText = await geminiService.generateContent(fullContext);
-        if (rawText && !rawText.startsWith('Lỗi Gemini:')) {
-          const { cleanText, action } = parseAiAction(rawText);
-          if (action) {
-            const result = await this.executeAction(action);
-            const text = result.success
-              ? `${cleanText ? `${cleanText}\n\n` : ''}✅ ${result.message}`
-              : `${cleanText ? `${cleanText}\n\n` : ''}❌ ${result.message}`;
-            addToHistory(trimmed, text);
-            return { text, source: 'cloud' };
-          }
-          addToHistory(trimmed, cleanText);
-          return { text: cleanText, source: 'cloud' };
-        }
-      } catch {
-        /* fallback */
+    const cascaded = await callLlmCascade(fullContext, 'chat');
+    if (cascaded?.text) {
+      const { cleanText, action } = parseAiAction(cascaded.text);
+      if (action) {
+        const result = await this.executeAction(action);
+        const text = result.success
+          ? `${cleanText ? `${cleanText}\n\n` : ''}✅ ${result.message}`
+          : `${cleanText ? `${cleanText}\n\n` : ''}❌ ${result.message}`;
+        addToHistory(trimmed, text);
+        return { text, source: cascaded.source };
       }
+      addToHistory(trimmed, cleanText);
+      return { text: cleanText, source: cascaded.source };
     }
 
-    if (webLLM.isLoaded) {
-      try {
-        const rawText = await webLLM.generate(fullContext, { mode: 'chat', maxTokens: 1024 });
-        const { cleanText, action } = parseAiAction(rawText);
-        if (action) {
-          const result = await this.executeAction(action);
-          const text = result.success
-            ? `${cleanText ? `${cleanText}\n\n` : ''}✅ ${result.message}`
-            : `${cleanText ? `${cleanText}\n\n` : ''}❌ ${result.message}`;
-          addToHistory(trimmed, text);
-          return { text, source: 'local' };
-        }
-        addToHistory(trimmed, cleanText);
-        return { text: cleanText, source: 'local' };
-      } catch {
-        /* fall through */
-      }
-    } else if (!webLLM.isLoading) {
+    if (!webLLM.isLoaded && !webLLM.isLoading) {
       void webLLM.load();
     }
 
     const fallback =
-      '🤖 Chưa gọi được AI (Gemini/WebLLM).\n\n• Cấu hình Gemini ở Cài đặt, hoặc đợi WebLLM tải\n• Gửi lại sau khi model sẵn sàng: `cà phê 25k` / `bán cho Hoa 3 kẹp tóc giá 15k`';
+      '🤖 Chưa gọi được AI (Kilo Free / Gemini / WebLLM).\n\n• Online: bật Kilo Free ở Cài đặt (không cần key)\n• Hoặc cấu hình Gemini; offline thì đợi WebLLM tải\n• Gửi lại: `cà phê 25k` / `bán cho Hoa 3 kẹp tóc giá 15k`';
     addToHistory(trimmed, fallback);
     return { text: fallback, source: 'local' };
   },

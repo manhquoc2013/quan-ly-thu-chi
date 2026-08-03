@@ -54,18 +54,28 @@ export function productQueryFromDescription(description: string): string {
   s = s.replace(/^SL\s*\d+\s*/i, '');
   // Drop second clause of multi-tx leftovers
   s = s.replace(/\s*(?:sau đó|rồi(?:\s+lại)?|và rồi)\b[\s\S]*$/i, '');
-  // Drop price clauses
+  // "{Tên} đã trả/chuyển … cho SP" → keep SP only
   s = s.replace(
-    /\s*(?:giá(?:\s*mỗi\s*cái)?|hết|tổng|thành tiền|đơn giá)\s*:?\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m)?/gi,
+    /^(?:khách\s+)?[A-Za-zÀ-ỹ]{2,}(?:\s+[A-Za-zÀ-ỹ]{2,})?\s+(?:đã\s+)?(?:trả|chuyển|đưa)\s+/i,
     '',
   );
-  // Drop bare money tokens
-  s = s.replace(/\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m|₫|đ|vnd)?\b/gi, ' ');
-  // Drop qty phrases
-  s = s.replace(/\b\d+\s*(?:cái|chiếc|bộ|cặp|set|ly|chai|hộp)\b/gi, ' ');
-  // Drop sale / payment boilerplate
+  // Drop price clauses
   s = s.replace(
-    /\b(?:tôi|mình|em|vừa|bán(?:\s+cho)?|cho\s+[A-Za-zÀ-ỹ]+|khách|đã\s*thanh\s*toán|thanh\s*toán|bằng\s*chuyển\s*khoản|chuyển\s*khoản|\bck\b|tiền\s*mặt)\b/gi,
+    /\s*(?:giá(?:\s*mỗi\s*cái)?|hết|tổng|thành tiền|đơn giá)\s*:?\s*\d[\d.,]*\s*(?:k|nghìn|ngàn|tr|triệu|m)?(?![a-zà-ỹ])/gi,
+    '',
+  );
+  // Drop bare money — do NOT cut "k" in "kẹp" (JS \b is ASCII-only)
+  s = s.replace(/\s*\d[\d.,]*\s*(?:nghìn|ngàn|triệu|tr|vnd|đồng)(?![a-zà-ỹ])/gi, ' ');
+  s = s.replace(/\s*\d[\d.,]*\s*[kKmM](?![a-zA-ZÀ-ỹ])/g, ' ');
+  s = s.replace(/\s*\d[\d.,]*\s*[₫đ](?![a-zA-ZÀ-ỹ])/gi, ' ');
+  s = s.trim();
+  s = s.replace(/^cho\s+/i, '');
+  // Leading qty before product name: "6 kẹp tóc"
+  s = s.replace(/^\d+\s+(?=[A-Za-zÀ-ỹ])/u, '');
+  s = s.replace(/\b\d+\s*(?:cái|chiếc|bộ|cặp|set|ly|chai|hộp)\b/gi, ' ');
+  // Narrator / payment boilerplate (keep product words)
+  s = s.replace(
+    /\b(?:tôi|mình|em|vừa|đi|bán(?:\s+cho)?|khách|đã\s*thanh\s*toán|thanh\s*toán|bằng\s*chuyển\s*khoản|chuyển\s*khoản|\bck\b|tiền\s*mặt)\b/gi,
     ' ',
   );
   s = s.replace(/\s+/g, ' ').trim();

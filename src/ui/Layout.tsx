@@ -20,6 +20,7 @@ import { ChatPanel } from '@screens/ai/ChatPanel';
 import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { webLLM } from '@/services/webLLM';
+import { kiloService } from '@/services/kiloService';
 
 const tabs = [
   { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },
@@ -91,11 +92,17 @@ export function Layout() {
     };
   }, []);
 
-  // Sync WebLLM disabled state from store
+  // Sync WebLLM + Kilo Free from store
   const enableWebLLM = useAuthStore((s) => s.enableWebLLM);
+  const enableKiloFree = useAuthStore((s) => s.enableKiloFree);
+  const kiloApiKey = useAuthStore((s) => s.kiloApiKey);
   useEffect(() => {
     webLLM.setDisabled(!enableWebLLM);
   }, [enableWebLLM]);
+  useEffect(() => {
+    kiloService.setEnabled(enableKiloFree !== false);
+    kiloService.configure(kiloApiKey);
+  }, [enableKiloFree, kiloApiKey]);
 
   // Live clock
   useEffect(() => {

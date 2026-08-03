@@ -100,4 +100,11 @@ describe('entityResolve', () => {
     const r = await resolveProductForOrder('áo thun', { silent: true });
     expect(r.status).toBe('ambiguous');
   });
+
+  it('productQuery keeps kẹp (does not strip k as nghìn)', async () => {
+    const { productQueryFromDescription } = await import('./entityResolve');
+    expect(productQueryFromDescription('6 kẹp tóc')).toMatch(/kẹp tóc/i);
+    expect(productQueryFromDescription('Hoa đã trả 300k cho 6 kẹp tóc')).toMatch(/^kẹp tóc$/i);
+    expect(productQueryFromDescription('tôi đi uống nước hết 30k')).toMatch(/uống nước/i);
+  });
 });

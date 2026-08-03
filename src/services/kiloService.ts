@@ -1,0 +1,143 @@
+/**
+ * Kilo AI Gateway — free cloud models via OpenAI-compatible API.
+ *
+ * Default model: kilo-auto/free (server picks best free model).
+ * Docs: https://kilo.ai/docs/gateway
+ *
+ * Browser CORS: Gateway does not allow browser origins. In DEV we call the
+ * Vite proxy (`/api/kilo` → https://api.kilo.ai/api/gateway). Production
+ * static hosts need `VITE_KILO_GATEWAY_BASE` pointing at a same-origin /
+ * CORS-enabled reverse proxy, otherwise calls fail and cascade falls back.
+ *
+ * Free tier works anonymously (~200 req/h/IP). Optional API key for higher limits.
+ * Privacy: Auto Free may route to providers that log prompts — do not send secrets.
+ */
+
+const FREE_MODEL = 'kilo-auto/free';
+const REQUEST_TIMEOUT_MS = 45_000;
+const DIRECT_GATEWAY = 'https://api.kilo.ai/api/gateway';
+
+let apiKey: string | null = null;
+let enabled = true;
+
+export type KiloGenerateResult = {
+  text: string;
+  model: string;
+};
+
+/** Same-origin proxy in DEV; optional env override; else direct (often CORS-blocked). */
+export function getKiloGatewayBase(): string {
+  const fromEnv = (import.meta.env.VITE_KILO_GATEWAY_BASE as string | undefined)?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  if (import.meta.env.DEV) return '/api/kilo';
+  return DIRECT_GATEWAY;
+}
+
+function authHeaders(): HeadersInit {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return headers;
+}
+
+export const kiloService = {
+  get isEnabled(): boolean {
+    return enabled;
+  },
+
+  get model(): string {
+    return FREE_MODEL;
+  },
+
+  get hasApiKey(): boolean {
+    return !!apiKey;
+  },
+
+  setEnabled(v: boolean): void {
+    enabled = v;
+  },
+
+  configure(key: string | null): void {
+    apiKey = key?.trim() || null;
+  },
+
+  /**
+   * Chat completion against kilo-auto/free.
+   * Returns null on network/HTTP failure so callers can fall back.
+   */
+  async generateContent(prompt: string): Promise<string | null> {
+    if (!enabled || !navigator.onLine) return null;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const url = `${getKiloGatewayBase()}/chat/completions`;
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: authHeaders(),
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: FREE_MODEL,
+          temperature: 0.2,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.warn(`Kilo Gateway HTTP ${res.status}:`, body.slice(0, 200));
+        return null;
+      }
+
+      const data = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string | null } }>;
+        model?: string;
+        error?: { message?: string };
+      };
+
+      if (data.error?.message) {
+        console.warn('Kilo Gateway error:', data.error.message);
+        return null;
+      }
+
+      const msg = data.choices?.[0]?.message as
+        | { content?: string | null; reasoning?: string | null }
+        | undefined;
+      // Some free models return empty content + fill `reasoning` instead
+      const text = msg?.content?.trim() || msg?.reasoning?.trim() || '';
+      return text || null;
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        console.warn('Kilo Gateway timeout');
+      } else {
+        console.warn('Kilo Gateway request failed:', err);
+      }
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  },
+
+  /** Lightweight ping for Settings. */
+  async testConnection(): Promise<{ ok: boolean; detail: string }> {
+    if (!navigator.onLine) return { ok: false, detail: 'Offline — cần mạng cho Kilo Free' };
+    const text = await this.generateContent('Trả lời đúng một từ: OK');
+    if (!text) {
+      return {
+        ok: false,
+        detail: 'Không kết nối được Kilo (CORS/proxy, rate limit, hoặc mạng)',
+      };
+    }
+    return { ok: true, detail: `${text.slice(0, 40)} · ${FREE_MODEL}` };
+  },
+};

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { geminiService } from '@/services/geminiService';
+import { kiloService } from '@/services/kiloService';
 import { clearToken } from '@/services/tokenService';
 import {
   connectGoogleDrive,
@@ -66,10 +67,13 @@ export function SettingsScreen() {
     isAdmin,
     enableWebLLM,
     setEnableWebLLM,
+    enableKiloFree,
+    setEnableKiloFree,
   } = useAuthStore();
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
+  const [testingKilo, setTestingKilo] = useState(false);
   const [driveBusy, setDriveBusy] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -277,6 +281,20 @@ export function SettingsScreen() {
     toast.message('Đã xóa Gemini API key');
   }
 
+  async function handleTestKilo(): Promise<void> {
+    setTestingKilo(true);
+    try {
+      kiloService.setEnabled(true);
+      const result = await kiloService.testConnection();
+      if (result.ok) toast.success(`Kilo Free OK — ${result.detail}`);
+      else toast.error(`Kilo Free: ${result.detail}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không kết nối được Kilo');
+    } finally {
+      setTestingKilo(false);
+    }
+  }
+
   function handleLogout(): void {
     logout();
     clearToken();
@@ -412,6 +430,88 @@ export function SettingsScreen() {
                     : <><Cloud className="mr-2 h-4 w-4" />Kết nối Google Drive</>}
                 </Button>
               )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="Kilo Free AI settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-accent-fg" />
+                <CardTitle>Kilo Free (cloud)</CardTitle>
+              </div>
+              {enableKiloFree !== false ? (
+                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
+                  <CheckCircle size={12} className="inline" aria-hidden="true" />
+                  Ưu tiên online
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1">
+                  <XCircle size={12} className="inline" aria-hidden="true" />
+                  Tắt
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-sm)]">
+              <p className="text-xs text-text-muted">
+                Dùng{' '}
+                <a
+                  href="https://kilo.ai/docs/gateway/models-and-providers"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-fg underline"
+                >
+                  kilo-auto/free
+                </a>
+                {' '}— tự chọn model free tốt nhất qua{' '}
+                <a
+                  href="https://kilo.ai/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-fg underline"
+                >
+                  Kilo Gateway
+                </a>
+                . Không cần API key. Giới hạn ~200 req/giờ/IP.
+              </p>
+              <p className="text-xs text-warning-fg">
+                Privacy: Auto Free có thể gửi prompt tới provider log dữ liệu (vd. NVIDIA trial).
+                Không gửi thông tin mật/cá nhân nhạy cảm. Dev dùng proxy Vite (`/api/kilo`) vì Gateway chặn CORS browser.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-primary">Bật Kilo Free (ưu tiên trước Gemini)</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enableKiloFree !== false}
+                  onClick={() => setEnableKiloFree(!(enableKiloFree !== false))}
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
+                    (enableKiloFree !== false ? 'bg-accent-fg' : 'bg-input-bg border-input-border')
+                  }
+                >
+                  <span
+                    className={
+                      'pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ' +
+                      (enableKiloFree !== false ? 'translate-x-4' : 'translate-x-0')
+                    }
+                  />
+                </button>
+              </div>
+              <Button
+                variant="secondary"
+                disabled={testingKilo || enableKiloFree === false}
+                onClick={() => void handleTestKilo()}
+              >
+                {testingKilo
+                  ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kiểm tra…</>
+                  : 'Kiểm tra Kilo Free'}
+              </Button>
             </div>
           </CardContent>
         </Card>

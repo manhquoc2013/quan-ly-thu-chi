@@ -60,16 +60,18 @@ export function parseTextToDraft(
   message: string,
   source: DraftSource = 'text',
 ): DraftRecord | null {
-  const lower = message.toLowerCase().trim();
+  // Common mobile typos before matching
+  const normalized = message.replace(/\bnết\b/gi, 'hết');
+  const lower = normalized.toLowerCase().trim();
   if (!lower) return null;
 
   // Never treat pure analysis as create
   if (isAnalysisOnly(lower)) return null;
 
-  const revenue = tryRevenue(lower, message, source);
+  const revenue = tryRevenue(lower, normalized, source);
   if (revenue) return validateDraft(revenue);
 
-  const expense = tryExpense(lower, message, source);
+  const expense = tryExpense(lower, normalized, source);
   if (expense) return validateDraft(expense);
 
   return null;
@@ -204,6 +206,40 @@ function tryRevenue(lower: string, original: string, source: DraftSource): Draft
   // "{khách} mua/lấy/đặt [{SL}] {SP} [qua kênh] [giá] {tiền}" — revenue
   const customerSale = parseCustomerSale(core, source, extras, lower);
   if (customerSale) return validateDraft(customerSale);
+
+  // "{Tên} (đã) trả/chuyển/đưa N cho/mua SP" — khách trả tiền hàng
+  const paidFor = lower.match(
+    new RegExp(
+      `^(\\S+)\\s+(?:đã\\s+)?(?:trả|chuyển|đưa)\\s+${MONEY}\\s+(?:cho|mua)\\s+(.+)$`,
+      'i',
+    ),
+  );
+  if (paidFor) {
+    const money = normalizeCasualMoney(parseMoney(paidFor[2]!), paidFor[2]!);
+    if (money && money.amountVnd > 0) {
+      let product = cleanDesc(paidFor[3]!);
+      let quantity: number | undefined;
+      const qm = product.match(/^(\d+)\s+(.+)$/);
+      if (qm) {
+        quantity = Math.max(1, parseInt(qm[1]!, 10));
+        product = cleanDesc(qm[2]!);
+      }
+      if (product.length >= 2) {
+        return makeDraft({
+          kind: 'revenue',
+          amount: money.amountVnd,
+          description: capitalize(product),
+          customerName: capitalize(cleanDesc(paidFor[1]!)),
+          quantity,
+          unitPrice:
+            quantity && quantity > 1 ? Math.round(money.amountVnd / quantity) : undefined,
+          paymentStatus: 'paid',
+          source,
+          rawFx: money.rawFx,
+        });
+      }
+    }
+  }
 
   const patterns: Array<{
     re: RegExp;
@@ -548,8 +584,8 @@ function tryExpense(lower: string, original: string, source: DraftSource): Draft
     // Nhập hàng / nhập kho → chi phí
     { re: new RegExp(`^nhập\\s+(?:hàng\\s+)?(.+?)\\s+${MONEY}\\s*$`, 'i'), amountFirst: false },
     { re: new RegExp(`^nhập\\s+${MONEY}\\s+(.+)`, 'i'), amountFirst: true },
-    { re: new RegExp(`^(?:đổ|bơm)\\s*xăng\\s+${MONEY}\\s*$`, 'i'), amountFirst: true },
-    { re: new RegExp(`^xăng\\s+${MONEY}\\s*$`, 'i'), amountFirst: true },
+    { re: new RegExp(`^(?:đổ|bơm)\\s*xăng\\s+(?:hết\\s+)?${MONEY}\\s*$`, 'i'), amountFirst: true },
+    { re: new RegExp(`^xăng\\s+(?:hết\\s+)?${MONEY}\\s*$`, 'i'), amountFirst: true },
     { re: new RegExp(`^(.+?)\\s+hết\\s+${MONEY}\\s*$`, 'i'), amountFirst: false },
     { re: new RegExp(`^(.+?)\\s+(?:giá|phí|cước)\\s+${MONEY}\\s*$`, 'i'), amountFirst: false },
     { re: new RegExp(`^${MONEY}\\s+(?:cho|mua|chi|trả)?\\s*(.+)`, 'i'), amountFirst: true },

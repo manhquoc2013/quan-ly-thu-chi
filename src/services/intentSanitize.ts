@@ -17,12 +17,23 @@ const PLATFORM_ALIASES: Record<string, string[]> = {
   'Trực tiếp': ['trực tiếp', 'offline', 'tại quán', 'tại shop'],
 };
 
+/** "{Tên} (đã) trả/chuyển/đưa N cho SP" = khách trả tiền hàng → revenue */
+function looksLikeCustomerPaid(lower: string): boolean {
+  // Avoid \b after Vietnamese letters (JS \w is ASCII-only → \b breaks on "trả")
+  return (
+    /(?:^|\s)(?:khách\s+)?[A-Za-zÀ-ỹ]{2,}(?:\s+[A-Za-zÀ-ỹ]{2,})?\s+(?:đã\s+)?(?:trả|chuyển|đưa|ck)(?:\s|$)/i.test(
+      lower,
+    ) && !/^(?:tôi|mình|em|shop)\b/i.test(lower.trim())
+  );
+}
+
 function looksLikeExpenseOnly(lower: string): boolean {
   const expenseCue =
     /\b(uống|ăn\s|cafe|cà phê|đổ xăng|bơm xăng|grab|chi\s|tiêu\s|nhập\s|mua\s)/i.test(lower);
   const revenueCue =
     /\b(bán(\s+cho)?|thu\s+\d|doanh thu|khách\s+\S+\s+(mua|lấy|đặt))\b/i.test(lower) ||
-    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower);
+    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower) ||
+    looksLikeCustomerPaid(lower);
   const shopBuy = /^(?:tôi|mình|em|shop)?\s*(?:vừa\s+)?(?:mua|nhập|chi)\b/i.test(lower);
   return (expenseCue && !revenueCue) || shopBuy;
 }
@@ -30,7 +41,8 @@ function looksLikeExpenseOnly(lower: string): boolean {
 function looksLikeRevenue(lower: string): boolean {
   return (
     /\b(bán(\s+cho)?|thu\s+\d|doanh thu)\b/i.test(lower) ||
-    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower)
+    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower) ||
+    looksLikeCustomerPaid(lower)
   );
 }
 
@@ -54,8 +66,13 @@ export function extractPrimaryAmountVnd(message: string): number | undefined {
 }
 
 function extractQuantity(message: string): number | undefined {
-  const m = message.match(/(\d+)\s*(cái|chiếc|bộ|cặp|set|ly|chai|hộp)/i);
-  if (m) return Math.max(1, parseInt(m[1]!, 10));
+  const withUnit = message.match(/(\d+)\s*(cái|chiếc|bộ|cặp|set|ly|chai|hộp)/i);
+  if (withUnit) return Math.max(1, parseInt(withUnit[1]!, 10));
+  // "6 kẹp tóc" / "3 thú len" — số + tên SP (không phải tiền 300k / 1tr)
+  const withProduct = message.match(
+    /(?:cho|mua|bán|lấy|đặt)\s+(\d+)\s+(?!k(?:\s|$)|m(?:\s|$)|nghìn|ngàn|tr(?:\s|$)|triệu)([A-Za-zÀ-ỹ]{2,})/i,
+  );
+  if (withProduct) return Math.max(1, parseInt(withProduct[1]!, 10));
   return undefined;
 }
 
@@ -162,12 +179,15 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
     if (cleaned.length >= 2) next = { ...next, description: cleaned };
   } else if (next.intent === 'create_expense') {
     const raw = next.description && next.description.length >= 2 ? next.description : message;
-    const cleaned = productQueryFromDescription(raw).trim();
-    const fallback = message
-      .replace(/\d[\d.,]*\s*(k|nghìn|ngàn|tr|triệu|m)?/gi, '')
-      .replace(/\b(hết|giá|tôi|vừa|lại|sau đó|rồi|đã thanh toán|chuyển khoản)\b/gi, '')
-      .trim();
-    const desc = (cleaned.length >= 2 ? cleaned : fallback).slice(0, 80);
+    let cleaned = productQueryFromDescription(raw).trim();
+    if (cleaned.length < 2) {
+      cleaned = message
+        .replace(/\d[\d.,]*\s*[kKmM](?![a-zA-ZÀ-ỹ])/g, '')
+        .replace(/\d[\d.,]*\s*(?:nghìn|ngàn|tr|triệu|hết|giá)?/gi, '')
+        .replace(/\b(tôi|mình|em|vừa|lại|sau đó|rồi|đi|đã thanh toán|chuyển khoản)\b/gi, '')
+        .trim();
+    }
+    const desc = cleaned.slice(0, 80);
     if (desc.length >= 2) next = { ...next, description: desc };
   }
 

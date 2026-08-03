@@ -6,6 +6,7 @@
   "homepage": "https://manhquoc2013.github.io/quan-ly-thu-chi",
   "scripts": {
     "dev": "vite",
+    "dev:fresh": "rm -rf node_modules/.vite && vite --force",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "predeploy": "npm run typecheck && npm run test",

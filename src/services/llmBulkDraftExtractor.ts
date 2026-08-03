@@ -2,9 +2,7 @@
  * LLM bulk line-item extract — when regex line-list cannot parse a paste.
  */
 
-import { geminiService } from './geminiService';
-import { webLLM } from './webLLM';
-import { useAuthStore } from '@/store/authStore';
+import { callLlmCascade } from './llmCall';
 import {
   newDraftId,
   todayIso,
@@ -50,33 +48,8 @@ function extractJsonObject(text: string): unknown | null {
   }
 }
 
-async function callLlm(prompt: string): Promise<{ text: string; source: 'cloud' | 'local' } | null> {
-  const { geminiConfigured } = useAuthStore.getState();
-  if (geminiConfigured && navigator.onLine && geminiService.isConfigured) {
-    try {
-      const text = await geminiService.generateContent(prompt);
-      if (text && !text.startsWith('Lỗi Gemini:') && !text.startsWith('[Gemini chưa')) {
-        return { text, source: 'cloud' };
-      }
-    } catch {
-      /* fallback local */
-    }
-  }
-
-  try {
-    const text = await webLLM.generate(prompt, { mode: 'raw', maxTokens: 1024 });
-    if (
-      text &&
-      !text.startsWith('⚠️') &&
-      !text.startsWith('⏳') &&
-      !text.startsWith('Lỗi sinh')
-    ) {
-      return { text, source: 'local' };
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
+async function callLlm(prompt: string): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+  return callLlmCascade(prompt, 'raw');
 }
 
 export interface BulkExtractRaw {
@@ -99,7 +72,7 @@ export function normalizeBulkExtract(
     if (!item || typeof item !== 'object') continue;
     const description =
       typeof item.description === 'string' ? item.description.trim() : '';
-    let amount =
+    const amount =
       typeof item.amount === 'number' && Number.isFinite(item.amount)
         ? Math.round(item.amount)
         : typeof item.amount === 'string'
@@ -126,7 +99,7 @@ export function normalizeBulkExtract(
 export async function extractBulkDrafts(
   message: string,
   source: DraftSource = 'text',
-): Promise<{ drafts: DraftRecord[]; llmSource: 'cloud' | 'local' } | null> {
+): Promise<{ drafts: DraftRecord[]; llmSource: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
   const prompt = `${BULK_PROMPT}\n\nTin nhắn:\n"""${message.slice(0, 6000)}"""\n\nJSON:`;
   const res = await callLlm(prompt);
   if (!res) return null;

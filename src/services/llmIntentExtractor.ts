@@ -3,15 +3,13 @@
  * Returns structured ChatIntent JSON only.
  */
 
-import { geminiService } from './geminiService';
-import { webLLM } from './webLLM';
-import { useAuthStore } from '@/store/authStore';
 import {
   normalizeIntent,
   type ChatIntent,
   emptyIntent,
 } from './chatIntent';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
+import { callLlmCascade, canUseCloudLlm } from './llmCall';
 
 const EXTRACT_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng, đang phân loại intent cho app "Quản lý thu chi" (tiếng Việt).
 CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích.
@@ -73,12 +71,14 @@ Mẫu khách làm chủ ngữ (KHÔNG phải expense):
 → create_revenue; tách customerName + platformName; description=sản phẩm thuần.
 Thu / trả tiền:
 - "khách Lan trả 80k" / "Lan trả 80k" / "Lan chuyển 80k" / "Lan đưa 80k"
+- "Hoa đã trả 300k cho 6 kẹp tóc" / "Hùng trả 90k mua thú len" → create_revenue (KHÁCH trả tiền hàng = thu, KHÔNG phải expense)
 - "thu 50k từ Hùng" / "thu được 100k bán kẹp tóc" / "nhận 50k từ Hoa" / "Hoa ck 200k"
 - "doanh thu 200k bán mỹ phẩm" / "thêm doanh thu 100k …" / "ghi thu 50k …"
 - "order kẹp tóc 40k cho Hoa" / "đơn thú len 120k của Hà" / "đơn hàng Hoa 90k"
 Công nợ / đã thanh toán (paymentStatus + paymentMethod; app mặc định unpaid/cash nếu không nói):
 - "… chưa thanh toán" / "công nợ" / "ghi nợ" → paymentStatus=unpaid.
-- "… đã thanh toán" / "đã trả" / "paid" → paymentStatus=paid.
+- "… đã thanh toán" / "paid" → paymentStatus=paid.
+- "{Tên} đã trả N cho SP" = create_revenue (tiền hàng), không chỉ gắn paymentStatus.
 - "chuyển khoản" / "ck" / "transfer" → paymentMethod=bank_transfer (+ paid nếu nói đã thanh toán/ck).
 - "tiền mặt" / "cash" → paymentMethod=cash.
 - "momo" / "zalopay" / "ví" → paymentMethod=e_wallet.
@@ -90,8 +90,8 @@ Mô tả & SL:
 - Không tên khách → customerName=null (vãng lai). "bán cho" mà thiếu tên → missing=["customerName"].
 
 ## Chi phí (create_expense) — shop chi / nhập hàng
-- "cà phê 25k" / "cf 25k" / "uống nước 12k" / "ăn trưa 40k" / "ăn sáng hết 30k"
-- "đổ xăng 30k" / "bơm xăng 30k" / "xăng 30" / "grab 25k" / "ship 15k" / "shippe 20k" — chi riêng (không kèm đơn bán)
+- "cà phê 25k" / "cf 25k" / "uống nước 12k" / "tôi đi uống nước hết 30k" / "ăn trưa 40k" / "ăn sáng hết 30k" (typo "nết"≈"hết")
+- "đổ xăng 30k" / "đổ xăng hết 100k" / "bơm xăng 30k" / "xăng 30" / "grab 25k" / "ship 15k" / "shippe 20k" — chi riêng (không kèm đơn bán)
 - "chi 50k ăn trưa" / "trả 50k tiền điện" / "thanh toán 2tr tiền thuê" / "đóng 200k wifi" / "đóng tiền nhà 5tr"
 - "mua len 500k" / "mua bút 15k" / "mua thêm bông 98k" — ĐẦU CÂU là mua/nhập → expense
 - "nhập len SS5 798k" / "nhập hàng bông 98.000₫" / "nhập kho túi 50k"
@@ -151,6 +151,15 @@ function extractJsonObject(text: string): unknown | null {
   try {
     return JSON.parse(cleaned);
   } catch {
+    // Prefer {"intents":[...]} when model wraps JSON in prose
+    const intentsBlock = cleaned.match(/\{\s*"intents"\s*:\s*\[[\s\S]*\]\s*\}/);
+    if (intentsBlock) {
+      try {
+        return JSON.parse(intentsBlock[0]!);
+      } catch {
+        /* fall through */
+      }
+    }
     const m = cleaned.match(/\{[\s\S]*\}/);
     if (!m) return null;
     try {
@@ -161,58 +170,18 @@ function extractJsonObject(text: string): unknown | null {
   }
 }
 
-async function callLlmLocal(
-  prompt: string,
-  mode: 'raw' | 'chat' = 'raw',
-): Promise<{ text: string; source: 'local' } | null> {
-  try {
-    // raw: intent JSON (không chồng system). chat: trả lời hội thoại.
-    const text = await webLLM.generate(prompt, {
-      mode,
-      maxTokens: mode === 'raw' ? 256 : 512,
-    });
-    if (
-      text &&
-      !text.startsWith('⚠️') &&
-      !text.startsWith('⏳') &&
-      !text.startsWith('Lỗi sinh')
-    ) {
-      return { text, source: 'local' };
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 async function callLlm(
   prompt: string,
   localMode: 'raw' | 'chat' = 'raw',
-): Promise<{ text: string; source: 'cloud' | 'local' } | null> {
-  const { geminiConfigured } = useAuthStore.getState();
-  if (geminiConfigured && navigator.onLine && geminiService.isConfigured) {
-    try {
-      const text = await geminiService.generateContent(prompt);
-      if (text && !text.startsWith('Lỗi Gemini:') && !text.startsWith('[Gemini chưa')) {
-        return { text, source: 'cloud' };
-      }
-      // 429/404 → generateContent trả "Lỗi Gemini:…" — chuyển WebLLM
-    } catch {
-      /* fallback local */
-    }
-  }
-
-  return callLlmLocal(prompt, localMode);
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+  return callLlmCascade(prompt, localMode);
 }
 
 export async function extractChatIntent(
   message: string,
   financeContext?: string,
-): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' } | null> {
-  // Cloud chịu context dài hơn; local cắt ngắn để khỏi vượt window
-  const { geminiConfigured } = useAuthStore.getState();
-  const useCloud =
-    geminiConfigured && navigator.onLine && geminiService.isConfigured;
+): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+  const useCloud = canUseCloudLlm();
   const ctxLimit = useCloud ? 3500 : 400;
   const ctx = financeContext
     ? `\n\nNgữ cảnh dữ liệu:\n${financeContext.slice(0, ctxLimit)}`
@@ -235,15 +204,13 @@ export async function extractChatIntent(
 export async function extractMultiChatIntents(
   segments: string[],
   financeContext?: string,
-): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' } | null> {
+): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
   if (segments.length < 2) {
     const one = await extractChatIntent(segments[0] ?? '', financeContext);
     return one ? { intents: [one.intent], source: one.source } : null;
   }
 
-  const { geminiConfigured } = useAuthStore.getState();
-  const useCloud =
-    geminiConfigured && navigator.onLine && geminiService.isConfigured;
+  const useCloud = canUseCloudLlm();
   // Multi-create: skip heavy store context (hallucinations). Only pass tiny ctx if any.
   const ctx =
     financeContext && useCloud
@@ -260,10 +227,12 @@ Tin nhắn có ${segments.length} giao dịch RIÊNG (đã tách). Trả về Đ
 {"intents":[ /* ${segments.length} object cùng schema intent ở trên, theo đúng thứ tự */ ]}
 
 Quy tắc:
-- Phần có "bán/thu/khách … mua" → create_revenue.
-- Phần có "uống/ăn/chi/mua (không tên khách)/nhập" → create_expense.
+- Phần có "bán/thu/khách … mua" hoặc "{Tên} đã trả/chuyển/đưa N cho SP" → create_revenue.
+- Phần có "uống/ăn/chi/đổ xăng/tôi đi …/mua (không tên khách)/nhập" → create_expense.
 - KHÔNG gộp 2 phần thành 1. KHÔNG bịa platformName/customerName nếu phần đó không nhắc.
 - Mỗi phần chỉ lấy số tiền/SL trong chính phần đó.
+- Nếu 1 phần vẫn có ≥2 khoản tiền rõ (vd "…300k…, …30k") → tách thành nhiều object trong intents (đúng số giao dịch).
+- CẤM trả lời văn xuôi / liệt kê chi tiêu. CHỈ JSON {"intents":[...]}.
 
 Các phần:
 ${listed}
@@ -341,7 +310,7 @@ export async function generateChatReply(
   message: string,
   financeContext?: string,
   history?: string,
-): Promise<{ text: string; source: 'cloud' | 'local' } | null> {
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
   const parts = [
     'Bạn là Trợ lý Tài Chính. Trả lời tiếng Việt, ngắn gọn, dùng số liệu ngữ cảnh nếu có. Không bịa dữ liệu.',
     financeContext ? `Ngữ cảnh:\n${financeContext.slice(0, 2500)}` : '',

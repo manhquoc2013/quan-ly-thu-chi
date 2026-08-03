@@ -6,6 +6,7 @@ import {
   sanitizeIntentAgainstMessage,
 } from './intentSanitize';
 import { splitMultiTx } from './splitMultiTx';
+import { parseTextToDraft } from './textDraftParser';
 
 describe('splitMultiTx', () => {
   it('splits bán … sau đó lại uống …', () => {
@@ -26,6 +27,65 @@ describe('splitMultiTx', () => {
     expect(parts[0]).toMatch(/bán cho hoa.*90k/i);
     expect(parts[0]).toMatch(/thanh toán.*chuyển khoản/i);
     expect(parts[1]).toBe('uống nước hết 50k');
+  });
+
+  it('splits comma + và into 3 txs (revenue + 2 expenses)', () => {
+    const parts = splitMultiTx(
+      'Hoa đã trả 300k cho 6 kẹp tóc, tôi đi uống nước nết 30k và đổ xăng hết 100k',
+    );
+    expect(parts).toEqual([
+      'Hoa đã trả 300k cho 6 kẹp tóc',
+      'tôi đi uống nước nết 30k',
+      'đổ xăng hết 100k',
+    ]);
+  });
+
+  it('does not split "bán cho X, N cái giá Yk" into orphan name', () => {
+    const parts = splitMultiTx('bán cho Hoa, 3 cái kẹp tóc giá 90k');
+    expect(parts).toEqual(['bán cho Hoa, 3 cái kẹp tóc giá 90k']);
+  });
+});
+
+describe('local drafts for multi-tx utterance', () => {
+  it('parses customer paid + typo nết + đổ xăng hết as 3 drafts', () => {
+    const msg =
+      'oa đã trả 300k cho 6 kẹp tóc, tôi đi uống nước nết 30k và đổ xăng hết 100k';
+    const segs = splitMultiTx(msg);
+    expect(segs).toHaveLength(3);
+    const drafts = segs.map((s) => parseTextToDraft(s));
+    expect(drafts[0]?.kind).toBe('revenue');
+    expect(drafts[0]?.amount).toBe(300000);
+    expect(drafts[0]?.quantity).toBe(6);
+    expect(drafts[1]?.kind).toBe('expense');
+    expect(drafts[1]?.amount).toBe(30000);
+    expect(drafts[2]?.kind).toBe('expense');
+    expect(drafts[2]?.amount).toBe(100000);
+  });
+});
+
+describe('sanitize customer paid → revenue', () => {
+  it('flips expense to revenue for "Hoa đã trả 300k cho 6 kẹp tóc"', () => {
+    const bad: ChatIntent = {
+      ...emptyIntent('create_expense'),
+      amount: 300000,
+      description: 'kẹp tóc',
+    };
+    const out = sanitizeIntentAgainstMessage('Hoa đã trả 300k cho 6 kẹp tóc', bad);
+    expect(out.intent).toBe('create_revenue');
+    expect(out.amount).toBe(300000);
+    expect(out.quantity).toBe(6);
+  });
+
+  it('cleans revenue description to product name only', () => {
+    const bad: ChatIntent = {
+      ...emptyIntent('create_revenue'),
+      amount: 300000,
+      quantity: 6,
+      description: 'Hoa đã trả 300k cho 6 kẹp tóc',
+      customerName: 'Hoa',
+    };
+    const out = sanitizeIntentAgainstMessage('Hoa đã trả 300k cho 6 kẹp tóc', bad);
+    expect(out.description?.toLowerCase()).toBe('kẹp tóc');
   });
 });
 
