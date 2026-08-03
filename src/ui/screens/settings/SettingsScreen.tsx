@@ -764,7 +764,7 @@ export function SettingsScreen() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Phiên bản</span>
-                <span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">1.0.4</span>
+                <span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">1.0.5</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-muted">Mô tả</span>
