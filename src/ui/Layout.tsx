@@ -245,7 +245,7 @@ export function Layout() {
       {/* ── Bottom Status Bar ──────────────────────────────────────── */}
       <div className="flex items-center justify-between px-[var(--s-md)] h-[var(--dimens-statusBarHeight)] bg-surface border-t border-border text-[10px] text-text-muted shrink-0 pb-[env(safe-area-inset-bottom,0px)]">
         <span>© 2026 Quản Lý Tài Chính</span>
-        <span>v1.0.6</span>
+        <span>v1.1.0</span>
       </div>
 
       {/* ── FAB — AI Chat Toggle ───────────────────────────────────── */}
