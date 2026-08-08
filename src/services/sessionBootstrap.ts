@@ -2,22 +2,18 @@
  * Post-auth hydrate: profile + settings + household (+ ledger if local empty).
  */
 
-import { useExpenseStore, useRevenueStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
 import { setCacheUserId } from './cacheManager';
-import { hydrateStoresFromCloud, refreshHouseholdFromCloud } from './cloudSync';
+import {
+  getLocalLedgerCounts,
+  hydrateStoresFromCloud,
+  refreshHouseholdFromCloud,
+} from './cloudSync';
 import { ensureProfileSettingsRows, fetchProfile } from './profileService';
 import { applyUserSettingsToStore, fetchUserSettings } from './userSettingsService';
 import { flushOutbox, pendingCount } from './syncEngine';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { initDatabase } from './database';
-
-function isLocalLedgerEmpty(): boolean {
-  return (
-    useExpenseStore.getState().records.length === 0 &&
-    useRevenueStore.getState().records.length === 0
-  );
-}
 
 export async function bootstrapSessionAfterAuth(): Promise<{
   hasHousehold: boolean;
@@ -69,11 +65,16 @@ export async function bootstrapSessionAfterAuth(): Promise<{
   }
 
   const household = await refreshHouseholdFromCloud();
-  if (household?.householdId && isLocalLedgerEmpty()) {
-    try {
-      await hydrateStoresFromCloud(household.householdId);
-    } catch (err) {
-      console.error('[bootstrap] ledger hydrate failed', err);
+  // Only pull ledger when local IndexedDB + Zustand are both empty.
+  // Auth runs before Layout bootstrapAppData — never trust Zustand-only emptiness.
+  if (household?.householdId) {
+    const local = await getLocalLedgerCounts();
+    if (local.revenues === 0 && local.expenses === 0) {
+      try {
+        await hydrateStoresFromCloud(household.householdId);
+      } catch (err) {
+        console.error('[bootstrap] ledger hydrate failed', err);
+      }
     }
   }
 

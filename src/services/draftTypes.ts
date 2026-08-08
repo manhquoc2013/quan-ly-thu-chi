@@ -81,7 +81,11 @@ export function validateDraft(draft: DraftRecord): DraftRecord {
   if (!draft.date || !/^\d{4}-\d{2}-\d{2}$/.test(draft.date)) {
     errors.push('Ngày không hợp lệ');
   }
-  if (!(draft.amount > 0)) {
+  if (draft.kind === 'revenue') {
+    if (typeof draft.amount !== 'number' || draft.amount < 0) {
+      errors.push('Số tiền không hợp lệ');
+    }
+  } else if (!(draft.amount > 0)) {
     errors.push(draft.kind === 'product' ? 'Đơn giá phải > 0' : 'Số tiền phải > 0');
   }
   if (!draft.description || draft.description.trim().length < 2) {

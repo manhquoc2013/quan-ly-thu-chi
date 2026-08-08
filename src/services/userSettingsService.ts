@@ -10,6 +10,7 @@ import { webLLM } from './webLLM';
 import { AI_PRIORITY_DEFAULT, type LlmSource } from './llmTypes';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { useAuthStore } from '@/store/authStore';
+import { useMascotStore } from '@/store/mascotStore';
 import { enqueueOutbox } from './syncOutbox';
 
 export interface UserSettingsRow {
@@ -25,6 +26,7 @@ export interface UserSettingsRow {
   enable_openrouter: boolean;
   enable_siliconflow: boolean;
   ai_priority: string[];
+  mascot_activity: string;
   updated_at: string;
 }
 
@@ -71,7 +73,10 @@ export async function upsertUserSettings(
       },
       { onConflict: 'user_id' },
     );
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('[user_settings] upsert failed', error.code, error.message, error.details);
+    throw new Error(error.message);
+  }
 }
 
 export function applyUserSettingsToStore(row: UserSettingsRow): void {
@@ -88,6 +93,8 @@ export function applyUserSettingsToStore(row: UserSettingsRow): void {
   store.setEnableOpenRouter(row.enable_openrouter !== false);
   store.setEnableSiliconFlow(row.enable_siliconflow !== false);
   store.setAiPriority(priority);
+  // Mascot activity
+  useMascotStore.getState().setActivity((row.mascot_activity as 'low' | 'medium' | 'high') || 'medium');
   webLLM.setDisabled(row.enable_web_llm === false);
   groqService.setEnabled(row.enable_groq !== false);
   kiloService.setEnabled(row.enable_kilo_free !== false);
@@ -110,6 +117,7 @@ export function settingsRowFromStore(userId: string): Omit<UserSettingsRow, 'upd
     enable_openrouter: s.enableOpenRouter !== false,
     enable_siliconflow: s.enableSiliconFlow !== false,
     ai_priority: s.aiPriority?.length ? s.aiPriority : AI_PRIORITY_DEFAULT,
+    mascot_activity: (() => { try { return useMascotStore.getState().activity; } catch { return 'medium'; } })(),
   };
 }
 

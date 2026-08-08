@@ -18,6 +18,11 @@ import {
   type DraftSource,
 } from './draftTypes';
 import { parseOrderTableDrafts } from './orderTableParser';
+import {
+  parseSalesProductTableDrafts,
+  parseStockInTableDrafts,
+} from './stockInTableParser';
+import { parseRevenueCashTableDrafts } from './revenueCashTableParser';
 
 const MONEY = String.raw`(\d[\d.,]*\s*(?:k|nghìn|ngàn|m|tr|triệu|trieu|usd|eur|jpy|cny|krw|sgd|aud|\$|đô(?:\s*la)?|₫|đ|vnd|đồng)?)`;
 
@@ -103,13 +108,19 @@ export function parseLineListDrafts(
   const drafts: DraftRecord[] = [];
   const skipped: string[] = [];
 
-  // Whole-message product cue (even if header is glued on first line)
+  // Whole-message product / revenue cues (even if header is glued on first line)
   if (
     /(?:thêm|tạo|ghi|hêm)\s+(?:các\s+)?(?:sản\s*phẩm|sp)\b/i.test(message) ||
     /\bstt\b[\s\S]{0,40}đơn\s*giá/i.test(message)
   ) {
     kindHint = 'product';
+  } else if (
+    /doanh\s*thu\b/i.test(message) ||
+    /đã\s*thu(?:\s*được)?\b/i.test(message)
+  ) {
+    kindHint = 'revenue';
   }
+  const paidCue = /đã\s*thu(?:\s*được)?\b/i.test(message);
 
   for (const line of rawLines) {
     if (
@@ -117,17 +128,31 @@ export function parseLineListDrafts(
       EXPENSE_HEADER.test(line) ||
       REVENUE_HEADER.test(line) ||
       PRODUCT_HEADER.test(line) ||
-      PRODUCT_COLUMN_HEADER.test(line)
+      PRODUCT_COLUMN_HEADER.test(line) ||
+      /^doanh\s*thu\b/i.test(line) ||
+      /đã\s*thu(?:\s*được)?\b/i.test(line) ||
+      /^nội\s*dung\b/i.test(line)
     ) {
       if (PRODUCT_HEADER.test(line) || PRODUCT_COLUMN_HEADER.test(line)) kindHint = 'product';
       else if (EXPENSE_HEADER.test(line)) kindHint = 'expense';
-      else if (REVENUE_HEADER.test(line)) kindHint = 'revenue';
+      else if (
+        REVENUE_HEADER.test(line) ||
+        /^doanh\s*thu\b/i.test(line) ||
+        /đã\s*thu(?:\s*được)?\b/i.test(line)
+      ) {
+        kindHint = 'revenue';
+      }
       continue;
     }
 
     const trailing = extractTrailingMoney(line);
     if (!trailing) {
       skipped.push(line);
+      continue;
+    }
+
+    if (/^tổng\b/i.test(trailing.description.trim())) {
+      skipped.push(`Bỏ dòng tổng: ${trailing.description}`);
       continue;
     }
 
@@ -147,6 +172,9 @@ export function parseLineListDrafts(
           amount: trailing.money.amountVnd,
           description,
           category: kind === 'expense' ? guessCategory(description) : undefined,
+          customerName: kind === 'revenue' ? description : undefined,
+          paymentStatus: kind === 'revenue' && paidCue ? 'paid' : undefined,
+          orderStatus: kind === 'revenue' && paidCue ? 'completed' : undefined,
           source,
           rawFx: trailing.money.rawFx,
         }),
@@ -208,6 +236,24 @@ export function parseTextToDrafts(
   message: string,
   source: DraftSource = 'text',
 ): DraftRecord[] {
+  // Cash-collected revenue table (Nội dung | Số tiền | Date)
+  const cashTable = parseRevenueCashTableDrafts(message, source);
+  if (cashTable.isTable && cashTable.drafts.length >= 1) {
+    return cashTable.drafts;
+  }
+
+  // Sales product spreadsheet ("đã bán được") — before stock-in / order table
+  const salesTable = parseSalesProductTableDrafts(message, source);
+  if (salesTable.isTable && salesTable.drafts.length >= 1) {
+    return salesTable.drafts;
+  }
+
+  // Stock-in spreadsheet (STT | tên | giá | SL | thành tiền) — before order table
+  const stockInTable = parseStockInTableDrafts(message, source);
+  if (stockInTable.isTable && stockInTable.drafts.length >= 1) {
+    return stockInTable.drafts;
+  }
+
   // Order spreadsheet paste (khách | kênh | nội dung | tiền | …) — before expense lines
   const orderTable = parseOrderTableDrafts(message, source);
   if (orderTable.isTable && orderTable.drafts.length >= 1) {
@@ -826,6 +872,7 @@ function makeDraft(partial: Omit<DraftRecord, 'id' | 'date'> & { date?: string }
     shippingFee: partial.shippingFee,
     shippingPayer: partial.shippingPayer,
     paymentStatus: partial.paymentStatus,
+    orderStatus: partial.orderStatus,
     source: partial.source,
     confidence: partial.confidence ?? 0.9,
     rawFx: partial.rawFx,

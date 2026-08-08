@@ -193,8 +193,8 @@ export async function createRevenue(
     if (typeof item.quantity !== 'number' || item.quantity < 1) {
       throw new Error(`item "${item.name}": quantity must be >= 1`);
     }
-    if (typeof item.unitPrice !== 'number' || item.unitPrice <= 0) {
-      throw new Error(`item "${item.name}": unitPrice must be > 0`);
+    if (typeof item.unitPrice !== 'number' || item.unitPrice < 0) {
+      throw new Error(`item "${item.name}": unitPrice must be >= 0`);
     }
     const expectedTotal = item.quantity * item.unitPrice;
     if (typeof item.total !== 'number' || Math.abs(item.total - expectedTotal) > 0.01) {
@@ -292,8 +292,8 @@ export async function updateRevenue(
       if (typeof item.quantity !== 'number' || item.quantity < 1) {
         throw new Error(`item: quantity must be >= 1`);
       }
-      if (typeof item.unitPrice !== 'number' || item.unitPrice <= 0) {
-        throw new Error(`item: unitPrice must be > 0`);
+      if (typeof item.unitPrice !== 'number' || item.unitPrice < 0) {
+        throw new Error(`item: unitPrice must be >= 0`);
       }
     }
   }

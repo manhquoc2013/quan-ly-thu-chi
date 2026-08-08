@@ -61,10 +61,11 @@ export function parseMoney(raw: string, rates: Record<string, number> = DEFAULT_
   if (!vndMatch) return null;
 
   const base = parseNumberToken(vndMatch[1]!);
-  if (base == null || base <= 0) return null;
+  if (base == null || base < 0) return null;
   const unit = (vndMatch[2] ?? '').toLowerCase();
 
   let amountVnd = base;
+  if (base === 0) return { amountVnd: 0 };
   if (unit === 'k' || unit === 'nghìn' || unit === 'ngàn') amountVnd = base * 1_000;
   else if (unit === 'tr' || unit === 'triệu' || unit === 'trieu' || unit === 'm') {
     amountVnd = base * 1_000_000;
@@ -97,7 +98,11 @@ export function extractTrailingMoney(
   line: string,
   rates?: Record<string, number>,
 ): { description: string; money: ParsedMoney } | null {
-  const trimmed = line.trim();
+  // Strip trailing DD/MM(/YYYY) so "tên 125.000₫ 31/07" still parses.
+  const trimmed = line
+    .trim()
+    .replace(/[\t ]+\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*$/, '')
+    .trim();
   if (!trimmed) return null;
   const m = trimmed.match(
     /^(.+?)[\t ]+(\d[\d.,]*\s*(?:k|nghìn|ngàn|m|tr|triệu|trieu|₫|đ|vnd|đồng)?)\s*$/i,

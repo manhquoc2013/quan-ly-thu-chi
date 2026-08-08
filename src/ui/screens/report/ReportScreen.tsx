@@ -9,6 +9,7 @@ import {
   Users,
   Package,
   Store,
+  Boxes,
 } from "lucide-react";
 import { ExpenseReport } from "./ExpenseReport";
 import { RevenueReport } from "./RevenueReport";
@@ -17,6 +18,7 @@ import { UnpaidReport } from "./UnpaidReport";
 import { CustomerReport } from "./CustomerReport";
 import { ProductReport } from "./ProductReport";
 import { PlatformReport } from "./PlatformReport";
+import { InventoryReport } from "./InventoryReport";
 import { bootstrapAppData } from "@/services/bootstrap";
 import { useReportStore } from "@/store/reportStore";
 import { DatePicker } from "@/ui/components/DatePicker";
@@ -32,6 +34,7 @@ type ReportTab =
   | "expense"
   | "revenue"
   | "profit"
+  | "inventory"
   | "unpaid"
   | "customer"
   | "product"
@@ -41,6 +44,7 @@ const SEGMENTS = [
   { value: "expense", label: "Chi phí", icon: Receipt },
   { value: "revenue", label: "Doanh thu", icon: TrendingUp },
   { value: "profit", label: "Lợi nhuận", icon: LineChart },
+  { value: "inventory", label: "Hàng hóa", icon: Boxes },
   { value: "unpaid", label: "Công nợ", icon: Wallet },
   { value: "customer", label: "Khách hàng", icon: Users },
   { value: "product", label: "Sản phẩm", icon: Package },
@@ -177,6 +181,7 @@ export function ReportScreen() {
       {reportType === "expense" && <ExpenseReport />}
       {reportType === "revenue" && <RevenueReport />}
       {reportType === "profit" && <ProfitReport />}
+      {reportType === "inventory" && <InventoryReport />}
       {reportType === "unpaid" && <UnpaidReport />}
       {reportType === "customer" && <CustomerReport />}
       {reportType === "product" && <ProductReport />}

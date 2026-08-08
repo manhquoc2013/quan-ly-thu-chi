@@ -51,6 +51,7 @@ export async function flushOutbox(
           ai_priority: Array.isArray(item.payload.ai_priority)
             ? (item.payload.ai_priority as string[])
             : undefined,
+          mascot_activity: (item.payload.mascot_activity as string) || 'medium',
         });
       }
       removeOutbox(item.id);

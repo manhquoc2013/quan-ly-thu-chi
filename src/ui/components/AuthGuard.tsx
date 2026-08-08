@@ -259,7 +259,7 @@ export function AuthGuard({ children }: { children?: ReactNode }) {
         const sb = getSupabase();
         const { data } = await sb.auth.getSession();
         if (!cancelled && data.session?.user) {
-          await bootstrapSessionAfterAuth(data.session.user);
+          await bootstrapSessionAfterAuth();
         }
       } catch { /* offline / not configured */ }
       if (!cancelled) { setSupabaseReady(true); setChecking(false); setFullyReady(true); }

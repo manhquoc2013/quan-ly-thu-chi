@@ -65,6 +65,11 @@ export {
   getProfitSummary,
   getDashboardSummary,
 } from './reportService';
+export {
+  buildInventoryReport,
+  isStockInExpense,
+  stockInCashSummary,
+} from './fifoCogsService';
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 

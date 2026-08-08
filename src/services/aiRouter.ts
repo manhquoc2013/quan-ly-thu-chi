@@ -27,6 +27,8 @@ import {
   clarifyQuestion,
   isCancelMessage,
   isConfirmMessage,
+  isNewLedgerRequest,
+  isZeroMoneyReply,
   mergeClarifyReply,
   mergeIntent,
   parseEntityPickIndex,
@@ -47,6 +49,11 @@ import {
   isClearBulkPaste,
 } from './textDraftParser';
 import { parseOrderTableDrafts } from './orderTableParser';
+import {
+  parseSalesProductTableDrafts,
+  parseStockInTableDrafts,
+} from './stockInTableParser';
+import { parseRevenueCashTableDrafts } from './revenueCashTableParser';
 import {
   executeChatIntent,
   executeLegacyCreate,
@@ -665,21 +672,53 @@ export const aiRouter = {
         return out;
       }
 
-      let merged =
-        (await mergeIntentWithLlm(pending.intent, trimmed, financeCtx)) ??
-        mergeClarifyReply(pending.intent, trimmed);
-      merged = mergeIntent(pending.intent, merged);
+      // New "tạo đơn…" while stuck on chi phí slot-fill → drop pending, re-route below.
+      if (isNewLedgerRequest(trimmed)) {
+        setPending(null);
+      } else {
+        let merged =
+          (await mergeIntentWithLlm(pending.intent, trimmed, financeCtx)) ??
+          mergeClarifyReply(pending.intent, trimmed);
+        // Local zero-money reply beats LLM that keeps inventing expense amount slots.
+        if (
+          isZeroMoneyReply(trimmed) &&
+          pending.intent.missing.includes('amount')
+        ) {
+          merged = mergeClarifyReply(pending.intent, trimmed);
+        }
+        merged = mergeIntent(pending.intent, merged);
 
-      if (merged.missing.length > 0) {
-        setPending({ intent: merged, updatedAt: Date.now() });
-        const text = clarifyQuestion(merged);
-        addToHistory(trimmed, text);
-        return { text, source: 'local' };
+        if (
+          merged.intent === 'create_revenue' &&
+          typeof merged.amount === 'number' &&
+          merged.amount === 0 &&
+          (!merged.description || merged.description.length < 2)
+        ) {
+          const label =
+            merged.customerName?.trim() ||
+            /tin\s*tin/i.exec(
+              `${pending.intent.summaryVi ?? ''} ${trimmed}`,
+            )?.[0];
+          if (label) {
+            merged = fillMissingSlots({
+              ...merged,
+              customerName: merged.customerName ?? label,
+              description: `Đơn ${merged.customerName ?? label}`,
+            });
+          }
+        }
+
+        if (merged.missing.length > 0) {
+          setPending({ intent: merged, updatedAt: Date.now() });
+          const text = clarifyQuestion(merged);
+          addToHistory(trimmed, text);
+          return { text, source: 'local' };
+        }
+
+        const out = await runIntentTool(merged);
+        addToHistory(trimmed, out.text);
+        return out;
       }
-
-      const out = await runIntentTool(merged);
-      addToHistory(trimmed, out.text);
-      return out;
     }
 
     // ── 0b. Local: đổi/sửa đơn vị sản phẩm (không cần LLM) ───────────────
@@ -756,12 +795,31 @@ export const aiRouter = {
       return { text, source: 'local' };
     }
 
-    // ── 1. Structured paste only (order table / multi-line bulk list) ────
+    // ── 1. Structured paste (cash / sales / stock-in / order / multi-line) ─
     // Single-line chat always continues to LLM below.
+    const cashTableMeta = parseRevenueCashTableDrafts(trimmed, 'text');
+    const salesTableMeta = parseSalesProductTableDrafts(trimmed, 'text');
+    const stockInTableMeta = parseStockInTableDrafts(trimmed, 'text');
     const orderTableMeta = parseOrderTableDrafts(trimmed, 'text');
     let bulkDrafts =
-      orderTableMeta.isTable && orderTableMeta.drafts.length ? orderTableMeta.drafts : null;
-    let bulkSkipped: string[] = orderTableMeta.isTable ? orderTableMeta.skipped : [];
+      cashTableMeta.isTable && cashTableMeta.drafts.length
+        ? cashTableMeta.drafts
+        : salesTableMeta.isTable && salesTableMeta.drafts.length
+          ? salesTableMeta.drafts
+          : stockInTableMeta.isTable && stockInTableMeta.drafts.length
+            ? stockInTableMeta.drafts
+            : orderTableMeta.isTable && orderTableMeta.drafts.length
+              ? orderTableMeta.drafts
+              : null;
+    let bulkSkipped: string[] = cashTableMeta.isTable
+      ? cashTableMeta.skipped
+      : salesTableMeta.isTable
+        ? salesTableMeta.skipped
+        : stockInTableMeta.isTable
+          ? stockInTableMeta.skipped
+          : orderTableMeta.isTable
+            ? orderTableMeta.skipped
+            : [];
 
     if (!bulkDrafts && looksLikeBulkLineList(trimmed)) {
       const lineAttempt = parseLineListDrafts(trimmed, 'text');

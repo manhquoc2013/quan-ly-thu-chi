@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-08-02T07:26:42.710Z",
-  "last_modified_at": "2026-08-08T17:54:36.114Z",
+  "last_modified_at": "2026-08-08T18:16:37.808Z",
   "modules": {
     "M-000": {
       "depends_on": [],
@@ -22,20 +22,20 @@
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
+      "status": "done",
       "claimed_by": "tab-3f074c4753010f4f",
       "claimed_at": "2026-08-08T17:35:29.480Z",
-      "heartbeat_at": "2026-08-08T17:54:36.114Z",
+      "heartbeat_at": "2026-08-08T18:16:37.808Z",
       "current_stage": null,
       "started_at": "2026-08-02T07:26:46.045Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T18:16:37.808Z",
       "auto_pass_count": 0,
       "attempt": 9,
       "name": "Quản Lý Tài Chính",
       "slug": "quan-ly-thu-chi",
       "risk_path": "M",
-      "claimed_pid": 98078,
-      "claimed_host": "Qs-MacBook-Pro.local",
+      "claimed_pid": null,
+      "claimed_host": null,
       "previous_claimed_by": "tab-0c305877961d0082",
       "reopened_at": "2026-08-08T17:35:17.056Z",
       "reopened_reason": "Scope expansion: add SiliconFlow AI provider (TRI-1786209621484-f99f) — OpenAI-compatible API, same pattern as OpenRouter."
@@ -135,11 +135,10 @@
     },
     "tab-3f074c4753010f4f": {
       "started_at": "2026-08-08T17:21:49.651Z",
-      "last_seen": "2026-08-08T17:54:36.114Z",
-      "claimed_modules": [
-        "M-001"
-      ],
+      "last_seen": "2026-08-08T18:16:37.808Z",
+      "claimed_modules": [],
       "completed_modules": [
+        "M-001",
         "M-001"
       ],
       "failed_modules": [],

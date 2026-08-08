@@ -6,17 +6,15 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-01T08:39:46Z
-last-updated: 2026-08-08T17:54:36Z
-current-stage: engineering-backend-developer-wave-1
+last-updated: 2026-08-08T18:16:24Z
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-001-quan-ly-thu-chi
 intel-path: docs/intel
-stages-queue:
-  - engineering-backend-developer-wave-1
-  - engineering-qa-engineer-wave-1
+stages-queue: []
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -49,6 +47,14 @@ completed-stages:
     verdict: Pass
     artifact: docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md
     completed-at: 2026-08-08
+  engineering-backend-developer-wave-1:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w1-siliconflow-provider.md
+    completed-at: 2026-08-08
+  engineering-qa-engineer-wave-1:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md
+    completed-at: 2026-08-08
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-08-01T08:39:46Z
@@ -74,6 +80,7 @@ feature-req: |
 clarification-notes: ""
 reopened-at: 2026-08-08T17:35:17Z
 reopened-reason: "Scope expansion: add SiliconFlow AI provider (TRI-1786209621484-f99f) — OpenAI-compatible API, same pattern as OpenRouter."
+released: true
 ---
 # Pipeline State: Quản Lý Tài Chính
 
@@ -93,16 +100,16 @@ reopened-reason: "Scope expansion: add SiliconFlow AI provider (TRI-178620962148
 | 6 | engineering-technical-lead | engineering-technical-lead | Pass | docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md | 2026-08-08 |
 | 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md | 2026-08-08 |
 | 8 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md | 2026-08-08 |
-| 9 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
-| 10 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 9 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w1-siliconflow-provider.md | 2026-08-08 |
+| 10 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md | 2026-08-08 |
 
 ## Current Stage
 
-**engineering-backend-developer-wave-1** — Ready to start. Input: `docs/modules/M-001-quan-ly-thu-chi/module-brief.md`.
+**closed** — Pipeline complete.
 
 ## Next Action
 
-Next stage `engineering-backend-developer-wave-1` — dispatched by the project manager (via the build receptionist); no slash command to run.
+Released — production sign-off granted (`released: true`).
 
 ## Active Blockers
 

@@ -130,11 +130,13 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
   ];
   if (!allowed.includes(intent)) return null;
 
-  const num = (v: unknown): number | undefined => {
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.round(v);
+  const num = (v: unknown, allowZero = false): number | undefined => {
+    const ok = (n: number) =>
+      Number.isFinite(n) && (allowZero ? n >= 0 : n > 0);
+    if (typeof v === 'number' && ok(v)) return Math.round(v);
     if (typeof v === 'string') {
       const n = Number(v.replace(/[^\d.]/g, ''));
-      return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+      return ok(n) ? Math.round(n) : undefined;
     }
     return undefined;
   };
@@ -188,8 +190,8 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
 
   const intentObj: ChatIntent = {
     intent,
-    amount: num(o.amount),
-    unitPrice: num(o.unitPrice),
+    amount: num(o.amount, true),
+    unitPrice: num(o.unitPrice, true),
     quantity: num(o.quantity) ? Math.max(1, num(o.quantity)!) : undefined,
     description: str(o.description),
     category,
@@ -248,8 +250,8 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
       break;
     case 'create_revenue': {
       const qty = intent.quantity ?? 1;
-      const hasTotal = intent.amount && intent.amount > 0;
-      const hasUnit = intent.unitPrice && intent.unitPrice > 0;
+      const hasTotal = typeof intent.amount === 'number' && intent.amount >= 0;
+      const hasUnit = typeof intent.unitPrice === 'number' && intent.unitPrice >= 0;
       if (!hasTotal && !hasUnit) missing.push('amount');
       if (!intent.description || intent.description.length < 2) missing.push('description');
       if (hasUnit && !hasTotal) {
@@ -302,15 +304,26 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
 
 /** Merge a partial update (from clarify reply) onto pending intent */
 export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
+  const nextIntent = patch.intent !== 'chat' ? patch.intent : base.intent;
+  let description = patch.description ?? base.description;
+  const customerName = patch.customerName ?? base.customerName;
+  // After flipping expense→revenue with 0đ, ensure we have a product/order label.
+  if (
+    nextIntent === 'create_revenue' &&
+    (!description || description.length < 2) &&
+    customerName
+  ) {
+    description = `Đơn ${customerName}`;
+  }
   return fillMissingSlots({
-    intent: patch.intent !== 'chat' ? patch.intent : base.intent,
-    amount: patch.amount ?? base.amount,
-    unitPrice: patch.unitPrice ?? base.unitPrice,
+    intent: nextIntent,
+    amount: patch.amount !== undefined ? patch.amount : base.amount,
+    unitPrice: patch.unitPrice !== undefined ? patch.unitPrice : base.unitPrice,
     quantity: patch.quantity ?? base.quantity,
     unit: patch.unit ?? base.unit,
-    description: patch.description ?? base.description,
+    description,
     category: patch.category ?? base.category,
-    customerName: patch.customerName ?? base.customerName,
+    customerName,
     phone: patch.phone ?? base.phone,
     customerId: patch.customerId ?? base.customerId,
     productId: patch.productId ?? base.productId,
@@ -343,18 +356,34 @@ export function mergeClarifyReply(base: ChatIntent, reply: string): ChatIntent {
   const lower = t.toLowerCase();
   const patch: ChatIntent = { ...emptyIntent(base.intent), confidence: 0.7, missing: [] };
 
-  // money
-  const moneyMatch = lower.match(/(\d[\d.,]*)\s*(k|nghìn|ngàn|tr|triệu|m)?/i);
-  if (moneyMatch && base.missing.includes('amount')) {
+  // Explicit zero / "không cần số tiền" for unpaid TBD orders
+  if (base.missing.includes('amount') && isZeroMoneyReply(t)) {
+    patch.amount = 0;
+    patch.unitPrice = 0;
+    // Slot-fill often mis-labels orders as create_expense — 0đ belongs on revenue.
+    if (base.intent === 'create_expense') {
+      patch.intent = 'create_revenue';
+    }
+  }
+
+  // money (including 0đ)
+  const moneyMatch = lower.match(/(\d[\d.,]*)\s*(k|nghìn|ngàn|tr|triệu|m|đ|₫|đồng|vnd)?/i);
+  if (moneyMatch && base.missing.includes('amount') && patch.amount === undefined) {
     let n = parseFloat(moneyMatch[1]!.replace(/\./g, '').replace(',', '.'));
+    if (!Number.isFinite(n)) n = NaN;
     const u = (moneyMatch[2] || '').toLowerCase();
-    if (u === 'k' || u === 'nghìn' || u === 'ngàn') n *= 1000;
-    else if (u === 'tr' || u === 'triệu' || u === 'm') n *= 1_000_000;
-    else if (n > 0 && n < 1000) n *= 1000;
-    if (base.missing.includes('amount') && /giá/.test(lower)) {
-      patch.unitPrice = Math.round(n);
-    } else {
-      patch.amount = Math.round(n);
+    if (n === 0) {
+      patch.amount = 0;
+      patch.unitPrice = 0;
+    } else if (Number.isFinite(n)) {
+      if (u === 'k' || u === 'nghìn' || u === 'ngàn') n *= 1000;
+      else if (u === 'tr' || u === 'triệu' || u === 'm') n *= 1_000_000;
+      else if (!u && n > 0 && n < 1000) n *= 1000;
+      if (/giá/.test(lower) && !/giá\s*(tiền\s*)?(là\s*)?0\b/i.test(lower)) {
+        patch.unitPrice = Math.round(n);
+      } else {
+        patch.amount = Math.round(n);
+      }
     }
   }
 
@@ -438,15 +467,20 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
     const qty = intent.quantity ?? 1;
     let amount = intent.amount;
     let unitPrice = intent.unitPrice;
-    if (unitPrice && !amount) amount = unitPrice * qty;
-    if (amount && !unitPrice) unitPrice = Math.round(amount / qty);
-    if (!amount || !intent.description) return null;
+    if (typeof unitPrice === 'number' && amount == null) amount = unitPrice * qty;
+    if (typeof amount === 'number' && unitPrice == null) {
+      unitPrice = qty > 0 ? Math.round(amount / qty) : 0;
+    }
+    if (typeof amount !== 'number' || amount < 0 || !intent.description) return null;
+    const noteBits = [
+      amount === 0 ? 'Đơn 0đ — cập nhật giá khi có' : undefined,
+    ].filter(Boolean);
     return {
       id: newDraftId(),
       kind: 'revenue',
       date: todayIso(),
       amount,
-      unitPrice,
+      unitPrice: unitPrice ?? 0,
       quantity: qty,
       description:
         qty > 1 && !/×/.test(intent.description)
@@ -465,6 +499,7 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
         : undefined,
       paymentStatus: intent.paymentStatus ?? 'unpaid',
       paymentMethod: intent.paymentMethod,
+      notes: noteBits.length ? noteBits.join(' · ') : undefined,
       source,
       confidence: intent.confidence,
     };
@@ -492,6 +527,23 @@ export function clarifyQuestion(intent: ChatIntent): string {
 export function isCancelMessage(message: string): boolean {
   const t = message.trim().toLowerCase();
   return /^(hủy|huỷ|cancel|thôi|bỏ|không)$/i.test(t);
+}
+
+/** User started a new order/expense command — abandon stuck slot-fill. */
+export function isNewLedgerRequest(message: string): boolean {
+  const t = message.trim();
+  return (
+    /^(tạo|thêm|ghi|làm)\s*(lại\s*)?(đơn|order|doanh\s*thu|chi(\s*phí)?)\b/i.test(t) ||
+    /^đơn\s*(hàng\s*)?(cho|của)\b/i.test(t) ||
+    /tạo\s*lại\s*(cho\s*tôi\s*)?đơn\b/i.test(t)
+  );
+}
+
+export function isZeroMoneyReply(message: string): boolean {
+  const lower = message.trim().toLowerCase();
+  return /không\s*cần\s*(số\s*)?tiền|giá\s*(tiền\s*)?(là\s*)?0\b|^(0\s*(đ|₫|đồng|vnd)?)$|số\s*tiền\s*(là\s*)?0\b/i.test(
+    lower,
+  );
 }
 
 export function isConfirmMessage(message: string): boolean {

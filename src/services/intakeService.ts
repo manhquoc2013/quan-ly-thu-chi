@@ -432,10 +432,19 @@ async function persistRevenueDraft(draft: DraftRecord) {
     const total = draft.unitPrice != null ? lineTotal : draft.amount;
     unitPrice = draft.unitPrice != null ? unitPrice : Math.round(total / quantity);
 
+    // Opening-balance / cash-only lines: never invent a product or touch stock.
+    const cashOnly =
+      /không\s*có\s*(chi\s*tiết\s*)?hàng|đơn\s*gốc\s*không/i.test(draft.notes ?? '') ||
+      /^doanh\s*thu\s*đến\s*hiện\s*tại$/i.test((draft.description ?? '').trim());
+
     let productId = draft.productId;
     let itemName = productQueryFromDescription(draft.description) || draft.description || 'Sản phẩm';
 
-    if (!draft.productId) {
+    if (cashOnly) {
+      productId = undefined;
+      itemName = (draft.description || 'Doanh thu đến hiện tại').trim();
+      unitPrice = Math.max(1, draft.amount);
+    } else if (!draft.productId) {
       let prod = await resolveProductForOrder(draft.description, {
         suggestedPrice: unitPrice,
         silent: true,
@@ -450,7 +459,13 @@ async function persistRevenueDraft(draft: DraftRecord) {
       if (prod.status === 'resolved') {
         productId = prod.id;
         itemName = prod.name;
-        if (!draft.unitPrice && !(draft.amount > 0) && (prod.defaultUnitPrice ?? 0) > 0) {
+        // Don't overwrite explicit 0đ orders with catalog default price.
+        if (
+          typeof draft.unitPrice !== 'number' &&
+          draft.amount !== 0 &&
+          !(draft.amount > 0) &&
+          (prod.defaultUnitPrice ?? 0) > 0
+        ) {
           unitPrice = prod.defaultUnitPrice ?? 0;
         }
       }
@@ -460,15 +475,19 @@ async function persistRevenueDraft(draft: DraftRecord) {
       if (p) itemName = p.name;
     }
 
-    const finalTotal = unitPrice * quantity;
+    const finalTotal = cashOnly
+      ? draft.amount
+      : draft.unitPrice != null || draft.productId
+        ? unitPrice * quantity
+        : total;
     items = [
       {
         id: generateId(),
         productId,
         name: itemName || 'Sản phẩm',
-        quantity,
-        unitPrice,
-        total: draft.unitPrice != null || draft.productId ? finalTotal : total,
+        quantity: cashOnly ? 1 : quantity,
+        unitPrice: cashOnly ? Math.max(1, draft.amount) : unitPrice,
+        total: finalTotal,
       },
     ];
   }
@@ -525,7 +544,12 @@ export function actionJsonToDraft(
       confidence: 0.7,
     };
   }
-  if (action.type === 'create_revenue' && action.amount > 0 && action.description) {
+  if (
+    action.type === 'create_revenue' &&
+    typeof action.amount === 'number' &&
+    action.amount >= 0 &&
+    action.description
+  ) {
     return {
       id: crypto.randomUUID(),
       kind: 'revenue',

@@ -8,22 +8,21 @@
 import { create } from 'zustand';
 
 export type MascotEmotion = 'happy' | 'sad' | 'warning' | 'celebrate' | 'thinking' | 'idle';
+export type MascotActivity = 'low' | 'medium' | 'high';
 
 export interface MascotState {
   visible: boolean;
   message: string;
   emotion: MascotEmotion;
-  /** Count of pending triggers (for queueing) */
+  activity: MascotActivity;
   queue: Array<{ message: string; emotion: MascotEmotion }>;
 }
 
 export interface MascotActions {
-  /** Show mascot with a message and emotion, auto-hide after delay */
   speak: (message: string, emotion: MascotEmotion) => void;
-  /** Hide the mascot immediately */
   hide: () => void;
-  /** Set emotion only (no speech) */
   setEmotion: (emotion: MascotEmotion) => void;
+  setActivity: (level: MascotActivity) => void;
 }
 
 type MascotStore = MascotState & MascotActions;
@@ -32,6 +31,7 @@ export const useMascotStore = create<MascotStore>((set, get) => ({
   visible: false,
   message: '',
   emotion: 'idle',
+  activity: 'medium',
   queue: [],
 
   speak: (message, emotion) => {
@@ -61,4 +61,6 @@ export const useMascotStore = create<MascotStore>((set, get) => ({
   hide: () => set({ visible: false, message: '', emotion: 'idle', queue: [] }),
 
   setEmotion: (emotion) => set({ emotion }),
+
+  setActivity: (activity) => set({ activity }),
 }));

@@ -3,6 +3,7 @@ import {
   normalizeIntent,
   fillMissingSlots,
   mergeClarifyReply,
+  mergeIntent,
   intentToDraft,
   draftToCreateIntent,
   isCancelMessage,
@@ -62,6 +63,38 @@ describe('mergeClarifyReply', () => {
     });
     const merged = mergeClarifyReply(base, '25k');
     expect(merged.amount).toBe(25000);
+    expect(merged.missing).toEqual([]);
+  });
+
+  it('accepts 0đ for create_revenue clarify', () => {
+    const base = fillMissingSlots({
+      intent: 'create_revenue',
+      description: 'luffy',
+      customerName: 'Tin tin',
+      confidence: 0.8,
+      missing: [],
+    });
+    expect(base.missing).toContain('amount');
+    const merged = mergeClarifyReply(base, '0đ');
+    expect(merged.amount).toBe(0);
+    expect(merged.missing).toEqual([]);
+    const phrase = mergeClarifyReply(base, 'không cần số tiền, tạo với giá 0đ');
+    expect(phrase.amount).toBe(0);
+    expect(phrase.missing).toEqual([]);
+  });
+
+  it('flips mis-labeled create_expense to revenue when user says 0đ', () => {
+    const base = fillMissingSlots({
+      intent: 'create_expense',
+      description: 'Đơn Tin tin',
+      confidence: 0.7,
+      missing: [],
+    });
+    expect(base.missing).toContain('amount');
+    const patch = mergeClarifyReply(base, '0đ');
+    const merged = mergeIntent(base, patch);
+    expect(merged.intent).toBe('create_revenue');
+    expect(merged.amount).toBe(0);
     expect(merged.missing).toEqual([]);
   });
 

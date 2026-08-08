@@ -19,6 +19,7 @@ import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd, chartTooltipFormatter } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
 import { allCashEvents, sumCashEventsInRange } from "@/utils/revenueMetrics";
+import { isStockInExpense } from "@/services/fifoCogsService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function ProfitReport() {
@@ -30,6 +31,20 @@ export function ProfitReport() {
   const filteredExp = useMemo(
     () => expenses.filter((e) => isDateInRange(e.date, from, to)),
     [expenses, from, to],
+  );
+  const stockInExpense = useMemo(
+    () =>
+      filteredExp
+        .filter((e) => isStockInExpense(e))
+        .reduce((s, e) => s + e.amount, 0),
+    [filteredExp],
+  );
+  const otherExpense = useMemo(
+    () =>
+      filteredExp
+        .filter((e) => !isStockInExpense(e))
+        .reduce((s, e) => s + e.amount, 0),
+    [filteredExp],
   );
   const cashEvents = useMemo(() => {
     return allCashEvents(revenues).filter((e) => {
@@ -76,7 +91,7 @@ export function ProfitReport() {
 
   return (
     <div className="space-y-[var(--s-lg)]">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)]">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-[var(--s-md)]">
         {[
           {
             l: "Doanh thu đã thu",
@@ -84,12 +99,22 @@ export function ProfitReport() {
             c: "text-success-fg",
           },
           {
-            l: "Chi phí",
+            l: "Nhập hàng",
+            v: formatCurrency(stockInExpense),
+            c: "text-danger-fg",
+          },
+          {
+            l: "Chi khác",
+            v: formatCurrency(otherExpense),
+            c: "text-danger-fg",
+          },
+          {
+            l: "Tổng chi",
             v: formatCurrency(totalExpense),
             c: "text-danger-fg",
           },
           {
-            l: "Lợi nhuận",
+            l: "Lợi nhuận (tiền mặt)",
             v: formatCurrency(profit),
             c: profit >= 0 ? "text-success-fg" : "text-danger-fg",
           },
@@ -107,6 +132,10 @@ export function ProfitReport() {
           </Card>
         ))}
       </div>
+      <p className="text-xs text-text-muted">
+        P&amp;L tiền mặt = thu − tổng chi (gồm nhập hàng). Xem lãi gộp theo giá
+        vốn FIFO ở tab Hàng hóa.
+      </p>
 
       <Card>
         <CardHeader>

@@ -13,13 +13,13 @@
       "version": 5
     },
     "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md": {
-      "content_hash": "sha256:aeaa0db0e20ef9cd8b2b8abdbd66c12b0df6b1ec9e95de7db6a0be32605025fe",
-      "last_modified": "2026-08-08T17:26:01Z",
+      "content_hash": "sha256:de526bf804551740c83b0cc4875f20ad70041e60296db3e5b9350c3bc74e7de0",
+      "last_modified": "2026-08-08T18:10:46Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 3
+      "version": 4
     },
     "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md": {
       "content_hash": "sha256:56fa937fb3ed9759c51381440d7f364885bb5fb91fd30b3297b87944ef6a034f",

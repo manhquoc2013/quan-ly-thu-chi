@@ -82,6 +82,82 @@ function isHeaderRow(cells: string[]): boolean {
   );
 }
 
+/** Column indices for order sheets (supports leading STT). */
+interface OrderColMap {
+  customer: number;
+  platform: number;
+  content: number;
+  amount: number;
+  status: number;
+  note: number;
+}
+
+const DEFAULT_COLS: OrderColMap = {
+  customer: 0,
+  platform: 1,
+  content: 2,
+  amount: 3,
+  status: 4,
+  note: 5,
+};
+
+function colMapFromHeader(cells: string[]): OrderColMap {
+  const lower = cells.map((c) => c.toLowerCase().trim());
+  const idx = (...pats: RegExp[]) =>
+    lower.findIndex((h) => pats.some((p) => p.test(h)));
+
+  const customer = idx(/tên\s*khách|khách\s*hàng/);
+  const platform = idx(/nền\s*tảng|kênh|platform/);
+  const content = idx(/nội\s*dung|sản\s*phẩm|chi\s*tiết/);
+  const amount = idx(/số\s*tiền|thành\s*tiền|tiền/);
+  const status = idx(/trạng\s*thái/);
+  const note = idx(/\bnote\b|ghi\s*chú/);
+
+  if (customer >= 0 && content >= 0 && amount >= 0) {
+    return {
+      customer,
+      platform: platform >= 0 ? platform : customer + 1,
+      content,
+      amount,
+      status: status >= 0 ? status : amount + 1,
+      note: note >= 0 ? note : amount + 2,
+    };
+  }
+
+  // STT | Khách | Nền tảng | Nội dung | Số tiền | …
+  if (/\bstt\b/.test(lower[0] ?? '') || customer === 1) {
+    return {
+      customer: customer >= 0 ? customer : 1,
+      platform: platform >= 0 ? platform : 2,
+      content: content >= 0 ? content : 3,
+      amount: amount >= 0 ? amount : 4,
+      status: status >= 0 ? status : 5,
+      note: note >= 0 ? note : 6,
+    };
+  }
+
+  return DEFAULT_COLS;
+}
+
+function cellAt(row: string[], index: number): string {
+  return (row[index] ?? '').trim();
+}
+
+/** Heuristic when no header: leading numeric STT cell. */
+function inferCols(row: string[]): OrderColMap {
+  if (row.length >= 5 && /^\d{1,4}$/.test((row[0] ?? '').trim())) {
+    return {
+      customer: 1,
+      platform: 2,
+      content: 3,
+      amount: 4,
+      status: 5,
+      note: 6,
+    };
+  }
+  return DEFAULT_COLS;
+}
+
 function normalizePlatform(raw: string): string | undefined {
   const t = raw.trim();
   if (!t) return undefined;
@@ -144,6 +220,51 @@ export interface ParsedOrderContent {
   shippingFee: number;
 }
 
+type PartialItem = { name: string; quantity: number; unitPrice?: number };
+
+/**
+ * Split content into product lines.
+ * Newlines always; commas only when the next token starts another qty ("1 a, 1 b").
+ * Keeps "1, chó" as one line (comma after qty, not between items).
+ */
+function splitContentLines(text: string): string[] {
+  const out: string[] = [];
+  for (const block of text.split(/\n+/)) {
+    const parts = block.split(/,\s*(?=\d+\s*[.)×x]?\s+\S)/);
+    for (const part of parts) {
+      const line = part
+        .trim()
+        .replace(/^(\d+)\s*,\s+(?=\S)/, '$1 ');
+      if (line) out.push(line);
+    }
+  }
+  return out;
+}
+
+/** Spread a VND budget across unpriced lines by quantity units (last line absorbs remainder). */
+function allocateBudgetByQty(
+  lines: PartialItem[],
+  budget: number,
+): DraftOrderItem[] {
+  const totalQty = lines.reduce((s, p) => s + p.quantity, 0);
+  if (totalQty <= 0) {
+    return [{ name: 'Sản phẩm', quantity: 1, unitPrice: Math.max(1, budget) }];
+  }
+  let remaining = Math.max(0, budget);
+  return lines.map((p, i) => {
+    const isLast = i === lines.length - 1;
+    const lineTotal = isLast
+      ? remaining
+      : Math.floor((budget * p.quantity) / totalQty);
+    if (!isLast) remaining -= lineTotal;
+    return {
+      name: p.name,
+      quantity: p.quantity,
+      unitPrice: Math.max(1, Math.round(lineTotal / p.quantity)),
+    };
+  });
+}
+
 /** Parse content cell into line items + shipping fee (Ship=… extracted). */
 export function parseOrderContentItems(
   content: string,
@@ -157,12 +278,7 @@ export function parseOrderContentItems(
     };
   }
 
-  const rawLines = text
-    .split(/\n|,/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  type PartialItem = { name: string; quantity: number; unitPrice?: number };
+  const rawLines = splitContentLines(text);
   const partials: PartialItem[] = [];
   let shippingFee = 0;
 
@@ -179,16 +295,17 @@ export function parseOrderContentItems(
       continue;
     }
 
-    // "1 kẹp hoa = 15" / "1. bó hoa -> đã móc"
+    // "1 kẹp hoa = 15" / "1. bó hoa -> đã móc" / "1 chậu: 65k"
     const priced = line.match(
-      /^(\d+)\s*[.)]?\s*(.+?)\s*[=:]\s*(\d[\d.,]*)\s*(?:k|₫|đ)?\s*$/i,
+      /^(\d+)\s*[.)]?\s*(.+?)\s*[=:]\s*(\d[\d.,]*)\s*(k|₫|đ)?\s*$/i,
     );
     if (priced) {
       const quantity = Math.max(1, parseInt(priced[1]!, 10) || 1);
       let name = priced[2]!.replace(/\s*->\s*.*$/i, '').trim();
-      const money = parseMoney(priced[3]!);
+      const token = `${priced[3]!}${priced[4] ?? ''}`;
+      const money = parseMoney(token);
       let unitPrice = money?.amountVnd ?? 0;
-      unitPrice = parseBareThousands(priced[3]!, unitPrice);
+      unitPrice = parseBareThousands(token, unitPrice);
       if (isShipName(name) && unitPrice > 0) {
         shippingFee += unitPrice * quantity;
         continue;
@@ -200,7 +317,10 @@ export function parseOrderContentItems(
 
     const qtyName = line.match(/^(\d+)\s*[.)×x]?\s+(.+)$/i);
     if (qtyName) {
-      let name = qtyName[2]!.replace(/\s*->\s*.*$/i, '').replace(/\s*=\s*ok\s*$/i, '').trim();
+      let name = qtyName[2]!
+        .replace(/\s*->\s*.*$/i, '')
+        .replace(/\s*=\s*ok\s*$/i, '')
+        .trim();
       if (name.length < 1) continue;
       if (isShipName(name)) continue;
       partials.push({
@@ -257,19 +377,8 @@ export function parseOrderContentItems(
       }));
     }
   } else if (priced.length === 0) {
-    if (partials.length === 1) {
-      const only = partials[0]!;
-      items = [
-        {
-          name: only.name,
-          quantity: only.quantity,
-          unitPrice: Math.max(1, Math.round(goodsBudget / only.quantity)),
-        },
-      ];
-    } else {
-      const summary = partials.map((p) => `${p.quantity} × ${p.name}`).join('; ');
-      items = [{ name: summary.slice(0, 200), quantity: 1, unitPrice: Math.max(1, goodsBudget) }];
-    }
+    // Keep each product as its own line; split sheet total by quantity units.
+    items = allocateBudgetByQty(partials, goodsBudget);
   } else {
     const remaining = Math.max(0, goodsBudget - pricedSum);
     items = priced.map((p) => ({
@@ -277,26 +386,54 @@ export function parseOrderContentItems(
       quantity: p.quantity,
       unitPrice: Math.max(1, p.unitPrice ?? 1),
     }));
-    if (remaining > 0) {
-      const summary = unpriced.map((p) => `${p.quantity} × ${p.name}`).join('; ');
-      items.push({ name: summary.slice(0, 160), quantity: 1, unitPrice: remaining });
+    if (remaining > 0 && unpriced.length > 0) {
+      items.push(...allocateBudgetByQty(unpriced, remaining));
     }
   }
 
   return { items, shippingFee };
 }
 
+/** Inventory / product-line paste (STT | tên | giá | SL | thành tiền) — not khách|kênh order sheet. */
+function isInventorySpreadsheet(message: string): boolean {
+  if (!message.includes('\t')) return false;
+  // Product-line / cash-receipt sheets — not khách|kênh order table.
+  if (
+    /đã\s*bán(?:\s*được)?\b|^bán\s*được\b|doanh\s*thu[\s\S]{0,60}đã\s*thu|đã\s*thu\s*được\b|doanh\s*thu\s*đến\s*hiện\s*tại|đơn\s*gốc\s*không\s*có\s*hàng|^nhập\s*hàng\b/im.test(
+      message.trim(),
+    )
+  ) {
+    return true;
+  }
+  if (/^nhập\s*hàng\b/im.test(message.trim())) return true;
+  const rows = parseTsvRows(message);
+  return rows.some((row) => {
+    const joined = row.map((c) => c.toLowerCase().trim()).join(' ');
+    if (/tên\s*khách|khách\s*hàng/.test(joined)) return false;
+    const hasName =
+      /tên\s*mẫu|tên\s*sản\s*phẩm|tên\s*sp/.test(joined) ||
+      (/\bstt\b/.test(joined) && /\btên\b/.test(joined) && /giá|thành\s*tiền/.test(joined));
+    return hasName && /số\s*lượng|\bsl\b|\bqty\b/.test(joined);
+  });
+}
+
 export function looksLikeOrderTable(message: string): boolean {
   if (!message.includes('\t')) return false;
+  if (isInventorySpreadsheet(message)) return false;
   const rows = parseTsvRows(message);
   if (rows.length < 1) return false;
+  let cols = DEFAULT_COLS;
   let dataRows = 0;
   let moneyRows = 0;
   for (const row of rows) {
     if (row.length < 3) continue;
-    if (isHeaderRow(row)) continue;
+    if (isHeaderRow(row)) {
+      cols = colMapFromHeader(row);
+      continue;
+    }
     dataRows += 1;
-    const amountCell = row[3] ?? row[row.length - 1] ?? '';
+    const map = cols === DEFAULT_COLS ? inferCols(row) : cols;
+    const amountCell = cellAt(row, map.amount);
     if (parseAmountCell(amountCell) != null || extractTrailingMoney(amountCell)) {
       moneyRows += 1;
     }
@@ -312,51 +449,84 @@ export function parseOrderTableDrafts(
   if (!message.includes('\t')) {
     return { isTable: false, drafts: [], skipped: [] };
   }
+  if (isInventorySpreadsheet(message)) {
+    return { isTable: false, drafts: [], skipped: [] };
+  }
 
   const rows = parseTsvRows(message);
   const drafts: DraftRecord[] = [];
   const skipped: string[] = [];
   let sawHeader = false;
   let dataSeen = 0;
+  let cols = DEFAULT_COLS;
 
   for (const row of rows) {
     if (row.length < 3) continue;
     if (isHeaderRow(row)) {
       sawHeader = true;
+      cols = colMapFromHeader(row);
       continue;
     }
 
-    const customer = (row[0] ?? '').trim();
-    const platformRaw = (row[1] ?? '').trim();
-    const content = (row[2] ?? '').trim();
-    const amountRaw = (row[3] ?? '').trim();
-    const statusRaw = (row[4] ?? '').trim();
-    const noteRaw = (row[5] ?? '').trim();
+    const map = sawHeader ? cols : inferCols(row);
+    const customer = cellAt(row, map.customer);
+    const platformRaw = cellAt(row, map.platform);
+    const content = cellAt(row, map.content);
+    const amountRaw = cellAt(row, map.amount);
+    const statusRaw = cellAt(row, map.status);
+    const noteRaw = cellAt(row, map.note);
 
     if (!customer && !content && !amountRaw) continue;
     dataSeen += 1;
 
-    const amount = parseAmountCell(amountRaw);
-    if (amount == null || amount <= 0) {
+    const parsedAmount = parseAmountCell(amountRaw);
+    const amountMissing = parsedAmount == null || parsedAmount <= 0;
+
+    // No money on sheet: still create unpaid order if we have customer and/or product lines.
+    if (amountMissing && !content.trim() && !customer.trim()) {
+      skipped.push('Hàng trống (thiếu khách và nội dung)');
+      continue;
+    }
+    if (amountMissing && !content.trim()) {
       skipped.push(
         customer
-          ? `${customer}: thiếu số tiền`
-          : `Hàng thiếu số tiền (${content.slice(0, 40) || '…'})`,
+          ? `${customer}: thiếu nội dung sản phẩm (và chưa có số tiền)`
+          : 'Hàng thiếu nội dung và số tiền',
       );
       continue;
     }
 
+    const seedAmount = amountMissing ? 0 : parsedAmount!;
     const { items: orderItems, shippingFee } = parseOrderContentItems(
       content || customer || 'Đơn hàng',
-      amount,
+      seedAmount,
     );
-    const goodsTarget = Math.max(0, amount - shippingFee);
-    const itemsTotal = orderItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
-    // Fix rounding drift on last item vs goods (sheet total − ship)
-    if (orderItems.length && itemsTotal !== goodsTarget && goodsTarget > 0) {
-      const last = orderItems[orderItems.length - 1]!;
-      const others = itemsTotal - last.quantity * last.unitPrice;
-      last.unitPrice = Math.max(1, Math.round((goodsTarget - others) / last.quantity));
+
+    if (amountMissing) {
+      for (const it of orderItems) it.unitPrice = 0;
+    }
+
+    let amount = amountMissing
+      ? 0
+      : parsedAmount!;
+
+    if (!amountMissing) {
+      const goodsTarget = Math.max(0, amount - shippingFee);
+      const itemsTotal = orderItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+      if (orderItems.length && itemsTotal !== goodsTarget && goodsTarget > 0) {
+        const last = orderItems[orderItems.length - 1]!;
+        const others = itemsTotal - last.quantity * last.unitPrice;
+        last.unitPrice = Math.max(1, Math.round((goodsTarget - others) / last.quantity));
+      }
+    }
+
+    if (orderItems.length < 1) {
+      skipped.push(
+        customer
+          ? `${customer}: không tạo được dòng hàng`
+          : 'Không tạo được dòng hàng',
+      );
+      continue;
     }
 
     const description =
@@ -366,9 +536,13 @@ export function parseOrderTableDrafts(
           : orderItems[0]!.name
         : orderItems.map((it) => `${it.quantity} × ${it.name}`).join('; ');
 
-    const { paymentStatus, notes } = parsePaymentFromNote(noteRaw);
+    const { paymentStatus, notes: noteFromSheet } = parsePaymentFromNote(noteRaw);
     const orderStatus = parseOrderStatus(statusRaw);
     const platformName = normalizePlatform(platformRaw);
+    const noteBits = [
+      noteFromSheet,
+      amountMissing ? 'Đơn 0đ — chưa có số tiền trên bảng' : undefined,
+    ].filter(Boolean);
 
     drafts.push(
       validateDraft({
@@ -380,18 +554,18 @@ export function parseOrderTableDrafts(
         customerName: customer || undefined,
         platformName,
         orderItems,
-        shippingFee: shippingFee > 0 ? shippingFee : undefined,
-        shippingPayer: shippingFee > 0 ? 'customer' : undefined,
+        shippingFee: !amountMissing && shippingFee > 0 ? shippingFee : undefined,
+        shippingPayer: !amountMissing && shippingFee > 0 ? 'customer' : undefined,
         quantity: orderItems.length === 1 ? orderItems[0]!.quantity : 1,
         unitPrice:
           orderItems.length === 1
             ? orderItems[0]!.unitPrice
             : undefined,
         orderStatus,
-        paymentStatus: paymentStatus ?? 'unpaid',
-        notes,
+        paymentStatus: amountMissing ? 'unpaid' : paymentStatus ?? 'unpaid',
+        notes: noteBits.join(' · ') || undefined,
         source,
-        confidence: 0.92,
+        confidence: amountMissing ? 0.85 : 0.92,
       }),
     );
   }
