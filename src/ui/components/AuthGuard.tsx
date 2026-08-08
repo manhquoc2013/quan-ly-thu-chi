@@ -42,7 +42,8 @@ export function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const storeName = useAuthStore((s) => s.userProfile?.storeName);
   const [ready, setReady] = useState(false);
-  const { progress, done: llmDone } = useWebLLMLoad();
+  // Only eager-load WebLLM after login (never on AuthScreen / cold Pages visit)
+  const { progress, done: llmDone } = useWebLLMLoad({ enabled: isAuthenticated });
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -87,25 +88,7 @@ export function AuthGuard() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <>
-        <AuthScreen />
-        {!llmDone && (
-          <div className="fixed bottom-4 right-4 z-50 w-64 bg-card/95 backdrop-blur border rounded-lg shadow-lg p-3 space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>🐱 Đang tải AI...</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent-fg rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </>
-    );
+    return <AuthScreen />;
   }
 
   if (!storeName) {

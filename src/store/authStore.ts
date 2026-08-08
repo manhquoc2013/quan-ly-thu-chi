@@ -87,7 +87,7 @@ export const useAuthStore = create<AuthStore>()(
     immer((set, get) => ({
       geminiApiKey: null,
       geminiConfigured: false,
-      enableWebLLM: true,
+      enableWebLLM: false,
       enableKiloFree: true,
       kiloApiKey: null,
       groqApiKey: null,

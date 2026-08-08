@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 import { webLLM } from '@/services/webLLM';
 import { useAuthStore } from '@/store/authStore';
 
-export function useWebLLMLoad() {
+export function useWebLLMLoad(opts?: { enabled?: boolean }) {
+  const allowed = opts?.enabled !== false;
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [done, setDone] = useState(false);
@@ -27,7 +28,10 @@ export function useWebLLMLoad() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!allowed || !hydrated) {
+      if (!allowed) setDone(true);
+      return;
+    }
 
     if (!enableWebLLM || webLLM.isDisabled) {
       setDone(true);
@@ -68,7 +72,7 @@ export function useWebLLMLoad() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [hydrated, enableWebLLM]);
+  }, [allowed, hydrated, enableWebLLM]);
 
   return { progress, status, done };
 }

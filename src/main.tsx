@@ -15,7 +15,8 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(swUrl).then(
       (registration) => {
-        // Auto-update: when new SW found, reload
+        void registration.update();
+        // Auto-update: when new SW found, activate immediately then reload once
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (!newWorker) return;
