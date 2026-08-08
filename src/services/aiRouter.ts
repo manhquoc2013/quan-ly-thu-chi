@@ -50,7 +50,7 @@ import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
 
-export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'gemini' | 'tesseract';
+export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
 
 /** When LLM returns prose/chat, rebuild create intents from split segments via local parsers. */
 function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
@@ -904,7 +904,7 @@ export const aiRouter = {
       return { text: cleanText, source: cascaded.source };
     }
 
-    if (!webLLM.isLoaded && !webLLM.isLoading) {
+    if (!webLLM.isDisabled && !webLLM.isLoaded && !webLLM.isLoading) {
       void webLLM.load();
     }
 

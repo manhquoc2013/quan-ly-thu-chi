@@ -1,18 +1,15 @@
 /**
- * AuthGuard — route-level authentication gate.
- *
- * - While zustand persist is hydrating, renders a centered spinner.
- * - When not authenticated, renders <AuthScreen /> standalone (no layout).
- * - When authenticated, renders the nested <Outlet />.
+ * AuthGuard — Supabase session gate + optional WebLLM load when enabled.
  */
 
 import { useState, useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { AuthScreen } from '@/ui/screens/auth/AuthScreen';
 import { OnboardingScreen } from '@/ui/screens/onboarding/OnboardingScreen';
-import { Outlet } from 'react-router-dom';
-import { initAdminAccount } from '@/services/authService';
 import { useWebLLMLoad } from '@/ui/components/WebLLMLoader';
+import { getSupabase, isSupabaseConfigured } from '@/services/supabaseClient';
+import { bootstrapSessionAfterAuth } from '@/services/sessionBootstrap';
 
 function AuthGuardSpinner() {
   return (
@@ -26,39 +23,69 @@ function AuthGuardSpinner() {
   );
 }
 
+function MissingSupabaseScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
+      <div className="max-w-md space-y-2">
+        <h1 className="text-lg font-semibold">Chưa cấu hình cloud</h1>
+        <p className="text-sm text-muted-foreground">
+          Thêm <code className="text-xs">VITE_SUPABASE_URL</code> và{' '}
+          <code className="text-xs">VITE_SUPABASE_ANON_KEY</code> vào <code className="text-xs">.env</code> rồi
+          restart <code className="text-xs">npm run dev</code>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function AuthGuard() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-
-  // Zustand persist hydration tracking (zustand v5)
-  const [hydrated, setHydrated] = useState(
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    useAuthStore.persist?.hasHydrated?.() ?? false,
-  );
-  const [bootstrapped, setBootstrapped] = useState(false);
+  const storeName = useAuthStore((s) => s.userProfile?.storeName);
+  const [ready, setReady] = useState(false);
+  const { progress, done: llmDone } = useWebLLMLoad();
 
   useEffect(() => {
-    const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
-      setHydrated(true);
-    });
+    if (!isSupabaseConfigured()) {
+      setReady(true);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await getSupabase().auth.getSession();
+        if (cancelled) return;
+        if (data.session?.user) {
+          if (!useAuthStore.getState().isAuthenticated || useAuthStore.getState().userId !== data.session.user.id) {
+            await bootstrapSessionAfterAuth();
+          }
+        } else {
+          useAuthStore.setState({
+            isAuthenticated: false,
+            userId: null,
+            userProfile: null,
+            sessionToken: null,
+            sessionExpiresAt: null,
+          });
+        }
+      } catch (err) {
+        console.error('[AuthGuard] session check failed', err);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
     return () => {
-      unsub?.();
+      cancelled = true;
     };
   }, []);
 
-  // Ensure admin account exists before showing auth screen
-  useEffect(() => {
-    void initAdminAccount().then(() => setBootstrapped(true));
-  }, []);
+  if (!isSupabaseConfigured()) {
+    return <MissingSupabaseScreen />;
+  }
 
-  // Eager-load WebLLM model (non-blocking — show subtle progress indicator)
-  const { progress, done: llmDone } = useWebLLMLoad();
-
-  // Still hydrating or bootstrapping — show spinner
-  if (!hydrated || !bootstrapped) {
+  if (!ready) {
     return <AuthGuardSpinner />;
   }
 
-  // Not authenticated — show auth screen standalone (no layout)
   if (!isAuthenticated) {
     return (
       <>
@@ -81,15 +108,10 @@ export function AuthGuard() {
     );
   }
 
-  // Authenticated but no store name → onboarding
-  if (isAuthenticated) {
-    const storeName = useAuthStore.getState().userProfile?.storeName;
-    if (!storeName) {
-      return <OnboardingScreen />;
-    }
+  if (!storeName) {
+    return <OnboardingScreen />;
   }
 
-  // Authenticated — render child routes
   return (
     <>
       <Outlet />

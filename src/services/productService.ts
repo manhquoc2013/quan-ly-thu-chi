@@ -53,6 +53,7 @@ export async function createProduct(
     unit,
     sku,
     notes,
+    imagePath: data.imagePath,
     createdAt: new Date().toISOString(),
   };
 
@@ -60,6 +61,9 @@ export async function createProduct(
   const updated = [...existing, record];
   await cacheSet(CACHE_KEY, updated);
   useProductStore.getState().setProducts(updated);
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertProduct(record))
+    .catch((err) => console.error('[cloud] product create', err));
   notify.success(`Đã thêm SP: ${record.name}`, opts);
   return record;
 }
@@ -96,6 +100,9 @@ export async function updateProduct(
   updatedAll[idx] = updated;
   await cacheSet(CACHE_KEY, updatedAll);
   useProductStore.getState().setProducts(updatedAll);
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertProduct(updated))
+    .catch((err) => console.error('[cloud] product update', err));
   notify.success(`Đã cập nhật SP: ${updated.name}`, opts);
   return updated;
 }
@@ -111,6 +118,9 @@ export async function deleteProduct(id: string, opts?: NotifyOpts): Promise<void
   const updated = existing.filter((p) => p.id !== id);
   await cacheSet(CACHE_KEY, updated);
   useProductStore.getState().setProducts(updated);
+  void import('./cloudSync')
+    .then((m) => m.cloudDeleteProduct(id))
+    .catch((err) => console.error('[cloud] product delete', err));
   notify.success('Đã xóa sản phẩm', opts);
 }
 

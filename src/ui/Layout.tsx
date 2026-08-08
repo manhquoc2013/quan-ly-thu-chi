@@ -21,6 +21,8 @@ import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { webLLM } from '@/services/webLLM';
 import { kiloService } from '@/services/kiloService';
+import { pendingCount } from '@/services/syncOutbox';
+import { flushOutbox } from '@/services/syncEngine';
 
 const tabs = [
   { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },
@@ -66,8 +68,10 @@ function mobileTabClass({ isActive }: { isActive: boolean }): string {
 export function Layout() {
   const fabOpen = useUIStore((s) => s.fabOpen);
   const toggleFab = useUIStore((s) => s.toggleFab);
+  const userId = useAuthStore((s) => s.userId);
   const [clock, setClock] = useState('');
-  const [syncState, setSyncState] = useState<'synced' | 'syncing' | 'offline'>('synced');
+  const [syncState, setSyncState] = useState<'synced' | 'syncing' | 'offline' | 'pending'>('synced');
+  const [pending, setPending] = useState(0);
   const [dataReady, setDataReady] = useState(false);
 
   // Hydrate stores from IndexedDB once on mount
@@ -114,18 +118,32 @@ export function Layout() {
     return () => clearInterval(id);
   }, []);
 
-  // Detect online/offline
+  // Detect online/offline + pending outbox
   useEffect(() => {
-    const online = () => setSyncState('synced');
+    const refresh = () => {
+      if (!navigator.onLine) {
+        setSyncState('offline');
+        return;
+      }
+      const n = userId ? pendingCount(userId) : 0;
+      setPending(n);
+      setSyncState(n > 0 ? 'pending' : dataReady ? 'synced' : 'syncing');
+    };
+    const online = () => {
+      refresh();
+      if (userId) void flushOutbox(userId).then(refresh);
+    };
     const offline = () => setSyncState('offline');
-    setSyncState(navigator.onLine ? (dataReady ? 'synced' : 'syncing') : 'offline');
+    refresh();
     window.addEventListener('online', online);
     window.addEventListener('offline', offline);
+    const id = setInterval(refresh, 5000);
     return () => {
       window.removeEventListener('online', online);
       window.removeEventListener('offline', offline);
+      clearInterval(id);
     };
-  }, [dataReady]);
+  }, [dataReady, userId]);
 
   return (
     <div className="flex flex-col h-screen bg-background min-w-0 overflow-hidden">
@@ -176,20 +194,28 @@ export function Layout() {
                 ? 'Đã đồng bộ'
                 : syncState === 'syncing'
                   ? 'Đang đồng bộ'
-                  : 'Ngoại tuyến'
+                  : syncState === 'pending'
+                    ? `Chưa đồng bộ (${pending})`
+                    : 'Ngoại tuyến'
             }
           >
             <span
               className={`size-1.5 rounded-full shrink-0 ${
                 syncState === 'synced'
                   ? 'bg-success-fg'
-                  : syncState === 'syncing'
+                  : syncState === 'syncing' || syncState === 'pending'
                     ? 'bg-warning-fg animate-pulse'
                     : 'bg-text-disabled'
               }`}
             />
             <span className="truncate">
-              {syncState === 'synced' ? 'Đồng bộ' : syncState === 'syncing' ? 'Đang sync' : 'Offline'}
+              {syncState === 'synced'
+                ? 'Đồng bộ'
+                : syncState === 'syncing'
+                  ? 'Đang sync'
+                  : syncState === 'pending'
+                    ? `Chờ sync (${pending})`
+                    : 'Offline'}
             </span>
           </div>
           <span className="text-[11px] text-text-muted tabular-nums">{clock || '--:--'}</span>
@@ -219,7 +245,7 @@ export function Layout() {
       {/* ── Bottom Status Bar ──────────────────────────────────────── */}
       <div className="flex items-center justify-between px-[var(--s-md)] h-[var(--dimens-statusBarHeight)] bg-surface border-t border-border text-[10px] text-text-muted shrink-0 pb-[env(safe-area-inset-bottom,0px)]">
         <span>© 2026 Quản Lý Tài Chính</span>
-        <span>v1.0.0</span>
+        <span>v1.0.6</span>
       </div>
 
       {/* ── FAB — AI Chat Toggle ───────────────────────────────────── */}

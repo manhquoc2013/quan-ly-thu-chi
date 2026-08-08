@@ -30,6 +30,8 @@ let generateQueue: Promise<void> = Promise.resolve();
 
 /** Whether the user has disabled WebLLM (set from authStore). */
 let disabled = false;
+/** Bumped when load should be discarded (toggle off mid-download). */
+let loadEpoch = 0;
 
 const CHAT_SYSTEM = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng.
 
@@ -164,15 +166,32 @@ export const webLLM = {
   setDisabled(v: boolean): void {
     disabled = v;
     if (v) {
+      loadEpoch += 1;
       this.cancel();
+      void this.unload();
     }
   },
 
-  /** Cancel the in-flight generate() call and unload the model. */
+  /** Cancel the in-flight generate() call. */
   cancel(): void {
     if (currentAbortController) {
       currentAbortController.abort();
       currentAbortController = null;
+    }
+  },
+
+  /** Release GPU/model resources if loaded. */
+  async unload(): Promise<void> {
+    const current = engine;
+    engine = null;
+    loaded = false;
+    loadPercent = 0;
+    loadText = '';
+    if (!current) return;
+    try {
+      await current.unload();
+    } catch {
+      // ignore unload errors
     }
   },
 
@@ -185,17 +204,19 @@ export const webLLM = {
         await new Promise((r) => setTimeout(r, 100));
         retries++;
       }
-      return loaded;
+      return loaded && !disabled;
     }
 
+    const epoch = loadEpoch;
     loading = true;
     loadPercent = 0;
     loadText = 'Đang khởi tạo...';
     try {
-      engine = await CreateMLCEngine(
+      const nextEngine = await CreateMLCEngine(
         MODEL_ID,
         {
           initProgressCallback: (report) => {
+            if (disabled || epoch !== loadEpoch) return;
             loadPercent = Math.round(report.progress * 100);
             loadText = report.text;
             console.log(`WebLLM: ${loadPercent}% — ${report.text}`);
@@ -203,6 +224,15 @@ export const webLLM = {
         },
         { context_window_size: CONTEXT_WINDOW_SIZE },
       );
+      if (disabled || epoch !== loadEpoch) {
+        try {
+          await nextEngine.unload();
+        } catch {
+          // ignore
+        }
+        return false;
+      }
+      engine = nextEngine;
       loaded = true;
       return true;
     } catch (err) {
@@ -288,12 +318,6 @@ export const webLLM = {
       () => undefined,
     );
     return queued;
-  },
-
-  async unload(): Promise<void> {
-    this.cancel();
-    engine = null;
-    loaded = false;
   },
 };
 

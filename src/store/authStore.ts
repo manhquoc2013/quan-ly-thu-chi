@@ -1,77 +1,66 @@
 /**
- * Auth Store — Google Drive connection, Gemini API key, user info, session management.
+ * Auth Store — Gemini/Groq/Kilo settings, Supabase user session, household.
  *
- * Persists Gemini API key and auth state to localStorage so it survives reload.
- * Session tokens are stored in sessionStorage (not persisted to localStorage).
+ * Auth gate is Supabase session (see AuthGuard). Settings hydrate from cloud on login;
+ * local persist is a cache for offline.
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { geminiService } from '@/services/geminiService';
+import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
+import { webLLM } from '@/services/webLLM';
+import { type LlmSource, AI_PRIORITY_DEFAULT } from '@/services/llmTypes';
 import type { UserProfile } from '@/services/authService';
-import { getUserCredentials, getUserByEmail } from '@/services/authService';
-import { generateToken, storeToken, clearToken, getStoredToken, isTokenExpired } from '@/services/tokenService';
-import { closeDatabase, initDatabase, getOrCreateEncryptionKey } from '@/services/database';
+import { clearToken } from '@/services/tokenService';
+import { closeDatabase } from '@/services/database';
 import { setCacheUserId } from '@/services/cacheManager';
-
-const encoder = new TextEncoder();
-
-export interface GoogleUser {
-  id: string;
-  name: string;
-  email: string;
-  picture?: string;
-}
+import { clearOutbox, pendingCount } from '@/services/syncOutbox';
 
 interface AuthState {
-  // Google Drive / Gemini state
-  isGoogleConnected: boolean;
-  googleUser: GoogleUser | null;
   geminiApiKey: string | null;
   geminiConfigured: boolean;
-  // EmailJS state
-  emailjsServiceId: string | null;
-  emailjsTemplateId: string | null;
-  emailjsPublicKey: string | null;
-  emailjsPrivateKey: string | null;
-  emailjsConfigured: boolean;
-  // Local email auth state (Wave 1)
   isAuthenticated: boolean;
   userProfile: UserProfile | null;
-  // Session management (Wave 1.5)
   userId: string | null;
   sessionToken: string | null;
   sessionExpiresAt: number | null;
-  // Admin flag
   isAdmin: boolean;
-  // WebLLM toggle
   enableWebLLM: boolean;
-  // Kilo Free cloud (default on when online)
   enableKiloFree: boolean;
   kiloApiKey: string | null;
+  groqApiKey: string | null;
+  groqConfigured: boolean;
+  enableGroq: boolean;
+  aiPriority: LlmSource[];
+  householdId: string | null;
+  householdName: string | null;
+  householdRole: 'owner' | 'member' | null;
+  supabaseEmail: string | null;
 }
 
 export interface AuthActions {
-  // Google Drive / Gemini actions
-  setGoogleConnected: (isGoogleConnected: boolean) => void;
-  setGoogleUser: (googleUser: GoogleUser | null) => void;
   setGeminiApiKey: (key: string | null) => void;
-  disconnectGoogle: () => void;
-  // EmailJS actions
-  setEmailJSConfig: (config: { serviceId: string; templateId: string; publicKey: string; privateKey?: string }) => void;
-  clearEmailJSConfig: () => void;
-  // WebLLM toggle
   setEnableWebLLM: (v: boolean) => void;
-  // Kilo Free
   setEnableKiloFree: (v: boolean) => void;
   setKiloApiKey: (key: string | null) => void;
-  // Local email auth actions (Wave 1)
+  setGroqApiKey: (key: string | null) => void;
+  setEnableGroq: (v: boolean) => void;
+  setAiPriority: (order: LlmSource[]) => void;
+  setHousehold: (
+    info: {
+      householdId: string;
+      householdName: string;
+      role: 'owner' | 'member';
+    } | null,
+  ) => void;
+  setSupabaseEmail: (email: string | null) => void;
+  /** @deprecated Prefer bootstrapSessionAfterAuth — kept for rare local profile hydrate */
   login: (email: string, profile: UserProfile) => void;
-  logout: () => void;
+  logout: (opts?: { discardPending?: boolean }) => Promise<void>;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
-  // Session management (Wave 1.5)
   setSession: (userId: string, token: string, expiresAt: number) => void;
   clearSession: () => void;
 }
@@ -83,59 +72,38 @@ function syncGeminiService(apiKey: string | null): void {
   else geminiService.disconnect();
 }
 
+function syncGroqService(apiKey: string | null): void {
+  if (apiKey) groqService.configure(apiKey);
+  else groqService.disconnect();
+}
+
 function syncKiloService(opts: { enabled: boolean; apiKey: string | null }): void {
   kiloService.setEnabled(opts.enabled);
   kiloService.configure(opts.apiKey);
 }
 
-/** Derive a user ID from an email address using SHA-256. */
-async function deriveUserId(email: string): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(email.toLowerCase()));
-  const hashArray = new Uint8Array(hashBuffer);
-  return Array.from(hashArray)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 export const useAuthStore = create<AuthStore>()(
   persist(
-    immer((set) => ({
-      // Google Drive / Gemini state
-      isGoogleConnected: false,
-      googleUser: null,
+    immer((set, get) => ({
       geminiApiKey: null,
       geminiConfigured: false,
-      // EmailJS state
-      emailjsServiceId: null,
-      emailjsTemplateId: null,
-      emailjsPublicKey: null,
-      emailjsPrivateKey: null,
-      emailjsConfigured: false,
-      // WebLLM toggle (default: enabled)
       enableWebLLM: true,
-      // Kilo Free (default: on — cloud free before Gemini/WebLLM)
       enableKiloFree: true,
       kiloApiKey: null,
-      // Local email auth state (Wave 1)
+      groqApiKey: null,
+      groqConfigured: false,
+      enableGroq: true,
+      aiPriority: AI_PRIORITY_DEFAULT,
+      householdId: null,
+      householdName: null,
+      householdRole: null,
+      supabaseEmail: null,
       isAuthenticated: false,
       userProfile: null,
-      // Session management (Wave 1.5)
       userId: null,
       sessionToken: null,
       sessionExpiresAt: null,
-      // Admin flag
       isAdmin: false,
-
-      setGoogleConnected: (isGoogleConnected) =>
-        set((state) => {
-          state.isGoogleConnected = isGoogleConnected;
-        }),
-
-      setGoogleUser: (googleUser) =>
-        set((state) => {
-          state.googleUser = googleUser;
-          if (googleUser) state.isGoogleConnected = true;
-        }),
 
       setGeminiApiKey: (geminiApiKey) => {
         set((state) => {
@@ -145,42 +113,18 @@ export const useAuthStore = create<AuthStore>()(
         syncGeminiService(geminiApiKey);
       },
 
-      disconnectGoogle: () =>
-        set((state) => {
-          state.isGoogleConnected = false;
-          state.googleUser = null;
-        }),
-
-      // EmailJS actions
-      setEmailJSConfig: (config) =>
-        set((state) => {
-          state.emailjsServiceId = config.serviceId;
-          state.emailjsTemplateId = config.templateId;
-          state.emailjsPublicKey = config.publicKey;
-          state.emailjsPrivateKey = config.privateKey ?? null;
-          state.emailjsConfigured = !!(config.serviceId && config.templateId && config.publicKey);
-        }),
-
-      clearEmailJSConfig: () =>
-        set((state) => {
-          state.emailjsServiceId = null;
-          state.emailjsTemplateId = null;
-          state.emailjsPublicKey = null;
-          state.emailjsPrivateKey = null;
-          state.emailjsConfigured = false;
-        }),
-
-      // WebLLM toggle
-      setEnableWebLLM: (enableWebLLM) =>
+      setEnableWebLLM: (enableWebLLM) => {
         set((state) => {
           state.enableWebLLM = enableWebLLM;
-        }),
+        });
+        webLLM.setDisabled(!enableWebLLM);
+      },
 
       setEnableKiloFree: (enableKiloFree) => {
         set((state) => {
           state.enableKiloFree = enableKiloFree;
         });
-        const { kiloApiKey } = useAuthStore.getState();
+        const { kiloApiKey } = get();
         syncKiloService({ enabled: enableKiloFree, apiKey: kiloApiKey });
       },
 
@@ -188,44 +132,74 @@ export const useAuthStore = create<AuthStore>()(
         set((state) => {
           state.kiloApiKey = kiloApiKey;
         });
-        const { enableKiloFree } = useAuthStore.getState();
+        const { enableKiloFree } = get();
         syncKiloService({ enabled: enableKiloFree !== false, apiKey: kiloApiKey });
       },
 
-      // Local email auth actions (Wave 1)
-      login: async (email, profile) => {
-        const userId = await deriveUserId(email);
-        const creds = getUserByEmail(email);
-        let token: string | null = null;
-        let expiresAt: number | null = null;
-        if (creds?.passwordHash) {
-          const now = Date.now();
-          token = await generateToken(userId, creds.passwordHash);
-          expiresAt = now + 24 * 60 * 60 * 1000;
-          storeToken(token);
-          // Wire DB encryption
-          try {
-            const dbKey = await getOrCreateEncryptionKey(creds.passwordHash, userId);
-            await initDatabase(userId, dbKey);
-            setCacheUserId(userId);
-          } catch (err) {
-            console.error('Failed to initialize encrypted database:', err);
+      setGroqApiKey: (groqApiKey) => {
+        set((state) => {
+          state.groqApiKey = groqApiKey;
+          state.groqConfigured = !!groqApiKey;
+        });
+        syncGroqService(groqApiKey);
+      },
+
+      setEnableGroq: (enableGroq) => {
+        set((state) => {
+          state.enableGroq = enableGroq;
+        });
+        groqService.setEnabled(enableGroq);
+      },
+
+      setAiPriority: (aiPriority) =>
+        set((state) => {
+          state.aiPriority = aiPriority;
+        }),
+
+      setHousehold: (info) =>
+        set((state) => {
+          if (!info) {
+            state.householdId = null;
+            state.householdName = null;
+            state.householdRole = null;
+            return;
           }
-        }
+          state.householdId = info.householdId;
+          state.householdName = info.householdName;
+          state.householdRole = info.role;
+        }),
+
+      setSupabaseEmail: (supabaseEmail) =>
+        set((state) => {
+          state.supabaseEmail = supabaseEmail;
+        }),
+
+      login: (email, profile) => {
         set((state) => {
           state.isAuthenticated = true;
-          state.userProfile = { ...profile };
-          state.userId = userId;
-          state.sessionToken = token;
-          state.sessionExpiresAt = expiresAt;
-          state.isAdmin = creds?.isAdmin ?? false;
+          state.userProfile = { ...profile, email: profile.email || email };
+          state.supabaseEmail = email;
         });
       },
 
-      logout: () => {
+      logout: async (opts) => {
+        const userId = get().userId;
+        if (userId && pendingCount(userId) > 0 && !opts?.discardPending) {
+          const { flushOutbox } = await import('@/services/syncEngine');
+          if (navigator.onLine) {
+            await flushOutbox(userId);
+          }
+        }
         clearToken();
         closeDatabase();
         setCacheUserId(null);
+        if (userId) clearOutbox(userId);
+        try {
+          const { signOutSupabase } = await import('@/services/householdService');
+          await signOutSupabase();
+        } catch {
+          // ignore
+        }
         set((state) => {
           state.isAuthenticated = false;
           state.userProfile = null;
@@ -233,6 +207,10 @@ export const useAuthStore = create<AuthStore>()(
           state.sessionToken = null;
           state.sessionExpiresAt = null;
           state.isAdmin = false;
+          state.householdId = null;
+          state.householdName = null;
+          state.householdRole = null;
+          state.supabaseEmail = null;
         });
       },
 
@@ -243,9 +221,7 @@ export const useAuthStore = create<AuthStore>()(
           }
         }),
 
-      // Session management (Wave 1.5)
       setSession: (userId, token, expiresAt) => {
-        storeToken(token);
         set((state) => {
           state.userId = userId;
           state.sessionToken = token;
@@ -267,53 +243,40 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         geminiApiKey: state.geminiApiKey,
         geminiConfigured: !!state.geminiApiKey,
-        emailjsServiceId: state.emailjsServiceId,
-        emailjsTemplateId: state.emailjsTemplateId,
-        emailjsPublicKey: state.emailjsPublicKey,
-        emailjsPrivateKey: state.emailjsPrivateKey,
-        emailjsConfigured: state.emailjsConfigured,
         enableWebLLM: state.enableWebLLM,
         enableKiloFree: state.enableKiloFree,
         kiloApiKey: state.kiloApiKey,
-        isAuthenticated: state.isAuthenticated,
+        groqApiKey: state.groqApiKey,
+        enableGroq: state.enableGroq,
+        aiPriority: state.aiPriority,
+        // Do not persist isAuthenticated — AuthGuard restores from Supabase session
         userProfile: state.userProfile,
         userId: state.userId,
-        sessionExpiresAt: state.sessionExpiresAt,
         isAdmin: state.isAdmin,
+        householdId: state.householdId,
+        householdName: state.householdName,
+        householdRole: state.householdRole,
+        supabaseEmail: state.supabaseEmail,
       }),
-      onRehydrateStorage: () => async (state) => {
-        if (state?.geminiApiKey) {
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (state.geminiApiKey) {
           syncGeminiService(state.geminiApiKey);
           state.geminiConfigured = true;
         }
+        if (state.groqApiKey) {
+          syncGroqService(state.groqApiKey);
+          state.groqConfigured = true;
+        }
         syncKiloService({
-          enabled: state?.enableKiloFree !== false,
-          apiKey: state?.kiloApiKey ?? null,
+          enabled: state.enableKiloFree !== false,
+          apiKey: state.kiloApiKey ?? null,
         });
-        if (state && state.enableKiloFree === undefined) {
-          state.enableKiloFree = true;
+        webLLM.setDisabled(state.enableWebLLM === false);
+        if (!state.aiPriority || state.aiPriority.length === 0) {
+          state.aiPriority = AI_PRIORITY_DEFAULT;
         }
-        if (state?.userId && state?.isAuthenticated) {
-          const storedToken = getStoredToken();
-          if (!storedToken || isTokenExpired(storedToken)) {
-            state.isAuthenticated = false;
-            state.sessionToken = null;
-            state.sessionExpiresAt = null;
-            clearToken();
-          } else {
-            // Restore DB encryption
-            try {
-              const creds = getUserCredentials();
-              if (creds?.passwordHash) {
-                const dbKey = await getOrCreateEncryptionKey(creds.passwordHash, state.userId);
-                await initDatabase(state.userId, dbKey);
-                setCacheUserId(state.userId);
-              }
-            } catch {
-              // non-critical
-            }
-          }
-        }
+        state.isAuthenticated = false;
       },
     },
   ),

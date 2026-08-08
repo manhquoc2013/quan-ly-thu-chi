@@ -1,7 +1,7 @@
 {
   "name": "quan-ly-thu-chi",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "homepage": "https://manhquoc2013.github.io/quan-ly-thu-chi",
   "scripts": {
@@ -25,6 +25,7 @@
     "@google/genai": "^0.8.0",
     "@hookform/resolvers": "^5.6.0",
     "@mlc-ai/web-llm": "^0.2.0",
+    "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-virtual": "^3.0.0",
     "class-variance-authority": "^0.7.1",

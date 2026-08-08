@@ -1,0 +1,6 @@
+# Edge Functions config
+# Deploy kilo-proxy without JWT so Pages can call with anon apikey header only.
+# supabase functions deploy kilo-proxy --no-verify-jwt
+
+[functions.kilo-proxy]
+verify_jwt = false

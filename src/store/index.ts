@@ -45,7 +45,4 @@ export type {
 } from './uiStore';
 
 export { useAuthStore } from './authStore';
-export type {
-  GoogleUser,
-  AuthActions,
-} from './authStore';
+export type { AuthActions } from './authStore';

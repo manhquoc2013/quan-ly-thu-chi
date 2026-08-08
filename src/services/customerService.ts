@@ -82,6 +82,10 @@ export async function createCustomer(
   await cacheSet(CACHE_KEY, updated);
   useCustomerStore.getState().setCustomers(updated);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertCustomer(record))
+    .catch((err) => console.error('[cloud] customer create', err));
+
   notify.success(`Đã thêm khách: ${record.name}`, opts);
   return record;
 }
@@ -156,6 +160,10 @@ export async function updateCustomer(
   await cacheSet(CACHE_KEY, updatedAll);
   useCustomerStore.getState().setCustomers(updatedAll);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertCustomer(updated))
+    .catch((err) => console.error('[cloud] customer update', err));
+
   notify.success(`Đã cập nhật khách: ${updated.name}`, opts);
   return updated;
 }
@@ -174,5 +182,8 @@ export async function deleteCustomer(id: string, opts?: NotifyOpts): Promise<voi
   const updated = existing.filter((c) => c.id !== id);
   await cacheSet(CACHE_KEY, updated);
   useCustomerStore.getState().setCustomers(updated);
+  void import('./cloudSync')
+    .then((m) => m.cloudDeleteCustomer(id))
+    .catch((err) => console.error('[cloud] customer delete', err));
   notify.success('Đã xóa khách hàng', opts);
 }

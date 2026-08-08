@@ -254,6 +254,10 @@ export async function createRevenue(
   await cacheSet(CACHE_KEY, updated);
   useRevenueStore.getState().setRecords(updated);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertRevenue(record))
+    .catch((err) => console.error('[cloud] revenue create', err));
+
   notify.success(`Đã thêm đơn ${record.orderCode}`, opts);
   return record;
 }
@@ -356,6 +360,10 @@ export async function updateRevenue(
   await cacheSet(CACHE_KEY, updatedAll);
   useRevenueStore.getState().setRecords(updatedAll);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertRevenue(updated))
+    .catch((err) => console.error('[cloud] revenue update', err));
+
   notify.success(`Đã cập nhật đơn ${updated.orderCode}`, opts);
   return updated;
 }
@@ -375,6 +383,11 @@ export async function deleteRevenues(ids: string[], opts?: NotifyOpts): Promise<
   const updated = existing.filter((r) => !ids.includes(r.id));
   await cacheSet(CACHE_KEY, updated);
   useRevenueStore.getState().setRecords(updated);
+  void import('./cloudSync')
+    .then(async (m) => {
+      for (const id of ids) await m.cloudDeleteRevenue(id);
+    })
+    .catch((err) => console.error('[cloud] revenue delete', err));
   const n = ids.length;
   notify.success(n > 1 ? `Đã xóa ${n} đơn hàng` : 'Đã xóa đơn hàng', opts);
 }

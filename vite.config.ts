@@ -120,12 +120,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 5173,
-      clientPort: 5173,
-    },
+    // Let Vite infer HMR host from the page URL (works with Cursor Browser /
+    // LAN). Hardcoding localhost breaks WS when the tab is not on localhost.
+    strictPort: true,
     proxy: {
       '/api/kilo': kiloProxyOptions,
     },

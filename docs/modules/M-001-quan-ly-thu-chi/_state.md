@@ -6,15 +6,20 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-01T08:39:46Z
-last-updated: 2026-08-02T09:06:21Z
-current-stage: closed
+last-updated: 2026-08-05T08:14:23Z
+current-stage: engineering-system-architect
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-001-quan-ly-thu-chi
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -22,34 +27,18 @@ completed-stages:
   engineering-business-analyst:
     verdict: Pass
     artifact: docs/modules/M-001-quan-ly-thu-chi/ba/00-lean-spec.md
-    completed-at: 2026-08-02
-  engineering-system-architect:
+    completed-at: 2026-08-05
+  engineering-solution-designer:
     verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md
-    completed-at: 2026-08-02
-  engineering-technical-lead:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md
-    completed-at: 2026-08-02
-  engineering-backend-developer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w1-auth-service-migration.md
-    completed-at: 2026-08-02
-  engineering-qa-engineer-wave-1:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md
-    completed-at: 2026-08-02
-  engineering-code-reviewer:
-    verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md
-    completed-at: 2026-08-02
+    artifact: docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md
+    completed-at: 2026-08-05
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-08-01T08:39:46Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count:
-  engineering-business-analyst: 1
+  engineering-business-analyst: 3
   engineering-backend-developer-wave-1: 1
 locked-fields: []
 version: 1
@@ -65,6 +54,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+reopened-at: 2026-08-05T07:34:02Z
+reopened-reason: "Scope expansion: add Groq AI provider + user-configurable AI priority ordering"
 ---
 # Pipeline State: Quản Lý Tài Chính
 
@@ -77,20 +68,21 @@ clarification-notes: ""
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | Intake | consulting-intelligence-extractor | Ready for BA | — | 2026-08-01T08:39:46Z |
-| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-ly-thu-chi/ba/00-lean-spec.md | 2026-08-02 |
-| 3 | engineering-system-architect | engineering-system-architect | Pass | docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md | 2026-08-02 |
-| 4 | engineering-technical-lead | engineering-technical-lead | Pass | docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md | 2026-08-02 |
-| 5 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w1-auth-service-migration.md | 2026-08-02 |
-| 6 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md | 2026-08-02 |
-| 7 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md | 2026-08-02 |
+| 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-ly-thu-chi/ba/00-lean-spec.md | 2026-08-05 |
+| 3 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md | 2026-08-05 |
+| 4 | engineering-system-architect | engineering-system-architect | — | — | — |
+| 5 | engineering-technical-lead | engineering-technical-lead | — | — | — |
+| 6 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 7 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
+| 8 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 
 ## Current Stage
 
-**closed** — Pipeline complete.
+**engineering-system-architect** — Ready to start. Input: `docs/modules/M-001-quan-ly-thu-chi/module-brief.md`.
 
 ## Next Action
 
-Awaiting human release approval — run `ai-kit sdlc state update --op released --kind module --id M-001 --workspace .` once production sign-off is granted.
+Next stage `engineering-system-architect` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 

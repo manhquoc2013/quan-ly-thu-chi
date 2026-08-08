@@ -70,25 +70,35 @@ export {
 
 export { bootstrapAppData, reloadAppData, isAppDataReady } from './bootstrap';
 
-// ── Google Drive ─────────────────────────────────────────────────────────────
+// ── Supabase shared ledger ───────────────────────────────────────────────────
 
+export { isSupabaseConfigured, getSupabase } from './supabaseClient';
 export {
-  connectGoogleDrive,
-  disconnectDrive,
-  syncFromDrive,
-  syncToDrive,
-  syncAppData,
-  restoreFromDrive,
-  isDriveConnected,
-  isGoogleDriveConfigured,
-  uploadInvoiceImage,
-  getDriveUser,
-} from './googleDrive';
+  signInSupabase,
+  signUpSupabase,
+  signOutSupabase,
+  createHousehold,
+  createInvite,
+  redeemInvite,
+  getMyHousehold,
+} from './householdService';
+export {
+  hydrateStoresFromCloud,
+  migrateLocalCacheToCloud,
+  refreshHouseholdFromCloud,
+  isCloudSyncActive,
+} from './cloudSync';
+export { uploadProductImage, getProductImageUrl, removeProductImage } from './productImageStorage';
+export { bootstrapSessionAfterAuth } from './sessionBootstrap';
+export { flushOutbox, startSyncEngine } from './syncEngine';
+export { queueUserSettingsSync, queueProfileSync } from './userSettingsService';
+export { enqueueOutbox, pendingCount, clearOutbox } from './syncOutbox';
 
 // ── AI ───────────────────────────────────────────────────────────────────────
 
 export { aiRouter } from './aiRouter';
 export { geminiService } from './geminiService';
+export { groqService } from './groqService';
 export { webLLM } from './webLLM';
 export { speechService } from './speechService';
 export {

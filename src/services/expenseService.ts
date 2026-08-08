@@ -80,6 +80,10 @@ export async function createExpense(
   await cacheSet(CACHE_KEY, updated);
   useExpenseStore.getState().setRecords(updated);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertExpense(record))
+    .catch((err) => console.error('[cloud] expense create', err));
+
   notify.success(`Đã thêm chi phí: ${record.description}`, opts);
   return record;
 }
@@ -134,6 +138,10 @@ export async function updateExpense(
   await cacheSet(CACHE_KEY, updatedAll);
   useExpenseStore.getState().setRecords(updatedAll);
 
+  void import('./cloudSync')
+    .then((m) => m.cloudUpsertExpense(updated))
+    .catch((err) => console.error('[cloud] expense update', err));
+
   notify.success(`Đã cập nhật chi phí: ${updated.description}`, opts);
   return updated;
 }
@@ -146,6 +154,11 @@ export async function deleteExpenses(ids: string[], opts?: NotifyOpts): Promise<
   const updated = existing.filter((r) => !ids.includes(r.id));
   await cacheSet(CACHE_KEY, updated);
   useExpenseStore.getState().setRecords(updated);
+  void import('./cloudSync')
+    .then(async (m) => {
+      for (const id of ids) await m.cloudDeleteExpense(id);
+    })
+    .catch((err) => console.error('[cloud] expense delete', err));
   const n = ids.length;
   notify.success(n > 1 ? `Đã xóa ${n} chi phí` : 'Đã xóa chi phí', opts);
 }

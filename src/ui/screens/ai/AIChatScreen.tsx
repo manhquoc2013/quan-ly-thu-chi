@@ -25,7 +25,7 @@ interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: Date;
-  source?: 'local' | 'cloud' | 'kilo' | 'gemini' | 'tesseract';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue'; id: string };

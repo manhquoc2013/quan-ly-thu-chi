@@ -15,6 +15,7 @@
  */
 
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { cacheGet, cacheSet } from './cacheManager';
 
 const DB_CACHE_KEY = 'database_binary';
@@ -144,9 +145,9 @@ export async function initDatabase(
 
   if (db) return db;
 
-  // Load sql.js WASM (cached by browser after first load)
+  // Load sql.js WASM (Vite emits correct URL for / and GitHub Pages base)
   SQL = await initSqlJs({
-    locateFile: (file: string) => `/sql-wasm.wasm`,
+    locateFile: () => sqlWasmUrl,
   });
 
   // Use user-scoped cache key

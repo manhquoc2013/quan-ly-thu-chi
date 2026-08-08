@@ -5,7 +5,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { updateProfile } from '@/services/authService';
+import { queueProfileSync } from '@/services/userSettingsService';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,15 +32,16 @@ export function OnboardingScreen() {
 
     setLoading(true);
     try {
-      updateProfile({
-        storeName: trimmedName,
-        address: address.trim() || undefined,
-        phone: phone.trim() || undefined,
-      });
       updateUserProfile({
         storeName: trimmedName,
         address: address.trim() || undefined,
         phone: phone.trim() || undefined,
+      });
+      queueProfileSync({
+        store_name: trimmedName,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        email: userProfile?.email ?? null,
       });
       toast.success('Thiết lập cửa hàng thành công!');
       setDone(true);

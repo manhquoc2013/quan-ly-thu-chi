@@ -173,14 +173,14 @@ function extractJsonObject(text: string): unknown | null {
 async function callLlm(
   prompt: string,
   localMode: 'raw' | 'chat' = 'raw',
-): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' } | null> {
   return callLlmCascade(prompt, localMode);
 }
 
 export async function extractChatIntent(
   message: string,
   financeContext?: string,
-): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' } | null> {
   const useCloud = canUseCloudLlm();
   const ctxLimit = useCloud ? 3500 : 400;
   const ctx = financeContext
@@ -204,7 +204,7 @@ export async function extractChatIntent(
 export async function extractMultiChatIntents(
   segments: string[],
   financeContext?: string,
-): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' } | null> {
   if (segments.length < 2) {
     const one = await extractChatIntent(segments[0] ?? '', financeContext);
     return one ? { intents: [one.intent], source: one.source } : null;
@@ -310,7 +310,7 @@ export async function generateChatReply(
   message: string,
   financeContext?: string,
   history?: string,
-): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'gemini' } | null> {
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' } | null> {
   const parts = [
     'Bạn là Trợ lý Tài Chính. Trả lời tiếng Việt, ngắn gọn, dùng số liệu ngữ cảnh nếu có. Không bịa dữ liệu.',
     financeContext ? `Ngữ cảnh:\n${financeContext.slice(0, 2500)}` : '',

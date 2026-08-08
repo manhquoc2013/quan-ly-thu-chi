@@ -2,38 +2,44 @@
  * SettingsScreen — Application settings page.
  *
  * - Tài khoản (profile, change password, logout)
- * - Google Drive (real GIS OAuth + app-data.json sync)
- * - Gemini API (API key + connectivity test)
+ * - Sổ chung Supabase
+ * - AI providers (Kilo / Gemini / Groq / WebLLM)
  * - About
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
 import { geminiService } from '@/services/geminiService';
+import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
-import { clearToken } from '@/services/tokenService';
-import {
-  connectGoogleDrive,
-  disconnectDrive,
-  syncAppData,
-  restoreFromDrive,
-  isGoogleDriveConfigured,
-  getDriveUser,
-} from '@/services/googleDrive';
+import { type LlmSource, AI_PRIORITY_DEFAULT, llmSourceLabel } from '@/services/llmCall';
 import { reloadAppData } from '@/services/bootstrap';
+import { isSupabaseConfigured } from '@/services/supabaseClient';
+import {
+  createHousehold,
+  createInvite,
+  getSupabaseSessionEmail,
+  redeemInvite,
+} from '@/services/householdService';
+import {
+  hydrateStoresFromCloud,
+  migrateLocalCacheToCloud,
+  refreshHouseholdFromCloud,
+} from '@/services/cloudSync';
+import { queueUserSettingsSync } from '@/services/userSettingsService';
+import { flushOutbox, pendingCount } from '@/services/syncEngine';
 import { ProfileDialog } from '@/ui/screens/settings/ProfileDialog';
 import { ChangePasswordDialog } from '@/ui/screens/settings/ChangePasswordDialog';
 import { toast } from 'sonner';
 import {
   Key,
   Info,
-  Cloud,
+  Users,
   User,
-  Mail,
   Settings as SettingsIcon,
   CheckCircle,
   XCircle,
@@ -44,192 +50,193 @@ import {
   Lock,
   LogOut,
   Bot,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
+  Zap,
+  CloudUpload,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 export function SettingsScreen() {
   const {
-    isGoogleConnected,
-    googleUser,
     geminiApiKey,
     geminiConfigured,
     userProfile,
-    setGoogleConnected,
-    setGoogleUser,
     setGeminiApiKey,
-    disconnectGoogle,
     logout,
-    emailjsServiceId,
-    emailjsTemplateId,
-    emailjsPublicKey,
-    emailjsConfigured,
-    setEmailJSConfig,
-    clearEmailJSConfig,
-    isAdmin,
     enableWebLLM,
     setEnableWebLLM,
     enableKiloFree,
     setEnableKiloFree,
+    groqApiKey,
+    groqConfigured,
+    enableGroq,
+    setGroqApiKey,
+    setEnableGroq,
+    aiPriority,
+    setAiPriority,
+    householdId,
+    householdName,
+    householdRole,
+    supabaseEmail,
+    setHousehold,
+    setSupabaseEmail,
   } = useAuthStore();
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
   const [testingKilo, setTestingKilo] = useState(false);
-  const [driveBusy, setDriveBusy] = useState(false);
+  const [testingGroq, setTestingGroq] = useState(false);
+  const [groqKeyInput, setGroqKeyInput] = useState(groqApiKey ?? '');
   const [profileOpen, setProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const driveConfigured = isGoogleDriveConfigured();
+  const supabaseConfigured = isSupabaseConfigured();
 
-  // EmailJS state
-  const [ejServiceId, setEjServiceId] = useState(emailjsServiceId ?? '');
-  const [ejTemplateId, setEjTemplateId] = useState(emailjsTemplateId ?? '');
-  const [ejPublicKey, setEjPublicKey] = useState(emailjsPublicKey ?? '');
-  const [ejTesting, setEjTesting] = useState(false);
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const [householdNameInput, setHouseholdNameInput] = useState('Gia đình');
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [lastInviteCode, setLastInviteCode] = useState<string | null>(null);
+  const [pendingSync, setPendingSync] = useState(0);
+  const userId = useAuthStore((s) => s.userId);
+
+  useEffect(() => {
+    if (!userId) {
+      setPendingSync(0);
+      return;
+    }
+    const tick = () => setPendingSync(pendingCount(userId));
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => clearInterval(id);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    void (async () => {
+      const email = await getSupabaseSessionEmail();
+      setSupabaseEmail(email);
+      if (email) {
+        const info = await refreshHouseholdFromCloud();
+        if (info?.householdId) {
+          try {
+            await hydrateStoresFromCloud(info.householdId);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+    })();
+  }, [supabaseConfigured, setSupabaseEmail]);
+
+  // Only show providers that are actually connected/available
+  const availableSources = useMemo<LlmSource[]>(() => {
+    const full = aiPriority?.length ? aiPriority : AI_PRIORITY_DEFAULT;
+    return full.filter((src) => {
+      switch (src) {
+        case 'kilo':
+          return enableKiloFree !== false;
+        case 'groq':
+          return enableGroq !== false && groqConfigured;
+        case 'gemini':
+          return geminiConfigured;
+        case 'local':
+          return enableWebLLM !== false;
+        default:
+          return false;
+      }
+    });
+  }, [aiPriority, enableKiloFree, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
 
   useEffect(() => {
     setApiKey(geminiApiKey ?? '');
   }, [geminiApiKey]);
 
   useEffect(() => {
-    setEjServiceId(emailjsServiceId ?? '');
-    setEjTemplateId(emailjsTemplateId ?? '');
-    setEjPublicKey(emailjsPublicKey ?? '');
-  }, [emailjsServiceId, emailjsTemplateId, emailjsPublicKey]);
+    setGroqKeyInput(groqApiKey ?? '');
+  }, [groqApiKey]);
 
-  // ── EmailJS handlers ──
-  function handleSaveEmailJS(): void {
-    const sid = ejServiceId.trim();
-    const tid = ejTemplateId.trim();
-    const pk = ejPublicKey.trim();
-    if (!sid) { toast.error('Vui lòng nhập Service ID.'); return; }
-    if (!tid) { toast.error('Vui lòng nhập Template ID.'); return; }
-    if (!pk) { toast.error('Vui lòng nhập Public Key.'); return; }
-    setEmailJSConfig({ serviceId: sid, templateId: tid, publicKey: pk });
-    toast.success('Đã lưu cấu hình EmailJS.');
-  }
-
-  async function handleTestEmailJS(): Promise<void> {
-    const sid = ejServiceId.trim();
-    const tid = ejTemplateId.trim();
-    const pk = ejPublicKey.trim();
-    if (!sid || !tid || !pk) {
-      toast.error('Vui lòng nhập đầy đủ Service ID, Template ID và Public Key.');
-      return;
-    }
-    setEjTesting(true);
+  async function handleCreateHousehold(): Promise<void> {
+    setCloudBusy(true);
     try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: sid,
-          template_id: tid,
-          user_id: pk,
-          template_params: { to_email: 'test@example.com', user_name: 'Test', otp_code: '000000' },
-        }),
-      });
-      if (res.ok) {
-        setEmailJSConfig({ serviceId: sid, templateId: tid, publicKey: pk });
-        toast.success('Kết nối EmailJS thành công.');
-      } else {
-        const text = await res.text().catch(() => '');
-        toast.error(`Lỗi kết nối (HTTP ${res.status}): ${text || 'kiểm tra lại thông tin.'}`);
-      }
+      const info = await createHousehold(householdNameInput);
+      setHousehold(info);
+      toast.success(`Đã tạo sổ “${info.householdName}”`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Không thể kết nối EmailJS.');
+      toast.error(err instanceof Error ? err.message : 'Tạo sổ thất bại');
     } finally {
-      setEjTesting(false);
+      setCloudBusy(false);
     }
   }
 
-  function handleClearEmailJS(): void {
-    clearEmailJSConfig();
-    setEjServiceId('');
-    setEjTemplateId('');
-    setEjPublicKey('');
-    toast.message('Đã xóa cấu hình EmailJS.');
-  }
-
-  async function handleConnectDrive(): Promise<void> {
-    if (!driveConfigured) {
-      toast.error('Chưa cấu hình Google Client ID', {
-        description: 'Thêm VITE_GOOGLE_CLIENT_ID vào .env.local hoặc GitHub Actions secrets.',
-      });
-      return;
-    }
-    setDriveBusy(true);
+  async function handleRedeemInvite(): Promise<void> {
+    setCloudBusy(true);
     try {
-      await connectGoogleDrive();
-      const user = getDriveUser();
-      setGoogleConnected(true);
-      setGoogleUser(
-        user
-          ? { id: user.email, name: user.name, email: user.email, picture: user.picture }
-          : null,
-      );
-      const result = await syncAppData();
-      if (result.direction === 'pulled') {
-        await reloadAppData();
-        toast.success('Đã kết nối — đã tải dữ liệu từ Google Drive');
-      } else {
-        toast.success(
-          user?.email
-            ? `Đã kết nối ${user.email} — đã sao lưu lên Drive`
-            : 'Đã kết nối Google Drive — đã sao lưu',
-        );
-      }
+      const info = await redeemInvite(inviteCodeInput);
+      setHousehold(info);
+      await hydrateStoresFromCloud(info.householdId);
+      toast.success(`Đã tham gia sổ “${info.householdName}”`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Kết nối thất bại';
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : 'Mã mời không hợp lệ');
     } finally {
-      setDriveBusy(false);
+      setCloudBusy(false);
     }
   }
 
-  async function handleDisconnectDrive(): Promise<void> {
-    setDriveBusy(true);
+  async function handleCreateInviteCode(): Promise<void> {
+    setCloudBusy(true);
     try {
-      await disconnectDrive();
-      disconnectGoogle();
-      toast.message('Đã ngắt kết nối Google Drive');
+      const code = await createInvite(72);
+      setLastInviteCode(code);
+      toast.success(`Mã mời: ${code}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Ngắt kết nối thất bại';
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : 'Không tạo được mã mời');
     } finally {
-      setDriveBusy(false);
+      setCloudBusy(false);
     }
   }
 
-  async function handleSyncNow(): Promise<void> {
-    setDriveBusy(true);
+  async function handlePushLocalToCloud(): Promise<void> {
+    if (!householdId) return;
+    setCloudBusy(true);
     try {
-      const result = await syncAppData();
-      if (result.direction === 'pulled') {
-        await reloadAppData();
-        toast.success('Đã đồng bộ — lấy bản mới hơn từ Drive');
-      } else if (result.direction === 'pushed') {
-        toast.success('Đã đẩy dữ liệu lên Google Drive');
-      } else {
-        toast.message('Dữ liệu đã đồng bộ');
-      }
+      await migrateLocalCacheToCloud(householdId);
+      toast.success('Đã đẩy dữ liệu local lên sổ chung');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Đồng bộ thất bại';
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : 'Đẩy dữ liệu thất bại');
     } finally {
-      setDriveBusy(false);
+      setCloudBusy(false);
     }
   }
 
-  async function handleRestoreFromDrive(): Promise<void> {
-    setDriveBusy(true);
+  async function handlePullCloud(): Promise<void> {
+    if (!householdId) return;
+    setCloudBusy(true);
     try {
-      await restoreFromDrive();
+      await hydrateStoresFromCloud(householdId);
       await reloadAppData();
-      toast.success('Đã khôi phục dữ liệu từ Google Drive');
+      toast.success('Đã tải dữ liệu từ sổ chung');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Khôi phục thất bại';
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : 'Tải dữ liệu thất bại');
     } finally {
-      setDriveBusy(false);
+      setCloudBusy(false);
+    }
+  }
+
+  async function handleFlushSettingsSync(): Promise<void> {
+    if (!userId) return;
+    if (!navigator.onLine) {
+      toast.error('Đang offline — sẽ đồng bộ khi có mạng.');
+      return;
+    }
+    setCloudBusy(true);
+    try {
+      const result = await flushOutbox(userId);
+      setPendingSync(pendingCount(userId));
+      if (result.failed > 0) toast.error(`Đồng bộ lỗi ${result.failed} mục`);
+      else toast.success(result.flushed > 0 ? `Đã đồng bộ ${result.flushed} mục` : 'Không còn mục chờ');
+    } finally {
+      setCloudBusy(false);
     }
   }
 
@@ -241,7 +248,8 @@ export function SettingsScreen() {
     }
     setGeminiApiKey(trimmed);
     geminiService.configure(trimmed);
-    toast.success('Đã lưu Gemini API key (giữ sau khi tải lại trang)');
+    queueUserSettingsSync();
+    toast.success('Đã lưu Gemini API key (đồng bộ cloud khi online)');
   }
 
   async function handleTestGemini(): Promise<void> {
@@ -256,6 +264,7 @@ export function SettingsScreen() {
       const result = await geminiService.testConnection(trimmed);
       if (result.ok) {
         setGeminiApiKey(trimmed);
+        queueUserSettingsSync();
         if (result.quota) {
           toast.message('Key hợp lệ — tạm hết hạn mức free-tier', {
             description: 'Đợi ~30s rồi thử lại, hoặc dùng WebLLM/Tesseract. Key đã được lưu.',
@@ -278,6 +287,7 @@ export function SettingsScreen() {
     setGeminiApiKey(null);
     geminiService.disconnect();
     setApiKey('');
+    queueUserSettingsSync();
     toast.message('Đã xóa Gemini API key');
   }
 
@@ -295,9 +305,79 @@ export function SettingsScreen() {
     }
   }
 
-  function handleLogout(): void {
-    logout();
-    clearToken();
+  // ── Groq handlers ──
+  function handleSaveGroqKey(): void {
+    const trimmed = groqKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập Groq API key');
+      return;
+    }
+    setGroqApiKey(trimmed);
+    groqService.configure(trimmed);
+    queueUserSettingsSync();
+    toast.success('Đã lưu Groq API key (đồng bộ cloud khi online)');
+  }
+
+  async function handleTestGroq(): Promise<void> {
+    const trimmed = groqKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập API key trước khi kiểm tra');
+      return;
+    }
+    setTestingGroq(true);
+    try {
+      groqService.configure(trimmed);
+      const result = await groqService.testConnection();
+      if (result.ok) {
+        setGroqApiKey(trimmed);
+        queueUserSettingsSync();
+        toast.success(`Groq hoạt động tốt — ${result.detail}`);
+      } else {
+        toast.error(`Kiểm tra thất bại: ${result.detail}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không kết nối được Groq';
+      toast.error(`Kiểm tra thất bại: ${msg}`);
+    } finally {
+      setTestingGroq(false);
+    }
+  }
+
+  function handleClearGroqKey(): void {
+    setGroqApiKey(null);
+    groqService.disconnect();
+    setGroqKeyInput('');
+    queueUserSettingsSync();
+    toast.message('Đã xóa Groq API key');
+  }
+
+  // ── AI Priority handlers ──
+  function swapAdjacent(order: LlmSource[], i: number): LlmSource[] {
+    const result = [...order];
+    const a = result[i];
+    const b = result[i + 1];
+    if (a === undefined || b === undefined) return result;
+    result[i] = b;
+    result[i + 1] = a;
+    return result;
+  }
+
+  function handleMoveUp(index: number): void {
+    if (index <= 0) return;
+    const order = aiPriority.length ? aiPriority : AI_PRIORITY_DEFAULT;
+    setAiPriority(swapAdjacent(order, index - 1));
+    queueUserSettingsSync();
+  }
+
+  function handleMoveDown(index: number): void {
+    const order = aiPriority.length ? aiPriority : AI_PRIORITY_DEFAULT;
+    if (index >= order.length - 1) return;
+    setAiPriority(swapAdjacent(order, index));
+    queueUserSettingsSync();
+  }
+
+  async function handleLogout(): Promise<void> {
+    await logout();
     toast.message('Đã đăng xuất.');
   }
 
@@ -359,15 +439,15 @@ export function SettingsScreen() {
         </Card>
       </section>
 
-      <section aria-label="Google Drive settings">
+      <section aria-label="Shared household ledger">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 text-accent-fg" />
-                <CardTitle>Google Drive</CardTitle>
+                <Users className="h-4 w-4 text-accent-fg" />
+                <CardTitle>Sổ chung (Supabase)</CardTitle>
               </div>
-              {isGoogleConnected ? (
+              {householdId ? (
                 <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
                   <CheckCircle size={12} className="inline" aria-hidden="true" />
                   Đã kết nối
@@ -383,53 +463,239 @@ export function SettingsScreen() {
           <CardContent>
             <div className="space-y-[var(--s-md)]">
               <p className="text-xs text-text-muted">
-                Kết nối Google Drive để sao lưu / khôi phục dữ liệu (folder{' '}
-                <code className="text-[11px]">QuanLyThuChi</code> trên Drive của bạn).
+                Đồng bộ chi/thu/khách/SP trên Postgres (nhóm nhỏ). Không dùng connection string DB trong app —
+                chỉ anon key.
               </p>
 
-              {!driveConfigured && (
+              {!supabaseConfigured && (
                 <p className="text-xs text-warning-fg bg-warning-bg rounded-field px-2 py-1.5">
-                  Chưa có <code>VITE_GOOGLE_CLIENT_ID</code> — OAuth sẽ không chạy được trên bản build này.
+                  Thêm <code>VITE_SUPABASE_URL</code> và <code>VITE_SUPABASE_ANON_KEY</code> rồi chạy SQL trong{' '}
+                  <code>supabase/migrations/</code> (kể cả <code>user_profiles_settings</code>).
                 </p>
               )}
 
-              {isGoogleConnected ? (
+              {pendingSync > 0 && (
+                <div className="flex items-center justify-between gap-2 rounded-field border px-2 py-1.5">
+                  <span className="text-xs text-warning-fg">Chưa đồng bộ cấu hình: {pendingSync}</span>
+                  <Button size="sm" variant="outline" disabled={cloudBusy} onClick={() => void handleFlushSettingsSync()}>
+                    <CloudUpload className="mr-1 h-3.5 w-3.5" />
+                    Đồng bộ ngay
+                  </Button>
+                </div>
+              )}
+
+              {supabaseConfigured && !householdId && (
                 <div className="space-y-[var(--s-xs)]">
-                  {googleUser?.email && (
-                    <div className="flex items-center justify-between py-[var(--s-xs)]">
-                      <span className="text-xs text-text-muted">Tài khoản</span>
-                      <span className="text-xs text-text-primary truncate max-w-[60%]">
-                        {googleUser.email}
-                      </span>
-                    </div>
-                  )}
+                  <p className="text-xs text-text-primary">
+                    Tài khoản: {supabaseEmail ?? userProfile?.email ?? '—'} — tạo hoặc tham gia sổ chung
+                  </p>
+                  <Label htmlFor="hh-name">Tên sổ mới</Label>
+                  <Input
+                    id="hh-name"
+                    value={householdNameInput}
+                    onChange={(e) => setHouseholdNameInput(e.target.value)}
+                  />
+                  <Button disabled={cloudBusy} onClick={() => void handleCreateHousehold()}>
+                    Tạo sổ chung
+                  </Button>
+                  <Label htmlFor="invite-in">Hoặc nhập mã mời</Label>
+                  <Input
+                    id="invite-in"
+                    value={inviteCodeInput}
+                    onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+                    placeholder="ABCD1234"
+                  />
+                  <Button variant="secondary" disabled={cloudBusy || !inviteCodeInput} onClick={() => void handleRedeemInvite()}>
+                    Tham gia bằng mã
+                  </Button>
+                </div>
+              )}
+
+              {householdId && (
+                <div className="space-y-[var(--s-xs)]">
                   <div className="flex items-center justify-between py-[var(--s-xs)]">
-                    <span className="text-xs text-text-muted">Trạng thái</span>
-                    <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge">
-                      Đang hoạt động
-                    </Badge>
+                    <span className="text-xs text-text-muted">Sổ</span>
+                    <span className="text-xs text-text-primary">{householdName}</span>
                   </div>
+                  <div className="flex items-center justify-between py-[var(--s-xs)]">
+                    <span className="text-xs text-text-muted">Vai trò</span>
+                    <span className="text-xs text-text-primary">{householdRole}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-[var(--s-xs)]">
+                    <span className="text-xs text-text-muted">Email cloud</span>
+                    <span className="text-xs text-text-primary truncate max-w-[60%]">{supabaseEmail}</span>
+                  </div>
+                  {householdRole === 'owner' && (
+                    <Button variant="secondary" disabled={cloudBusy} onClick={() => void handleCreateInviteCode()}>
+                      Tạo mã mời (72h)
+                    </Button>
+                  )}
+                  {lastInviteCode && (
+                    <p className="text-xs font-mono bg-muted rounded-field px-2 py-1.5">Mã: {lastInviteCode}</p>
+                  )}
                   <div className="flex flex-wrap gap-[var(--s-xs)]">
-                    <Button variant="secondary" disabled={driveBusy} onClick={() => void handleSyncNow()}>
-                      {driveBusy
-                        ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang xử lý…</>
-                        : <><RefreshCw className="mr-2 h-4 w-4" />Đồng bộ ngay</>}
+                    <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePullCloud()}>
+                      <RefreshCw className="mr-2 h-4 w-4" />Tải từ cloud
                     </Button>
-                    <Button variant="outline" disabled={driveBusy} onClick={() => void handleRestoreFromDrive()}>
-                      <Download className="mr-2 h-4 w-4" />Khôi phục từ Drive
-                    </Button>
-                    <Button variant="destructive" disabled={driveBusy} onClick={() => void handleDisconnectDrive()}>
-                      Ngắt kết nối
+                    <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePushLocalToCloud()}>
+                      <Download className="mr-2 h-4 w-4" />Đẩy local lên
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <Button variant="default" disabled={driveBusy || !driveConfigured} onClick={() => void handleConnectDrive()}>
-                  {driveBusy
-                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kết nối…</>
-                    : <><Cloud className="mr-2 h-4 w-4" />Kết nối Google Drive</>}
-                </Button>
               )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="AI provider priority order">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <GripVertical className="h-4 w-4 text-accent-fg" />
+              <CardTitle>Thứ tự ưu tiên AI</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-xs)]">
+              <p className="text-xs text-text-muted">
+                Kéo sắp xếp thứ tự ưu tiên — AI đầu tiên khả dụng sẽ được dùng.
+              </p>
+              <div className="space-y-1">
+                {availableSources.map((source, visibleIdx) => {
+                  const fullOrder = aiPriority?.length ? aiPriority : AI_PRIORITY_DEFAULT;
+                  const fullIdx = fullOrder.indexOf(source);
+
+                  return (
+                  <div
+                    key={source}
+                    className="flex items-center justify-between bg-input-bg rounded-field px-[var(--s-sm)] py-1.5"
+                  >
+                    <span className="text-xs text-text-primary">{llmSourceLabel(source)}</span>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={visibleIdx === 0}
+                        onClick={() => handleMoveUp(fullIdx)}
+                        aria-label={`Di chuyển ${source} lên`}
+                        className="h-7 w-7 p-0"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={visibleIdx >= availableSources.length - 1}
+                        onClick={() => handleMoveDown(fullIdx)}
+                        aria-label={`Di chuyển ${source} xuống`}
+                        className="h-7 w-7 p-0"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="Groq AI settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-accent-fg" />
+                <CardTitle>Groq AI</CardTitle>
+              </div>
+              {groqConfigured ? (
+                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
+                  <CheckCircle size={12} className="inline" aria-hidden="true" />
+                  Đã cấu hình
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1">
+                  <XCircle size={12} className="inline" aria-hidden="true" />
+                  Chưa cấu hình
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-md)]">
+              <p className="text-xs text-text-muted">
+                Nhập API key từ{' '}
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-fg underline"
+                >
+                  Groq Console
+                </a>
+                {' '}rồi bấm Lưu hoặc Kiểm tra. Model mặc định: <code>llama-3.3-70b-versatile</code>.
+              </p>
+
+              <div className="flex items-center gap-[var(--s-xs)]">
+                <input
+                  type="password"
+                  value={groqKeyInput}
+                  onChange={(e) => setGroqKeyInput(e.target.value)}
+                  placeholder="Nhập Groq API key..."
+                  className={
+                    'flex-1 bg-input-bg border border-input-border ' +
+                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
+                    'text-text-primary placeholder:text-input-placeholder ' +
+                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring'
+                  }
+                  aria-label="Groq API key"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-primary">Bật Groq</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enableGroq !== false}
+                  onClick={() => {
+                    setEnableGroq(!(enableGroq !== false));
+                    queueUserSettingsSync();
+                  }}
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
+                    (enableGroq !== false ? 'bg-accent-fg' : 'bg-input-bg border-input-border')
+                  }
+                >
+                  <span
+                    className={
+                      'pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ' +
+                      (enableGroq !== false ? 'translate-x-4' : 'translate-x-0')
+                    }
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
+                <Button onClick={handleSaveGroqKey}>Lưu API key</Button>
+                <Button
+                  variant="secondary"
+                  disabled={!groqKeyInput.trim() || testingGroq}
+                  onClick={() => void handleTestGroq()}
+                >
+                  {testingGroq
+                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kiểm tra…</>
+                    : <><SettingsIcon className="mr-2 h-4 w-4" />Kiểm tra</>}
+                </Button>
+                {groqConfigured && (
+                  <Button variant="destructive" onClick={handleClearGroqKey}>
+                    Xóa API key
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -481,7 +747,9 @@ export function SettingsScreen() {
               </p>
               <p className="text-xs text-warning-fg">
                 Privacy: Auto Free có thể gửi prompt tới provider log dữ liệu (vd. NVIDIA trial).
-                Không gửi thông tin mật/cá nhân nhạy cảm. Dev dùng proxy Vite (`/api/kilo`) vì Gateway chặn CORS browser.
+                Không gửi thông tin mật/cá nhân nhạy cảm.
+                {' '}Local: proxy Vite <code>/api/kilo</code>. GitHub Pages: cần Edge Function{' '}
+                <code>kilo-proxy</code> (Supabase) — Gateway chặn CORS browser.
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-primary">Bật Kilo Free (ưu tiên trước Gemini)</span>
@@ -489,7 +757,10 @@ export function SettingsScreen() {
                   type="button"
                   role="switch"
                   aria-checked={enableKiloFree !== false}
-                  onClick={() => setEnableKiloFree(!(enableKiloFree !== false))}
+                  onClick={() => {
+                    setEnableKiloFree(!(enableKiloFree !== false));
+                    queueUserSettingsSync();
+                  }}
                   className={
                     'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
                     (enableKiloFree !== false ? 'bg-accent-fg' : 'bg-input-bg border-input-border')
@@ -591,121 +862,6 @@ export function SettingsScreen() {
         </Card>
       </section>
 
-      {isAdmin && (
-        <section aria-label="EmailJS settings">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-accent-fg" />
-                <CardTitle>EmailJS</CardTitle>
-              </div>
-              {emailjsConfigured ? (
-                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
-                  <CheckCircle size={12} className="inline" aria-hidden="true" />
-                  Đã cấu hình
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="gap-1">
-                  <XCircle size={12} className="inline" aria-hidden="true" />
-                  Chưa cấu hình
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-[var(--s-md)]">
-              <p className="text-xs text-text-muted">
-                Cấu hình EmailJS để gửi mã OTP qua email.{' '}
-                <a
-                  href="https://dashboard.emailjs.com/admin"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent-fg underline"
-                >
-                  Vào EmailJS Dashboard
-                </a>
-                {' '}→ tạo Service + Template với các biến{' '}
-                <code className="text-[11px]">{'{{to_email}}'}</code>,{' '}
-                <code className="text-[11px]">{'{{user_name}}'}</code>,{' '}
-                <code className="text-[11px]">{'{{otp_code}}'}</code>.
-              </p>
-
-              <div>
-                <Label htmlFor="ej-service-id" className="text-xs">Service ID</Label>
-                <input
-                  id="ej-service-id"
-                  value={ejServiceId}
-                  onChange={(e) => setEjServiceId(e.target.value)}
-                  placeholder="service_xxxxxx"
-                  className={
-                    'w-full bg-input-bg border border-input-border ' +
-                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
-                    'text-text-primary placeholder:text-input-placeholder ' +
-                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
-                  }
-                  aria-label="EmailJS Service ID"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="ej-template-id" className="text-xs">Template ID</Label>
-                <input
-                  id="ej-template-id"
-                  value={ejTemplateId}
-                  onChange={(e) => setEjTemplateId(e.target.value)}
-                  placeholder="template_xxxxxx"
-                  className={
-                    'w-full bg-input-bg border border-input-border ' +
-                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
-                    'text-text-primary placeholder:text-input-placeholder ' +
-                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
-                  }
-                  aria-label="EmailJS Template ID"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="ej-public-key" className="text-xs">Public Key</Label>
-                <input
-                  id="ej-public-key"
-                  type="password"
-                  value={ejPublicKey}
-                  onChange={(e) => setEjPublicKey(e.target.value)}
-                  placeholder="xxxxxxxxxxxxxxx"
-                  className={
-                    'w-full bg-input-bg border border-input-border ' +
-                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
-                    'text-text-primary placeholder:text-input-placeholder ' +
-                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring mt-1'
-                  }
-                  aria-label="EmailJS Public Key"
-                />
-              </div>
-
-              <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
-                <Button onClick={handleSaveEmailJS}>Lưu cấu hình</Button>
-                <Button
-                  variant="secondary"
-                  disabled={!ejServiceId.trim() || !ejTemplateId.trim() || !ejPublicKey.trim() || ejTesting}
-                  onClick={() => void handleTestEmailJS()}
-                >
-                  {ejTesting
-                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kiểm tra…</>
-                    : <><SettingsIcon className="mr-2 h-4 w-4" />Kiểm tra kết nối</>}
-                </Button>
-                {emailjsConfigured && (
-                  <Button variant="destructive" onClick={handleClearEmailJS}>
-                    Xóa cấu hình
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        </section>
-      )}
-
       {/* ── WebLLM toggle ──────────────────────────────────────────── */}
       <section aria-label="Local AI settings">
         <Card>
@@ -727,7 +883,10 @@ export function SettingsScreen() {
                   type="button"
                   role="switch"
                   aria-checked={enableWebLLM}
-                  onClick={() => setEnableWebLLM(!enableWebLLM)}
+                  onClick={() => {
+                    setEnableWebLLM(!enableWebLLM);
+                    queueUserSettingsSync();
+                  }}
                   className={
                     'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
                     (enableWebLLM ? 'bg-accent-fg' : 'bg-input-bg border-input-border')

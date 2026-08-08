@@ -21,6 +21,9 @@ export interface Product {
   /** Ghi chú (tuỳ chọn) */
   notes?: string;
 
+  /** Đường dẫn ảnh trên Supabase Storage (tuỳ chọn) */
+  imagePath?: string;
+
   /** Thời điểm tạo (ISO 8601) */
   createdAt: string;
 }

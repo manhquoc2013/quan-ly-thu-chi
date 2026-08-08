@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
-import { updateProfile } from '@/services/authService';
+import { queueProfileSync } from '@/services/userSettingsService';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -60,8 +60,13 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         phone: phone.trim() || undefined,
         address: address.trim() || undefined,
       };
-      updateProfile(updates);
       updateUserProfile(updates);
+      queueProfileSync({
+        store_name: trimmedName,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        email: userProfile?.email ?? null,
+      });
       toast.success('Đã cập nhật thông tin.');
       onOpenChange(false);
     } catch (err) {

@@ -1,22 +1,48 @@
 /**
  * WebLLMLoader — shows model download progress bar.
- * Used during app startup to eagerly load the local AI model.
+ * Eager-loads only when AI cục bộ is enabled in Settings.
  */
 
 import { useEffect, useState } from 'react';
 import { webLLM } from '@/services/webLLM';
+import { useAuthStore } from '@/store/authStore';
 
 export function useWebLLMLoad() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [done, setDone] = useState(false);
+  const [hydrated, setHydrated] = useState(
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    useAuthStore.persist?.hasHydrated?.() ?? false,
+  );
+  const enableWebLLM = useAuthStore((s) => s.enableWebLLM);
 
   useEffect(() => {
-    if (webLLM.isLoaded || webLLM.isDisabled) {
+    const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
+      setHydrated(true);
+    });
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!enableWebLLM || webLLM.isDisabled) {
       setDone(true);
+      setProgress(0);
+      setStatus('');
       return;
     }
 
+    if (webLLM.isLoaded) {
+      setDone(true);
+      setProgress(100);
+      return;
+    }
+
+    setDone(false);
     let cancelled = false;
     const interval = setInterval(() => {
       if (cancelled) return;
@@ -24,21 +50,25 @@ export function useWebLLMLoad() {
       setStatus(webLLM.loadStatus);
     }, 200);
 
-    webLLM.load().then(() => {
-      if (!cancelled) {
-        setProgress(100);
-        setStatus('Sẵn sàng!');
+    webLLM
+      .load()
+      .then((ok) => {
+        if (cancelled) return;
+        if (ok) {
+          setProgress(100);
+          setStatus('Sẵn sàng!');
+        }
         setDone(true);
-      }
-    }).catch(() => {
-      if (!cancelled) setDone(true); // fail silently, fallback to Gemini
-    });
+      })
+      .catch(() => {
+        if (!cancelled) setDone(true);
+      });
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [hydrated, enableWebLLM]);
 
   return { progress, status, done };
 }

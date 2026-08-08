@@ -4,10 +4,10 @@
  * Default model: kilo-auto/free (server picks best free model).
  * Docs: https://kilo.ai/docs/gateway
  *
- * Browser CORS: Gateway does not allow browser origins. In DEV we call the
- * Vite proxy (`/api/kilo` → https://api.kilo.ai/api/gateway). Production
- * static hosts need `VITE_KILO_GATEWAY_BASE` pointing at a same-origin /
- * CORS-enabled reverse proxy, otherwise calls fail and cascade falls back.
+ * Browser CORS: Gateway blocks browser origins.
+ * - DEV: Vite proxy `/api/kilo`
+ * - PROD: Supabase Edge Function `kilo-proxy` (via VITE_SUPABASE_URL)
+ *   or explicit `VITE_KILO_GATEWAY_BASE`
  *
  * Free tier works anonymously (~200 req/h/IP). Optional API key for higher limits.
  * Privacy: Auto Free may route to providers that log prompts — do not send secrets.
@@ -25,19 +25,41 @@ export type KiloGenerateResult = {
   model: string;
 };
 
-/** Same-origin proxy in DEV; optional env override; else direct (often CORS-blocked). */
+function supabaseKiloProxyBase(): string | null {
+  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+  if (!url) return null;
+  return `${url.replace(/\/$/, '')}/functions/v1/kilo-proxy`;
+}
+
+/** Same-origin proxy in DEV; Supabase edge proxy / env override in prod. */
 export function getKiloGatewayBase(): string {
   const fromEnv = (import.meta.env.VITE_KILO_GATEWAY_BASE as string | undefined)?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
   if (import.meta.env.DEV) return '/api/kilo';
+  const viaSupabase = supabaseKiloProxyBase();
+  if (viaSupabase) return viaSupabase;
   return DIRECT_GATEWAY;
+}
+
+export function isKiloProxyConfigured(): boolean {
+  if ((import.meta.env.VITE_KILO_GATEWAY_BASE as string | undefined)?.trim()) return true;
+  if (import.meta.env.DEV) return true;
+  return Boolean(supabaseKiloProxyBase());
 }
 
 function authHeaders(): HeadersInit {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  if (apiKey) {
+  const base = getKiloGatewayBase();
+  const anon = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+  const usingSupabaseProxy = Boolean(anon && base.includes('/functions/v1/kilo-proxy'));
+
+  if (usingSupabaseProxy && anon) {
+    headers.Authorization = `Bearer ${anon}`;
+    headers.apikey = anon;
+    if (apiKey) headers['X-Kilo-Api-Key'] = apiKey;
+  } else if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
   return headers;
@@ -131,6 +153,13 @@ export const kiloService = {
   /** Lightweight ping for Settings. */
   async testConnection(): Promise<{ ok: boolean; detail: string }> {
     if (!navigator.onLine) return { ok: false, detail: 'Offline — cần mạng cho Kilo Free' };
+    if (!import.meta.env.DEV && !isKiloProxyConfigured()) {
+      return {
+        ok: false,
+        detail:
+          'GitHub Pages bị CORS — deploy Supabase function kilo-proxy hoặc set VITE_KILO_GATEWAY_BASE',
+      };
+    }
     const text = await this.generateContent('Trả lời đúng một từ: OK');
     if (!text) {
       return {

@@ -25,7 +25,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  source?: 'local' | 'cloud' | 'kilo' | 'gemini' | 'tesseract';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue'; id: string };
@@ -100,7 +100,7 @@ export function ChatPanel() {
       setListening(false);
       speechService.stop();
       refreshThreads();
-      if (!webLLM.isLoaded && !webLLM.isLoading) webLLM.load();
+      if (!webLLM.isDisabled && !webLLM.isLoaded && !webLLM.isLoading) webLLM.load();
     } else {
       speechService.stop();
       setListening(false);

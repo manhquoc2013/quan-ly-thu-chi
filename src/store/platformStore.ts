@@ -46,6 +46,9 @@ export const usePlatformStore = create<PlatformStore>()(
         s.platforms.unshift(platform);
       });
       persist(get);
+      void import('@/services/cloudSync')
+        .then((m) => m.cloudUpsertPlatform(platform))
+        .catch((err) => console.error('[cloud] platform add', err));
     },
 
     updatePlatform: (id, patch) => {
@@ -54,6 +57,12 @@ export const usePlatformStore = create<PlatformStore>()(
         if (idx !== -1) Object.assign(s.platforms[idx]!, patch);
       });
       persist(get);
+      const platform = get().platforms.find((p) => p.id === id);
+      if (platform) {
+        void import('@/services/cloudSync')
+          .then((m) => m.cloudUpsertPlatform(platform))
+          .catch((err) => console.error('[cloud] platform update', err));
+      }
     },
 
     deletePlatform: (id) => {
@@ -61,6 +70,9 @@ export const usePlatformStore = create<PlatformStore>()(
         s.platforms = s.platforms.filter((p) => p.id !== id);
       });
       persist(get);
+      void import('@/services/cloudSync')
+        .then((m) => m.cloudDeletePlatform(id))
+        .catch((err) => console.error('[cloud] platform delete', err));
     },
 
     setSearchQuery: (searchQuery) =>

@@ -1,10 +1,11 @@
 /**
  * Email service — sends OTP via EmailJS REST API.
  *
- * EmailJS uses pre-defined templates with {{variable}} placeholders.
- * Template variables sent: {{to_email}} (recipient), {{user_name}}, {{otp_code}}.
+ * Config from env (build-time):
+ *   VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, VITE_EMAILJS_PUBLIC_KEY
+ * Optional: VITE_EMAILJS_PRIVATE_KEY
  *
- * Config fields (from authStore): serviceId, templateId, publicKey, privateKey (optional).
+ * Template variables: {{to_email}}, {{user_name}}, {{otp_code}}.
  */
 
 export interface EmailJSConfig {
@@ -14,24 +15,42 @@ export interface EmailJSConfig {
   privateKey?: string;
 }
 
+export function getEmailJSConfig(): EmailJSConfig | null {
+  const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim();
+  const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim();
+  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim();
+  const privateKey = import.meta.env.VITE_EMAILJS_PRIVATE_KEY?.trim();
+  if (!serviceId || !templateId || !publicKey) return null;
+  return {
+    serviceId,
+    templateId,
+    publicKey,
+    privateKey: privateKey || undefined,
+  };
+}
+
+export function isEmailJSConfigured(): boolean {
+  return getEmailJSConfig() !== null;
+}
+
 /**
  * Send an OTP verification email via EmailJS.
- *
- * @param email    - Recipient email address (passed as {{to_email}})
- * @param otp      - 6-digit verification code (passed as {{otp_code}})
- * @param userName - Display name (passed as {{user_name}}), defaults to email prefix
- * @param config   - EmailJS credentials (serviceId, templateId, publicKey, privateKey?)
  */
 export async function sendOTPEmail(
   email: string,
   otp: string,
   userName: string,
-  config: EmailJSConfig,
+  config?: EmailJSConfig,
 ): Promise<void> {
+  const resolved = config ?? getEmailJSConfig();
+  if (!resolved) {
+    throw new Error('EmailJS chưa được cấu hình (thiếu biến môi trường).');
+  }
+
   const body: Record<string, unknown> = {
-    service_id: config.serviceId,
-    template_id: config.templateId,
-    user_id: config.publicKey,
+    service_id: resolved.serviceId,
+    template_id: resolved.templateId,
+    user_id: resolved.publicKey,
     template_params: {
       to_email: email,
       user_name: userName,
@@ -39,8 +58,8 @@ export async function sendOTPEmail(
     },
   };
 
-  if (config.privateKey) {
-    body.accessToken = config.privateKey;
+  if (resolved.privateKey) {
+    body.accessToken = resolved.privateKey;
   }
 
   try {
