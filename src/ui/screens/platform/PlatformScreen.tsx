@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { PlatformDialog } from './PlatformDialog';
+import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { formatDate } from '@/utils/date';
 
 export function PlatformScreen() {
   const platforms = usePlatformStore((s) => s.platforms);
@@ -34,6 +36,7 @@ export function PlatformScreen() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<OrderPlatform | null>(null);
+  const [detailPlatform, setDetailPlatform] = useState<OrderPlatform | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrderPlatform | null>(null);
 
   useEffect(() => {
@@ -118,7 +121,16 @@ export function PlatformScreen() {
                 return (
                   <li
                     key={p.id}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover cursor-pointer"
+                    onClick={() => setDetailPlatform(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDetailPlatform(p);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -140,7 +152,11 @@ export function PlatformScreen() {
                         ) : null}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div
+                      className="flex items-center gap-1 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="button"
                         variant="ghost"
@@ -182,6 +198,35 @@ export function PlatformScreen() {
         }}
         editPlatform={editing}
       />
+
+      <EntityDetailDialog
+        open={detailPlatform !== null}
+        onOpenChange={(o) => !o && setDetailPlatform(null)}
+        title={detailPlatform?.name ?? 'Kênh'}
+        description={
+          detailPlatform?.createdAt
+            ? `Tạo ${formatDate(detailPlatform.createdAt.slice(0, 10))}`
+            : undefined
+        }
+      >
+        {detailPlatform ? (
+          <div className="grid grid-cols-2 gap-4">
+            <DetailField label="Mã">
+              {detailPlatform.code ? (
+                <span className="font-mono">{detailPlatform.code}</span>
+              ) : (
+                <span className="text-text-muted">—</span>
+              )}
+            </DetailField>
+            <DetailField label="Trạng thái">
+              {detailPlatform.active ? 'Đang dùng' : 'Tắt'}
+            </DetailField>
+            <DetailField label="Số đơn" className="col-span-2">
+              {usage.get(detailPlatform.id) ?? 0}
+            </DetailField>
+          </div>
+        ) : null}
+      </EntityDetailDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

@@ -5,6 +5,7 @@
 import { groqService } from './groqService';
 import { kiloService } from './kiloService';
 import { openRouterService } from './openRouterService';
+import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
 import { AI_PRIORITY_DEFAULT, type LlmSource } from './llmTypes';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
@@ -16,17 +17,19 @@ export interface UserSettingsRow {
   gemini_api_key: string | null;
   groq_api_key: string | null;
   openrouter_api_key: string | null;
+  siliconflow_api_key: string | null;
   kilo_api_key: string | null;
   enable_web_llm: boolean;
   enable_kilo_free: boolean;
   enable_groq: boolean;
   enable_openrouter: boolean;
+  enable_siliconflow: boolean;
   ai_priority: string[];
   updated_at: string;
 }
 
 function parseAiPriority(raw: unknown): LlmSource[] {
-  const allowed = new Set<LlmSource>(['kilo', 'openrouter', 'groq', 'gemini', 'local']);
+  const allowed = new Set<LlmSource>(['kilo', 'openrouter', 'siliconflow', 'groq', 'gemini', 'local']);
   if (!Array.isArray(raw) || raw.length === 0) return [...AI_PRIORITY_DEFAULT];
   const mapped = raw
     .map((v) => (v === 'webllm' ? 'local' : v))
@@ -58,10 +61,12 @@ export async function upsertUserSettings(
         groq_api_key: patch.groq_api_key ?? null,
         kilo_api_key: patch.kilo_api_key ?? null,
         openrouter_api_key: patch.openrouter_api_key ?? null,
+        siliconflow_api_key: patch.siliconflow_api_key ?? null,
         enable_web_llm: patch.enable_web_llm ?? true,
         enable_kilo_free: patch.enable_kilo_free ?? true,
         enable_groq: patch.enable_groq ?? true,
         enable_openrouter: patch.enable_openrouter ?? true,
+        enable_siliconflow: patch.enable_siliconflow ?? true,
         ai_priority: patch.ai_priority ?? AI_PRIORITY_DEFAULT,
       },
       { onConflict: 'user_id' },
@@ -75,16 +80,19 @@ export function applyUserSettingsToStore(row: UserSettingsRow): void {
   store.setGeminiApiKey(row.gemini_api_key);
   store.setGroqApiKey(row.groq_api_key);
   store.setOpenRouterApiKey(row.openrouter_api_key);
+  store.setSiliconFlowApiKey(row.siliconflow_api_key);
   store.setKiloApiKey(row.kilo_api_key);
   store.setEnableWebLLM(row.enable_web_llm !== false);
   store.setEnableKiloFree(row.enable_kilo_free !== false);
   store.setEnableGroq(row.enable_groq !== false);
   store.setEnableOpenRouter(row.enable_openrouter !== false);
+  store.setEnableSiliconFlow(row.enable_siliconflow !== false);
   store.setAiPriority(priority);
   webLLM.setDisabled(row.enable_web_llm === false);
   groqService.setEnabled(row.enable_groq !== false);
   kiloService.setEnabled(row.enable_kilo_free !== false);
   openRouterService.setEnabled(row.enable_openrouter !== false);
+  siliconFlowService.setEnabled(row.enable_siliconflow !== false);
 }
 
 export function settingsRowFromStore(userId: string): Omit<UserSettingsRow, 'updated_at'> {
@@ -94,11 +102,13 @@ export function settingsRowFromStore(userId: string): Omit<UserSettingsRow, 'upd
     gemini_api_key: s.geminiApiKey,
     groq_api_key: s.groqApiKey,
     openrouter_api_key: s.openRouterApiKey,
+    siliconflow_api_key: s.siliconFlowApiKey,
     kilo_api_key: s.kiloApiKey,
     enable_web_llm: s.enableWebLLM !== false,
     enable_kilo_free: s.enableKiloFree !== false,
     enable_groq: s.enableGroq !== false,
     enable_openrouter: s.enableOpenRouter !== false,
+    enable_siliconflow: s.enableSiliconFlow !== false,
     ai_priority: s.aiPriority?.length ? s.aiPriority : AI_PRIORITY_DEFAULT,
   };
 }

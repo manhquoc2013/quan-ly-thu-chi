@@ -15,6 +15,9 @@ export interface Product {
   /** Đơn vị tính (vd: cái, kg, hộp) */
   unit: string;
 
+  /** Số lượng tồn kho hiện tại (có thể âm) */
+  stockQty: number;
+
   /** Mã SKU (tuỳ chọn) */
   sku?: string;
 

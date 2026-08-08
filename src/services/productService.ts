@@ -167,12 +167,20 @@ export function looksLikeGenerateSkuMessage(message: string): boolean {
 
 export async function getAllProducts(): Promise<Product[]> {
   const records = await cacheGet<Product[]>(CACHE_KEY);
-  useProductStore.getState().setProducts(records ?? []);
-  return records ?? [];
+  const normalized = (records ?? []).map((p) =>
+    typeof p.stockQty === 'number' && Number.isFinite(p.stockQty)
+      ? p
+      : { ...p, stockQty: 0 },
+  );
+  if (records && normalized.some((p, i) => p.stockQty !== records[i]?.stockQty)) {
+    await cacheSet(CACHE_KEY, normalized);
+  }
+  useProductStore.getState().setProducts(normalized);
+  return normalized;
 }
 
 export async function createProduct(
-  data: Omit<Product, 'id' | 'createdAt'>,
+  data: Omit<Product, 'id' | 'createdAt' | 'stockQty'> & { stockQty?: number },
   opts?: NotifyOpts,
 ): Promise<Product> {
   const name = data.name.trim();
@@ -189,11 +197,17 @@ export async function createProduct(
   const sku = data.sku?.trim() || buildSkuForProduct(name, used);
   const notes = data.notes?.trim() || undefined;
 
+  const stockQty =
+    typeof data.stockQty === 'number' && Number.isFinite(data.stockQty)
+      ? Math.round(data.stockQty)
+      : 0;
+
   const record: Product = {
     id: crypto.randomUUID(),
     name,
     defaultUnitPrice: Math.round(data.defaultUnitPrice),
     unit,
+    stockQty,
     sku,
     notes,
     imagePath: data.imagePath,
@@ -237,6 +251,10 @@ export async function updateProduct(
       patch.defaultUnitPrice !== undefined
         ? Math.round(patch.defaultUnitPrice)
         : current.defaultUnitPrice,
+    stockQty:
+      patch.stockQty !== undefined && Number.isFinite(patch.stockQty)
+        ? Math.round(patch.stockQty)
+        : (current.stockQty ?? 0),
   };
   const updatedAll = [...existing];
   updatedAll[idx] = updated;

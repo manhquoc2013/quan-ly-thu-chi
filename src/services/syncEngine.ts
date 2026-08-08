@@ -42,10 +42,12 @@ export async function flushOutbox(
           groq_api_key: (item.payload.groq_api_key as string | null) ?? null,
           kilo_api_key: (item.payload.kilo_api_key as string | null) ?? null,
           openrouter_api_key: (item.payload.openrouter_api_key as string | null) ?? null,
+          siliconflow_api_key: (item.payload.siliconflow_api_key as string | null) ?? null,
           enable_web_llm: item.payload.enable_web_llm !== false,
           enable_kilo_free: item.payload.enable_kilo_free !== false,
           enable_groq: item.payload.enable_groq !== false,
           enable_openrouter: item.payload.enable_openrouter !== false,
+          enable_siliconflow: item.payload.enable_siliconflow !== false,
           ai_priority: Array.isArray(item.payload.ai_priority)
             ? (item.payload.ai_priority as string[])
             : undefined,

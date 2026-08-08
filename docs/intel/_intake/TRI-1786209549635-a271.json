@@ -1,0 +1,101 @@
+{
+  "triage_id": "TRI-1786209549635-a271",
+  "created_at": 1786209549635,
+  "request_summary": "Complete OpenRouter AI provider integration — all code is already applied by backend dev; remaining work is verify + gate (QA, code review, release).",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmCall.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/llmTypes.ts",
+      "src/services/openRouterService.ts",
+      "src/services/syncEngine.ts",
+      "src/services/userSettingsService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "impact_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmCall.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/llmTypes.ts",
+      "src/services/openRouterService.ts",
+      "src/services/syncEngine.ts",
+      "src/services/userSettingsService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 12 edit-target files exceed the inline gate (12 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Settings → AI Providers → OpenRouter API key field; Chat AI → OpenRouter in LLM cascade",
+  "blast_radius": 12,
+  "done_oracle": "npx tsc --noEmit pass, npx vitest run pass, OpenRouter API key persists through settings sync, chat routes to OpenRouter when configured in priority order",
+  "change_type": "architecture",
+  "seam_claims": [
+    {
+      "file": "src/services/llmCall.ts",
+      "line": 33,
+      "quote": "    case 'openrouter': {",
+      "source_hash": "aa9d0964ae05c7a8b8763c801005b013b4f2411e6b29b2cfa70cdc7175e559e7",
+      "quote_hash": "3fd8f80a42193ba8da5311042da2b9b1f4109184d0fb8375b8c12cfe3f0c6a96",
+      "note": "OpenRouter cascade entry in LLM provider switch"
+    },
+    {
+      "file": "src/services/aiRouter.ts",
+      "line": 59,
+      "quote": "export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'groq' | 'gemini' | 'tesseract';",
+      "source_hash": "13f0627177080dabd37ddfd9b996c3bf3eb63d39ff7cb8d7e4e9519b92cbcbdc",
+      "quote_hash": "4044788124d0c87e5bbfa3faeba55e3a9031e0963d99211d917a3db0c0bfa93c",
+      "note": "ChatReplySource type with openrouter"
+    },
+    {
+      "file": "src/services/syncEngine.ts",
+      "line": 44,
+      "quote": "          openrouter_api_key: (item.payload.openrouter_api_key as string | null) ?? null,",
+      "source_hash": "736af238ce278c818db3dee2c72ce4c99285b43e4740f13c51a9f1fdd109f289",
+      "quote_hash": "4c5b0a18e7e5663a0bf49cc683b50210e78d09feb9b0cc52f910183bbf71b786",
+      "note": "OpenRouter API key in sync outbox flush"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 55,
+      "quote": "  setOpenRouterApiKey: (key: string | null) => void;",
+      "source_hash": "ac501dcf9308c0ec07a82cc100ee33eac4b41e6143f1a56664e8b1f2d351fa48",
+      "quote_hash": "58474930c067fe418c795f2e45c006d5da58cfe4cb7718948e54ea1351894e0f",
+      "note": "OpenRouter setter in auth actions interface"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 43,
+      "quote": "  openRouterApiKey: string | null;",
+      "source_hash": "ac501dcf9308c0ec07a82cc100ee33eac4b41e6143f1a56664e8b1f2d351fa48",
+      "quote_hash": "e65eae5b499e6c0a1e8c6eca85b3fd382ea997911269c6689e860eae873b30b5",
+      "note": "OpenRouter API key in auth state"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "70023f18067d7906d0eb4df1857b8b24aff13118",
+    "dirty": true,
+    "captured_at": 1786209549667
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

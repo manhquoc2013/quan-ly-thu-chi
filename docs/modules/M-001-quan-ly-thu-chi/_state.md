@@ -6,7 +6,7 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-01T08:39:46Z
-last-updated: 2026-08-08T16:41:49Z
+last-updated: 2026-08-08T17:54:36Z
 current-stage: engineering-backend-developer-wave-1
 output-mode: lean
 repo-type: mini
@@ -28,14 +28,14 @@ completed-stages:
   engineering-solution-designer:
     verdict: Pass
     artifact: docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md
-    completed-at: 2026-08-05
+    completed-at: 2026-08-08
   engineering-system-architect:
     verdict: Pass
     artifact: docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md
     completed-at: 2026-08-08
   engineering-backend-developer-wave-2:
     verdict: Pass
-    artifact: docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w2-notification-store-panel.md
+    artifact: docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md
     completed-at: 2026-08-08
   engineering-technical-lead:
     verdict: Pass
@@ -57,6 +57,7 @@ kpi:
 rework-count:
   engineering-business-analyst: 3
   engineering-backend-developer-wave-1: 1
+  engineering-solution-designer: 1
 locked-fields: []
 version: 1
 finalizers: []
@@ -71,8 +72,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
-reopened-at: 2026-08-05T07:34:02Z
-reopened-reason: "Scope expansion: add Groq AI provider + user-configurable AI priority ordering"
+reopened-at: 2026-08-08T17:35:17Z
+reopened-reason: "Scope expansion: add SiliconFlow AI provider (TRI-1786209621484-f99f) — OpenAI-compatible API, same pattern as OpenRouter."
 ---
 # Pipeline State: Quản Lý Tài Chính
 
@@ -86,9 +87,9 @@ reopened-reason: "Scope expansion: add Groq AI provider + user-configurable AI p
 |---|---|---|---|---|---|
 | 1 | Intake | consulting-intelligence-extractor | Ready for BA | — | 2026-08-01T08:39:46Z |
 | 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-ly-thu-chi/ba/00-lean-spec.md | 2026-08-05 |
-| 3 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md | 2026-08-05 |
+| 3 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md | 2026-08-08 |
 | 4 | engineering-system-architect | engineering-system-architect | Pass | docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md | 2026-08-08 |
-| 5 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w2-notification-store-panel.md | 2026-08-08 |
+| 5 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md | 2026-08-08 |
 | 6 | engineering-technical-lead | engineering-technical-lead | Pass | docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md | 2026-08-08 |
 | 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md | 2026-08-08 |
 | 8 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md | 2026-08-08 |

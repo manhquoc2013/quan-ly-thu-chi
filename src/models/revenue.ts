@@ -115,6 +115,9 @@ export interface Revenue {
   /** Ghi chú (tùy chọn) */
   notes?: string;
 
+  /** true khi đã trừ tồn kho cho đơn (paid, chưa huỷ) */
+  stockApplied?: boolean;
+
   /** Thời điểm tạo */
   createdAt: string;
 

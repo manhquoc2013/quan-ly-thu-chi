@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CustomerDialog } from './CustomerDialog';
+import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { formatDate } from '@/utils/date';
 
 export function CustomerScreen() {
   const customers = useCustomerStore((s) => s.customers);
@@ -34,6 +36,7 @@ export function CustomerScreen() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function CustomerScreen() {
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'customer') return;
     const row = customers.find((c) => c.id === recordDetailRequest.id);
-    if (row) { setEditing(row); setDialogOpen(true); }
+    if (row) setDetailCustomer(row);
     clearRecordDetailRequest();
   }, [recordDetailRequest, customers, clearRecordDetailRequest]);
 
@@ -136,7 +139,16 @@ export function CustomerScreen() {
                 return (
                   <li
                     key={c.id}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors cursor-pointer"
+                    onClick={() => setDetailCustomer(c)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDetailCustomer(c);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -167,7 +179,11 @@ export function CustomerScreen() {
                         ) : null}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div
+                      className="flex items-center gap-1 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="button"
                         variant="ghost"
@@ -198,6 +214,34 @@ export function CustomerScreen() {
       </Card>
 
       <CustomerDialog open={dialogOpen} onClose={handleCloseDialog} editCustomer={editing} />
+
+      <EntityDetailDialog
+        open={detailCustomer !== null}
+        onOpenChange={(o) => !o && setDetailCustomer(null)}
+        title={detailCustomer?.name ?? 'Khách hàng'}
+        description={
+          detailCustomer?.createdAt
+            ? `Tạo ${formatDate(detailCustomer.createdAt.slice(0, 10))}`
+            : undefined
+        }
+      >
+        {detailCustomer ? (
+          <div className="grid grid-cols-2 gap-4">
+            <DetailField label="Số điện thoại">
+              {detailCustomer.phone || <span className="text-text-muted">—</span>}
+            </DetailField>
+            <DetailField label="Số đơn">
+              {orderCountByCustomer.get(detailCustomer.id) ?? 0}
+            </DetailField>
+            <DetailField label="Email" className="col-span-2">
+              {detailCustomer.email || <span className="text-text-muted">—</span>}
+            </DetailField>
+            <DetailField label="Địa chỉ" className="col-span-2">
+              {detailCustomer.address || <span className="text-text-muted">—</span>}
+            </DetailField>
+          </div>
+        ) : null}
+      </EntityDetailDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

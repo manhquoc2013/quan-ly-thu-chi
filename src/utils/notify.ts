@@ -22,4 +22,9 @@ export const notify = {
     if (opts?.silent) return;
     toast.message(message);
   },
+  /** Stock warnings still show even when parent op is silent */
+  warning(message: string, opts?: NotifyOpts & { force?: boolean }) {
+    if (opts?.silent && !opts.force) return;
+    toast.warning(message);
+  },
 };

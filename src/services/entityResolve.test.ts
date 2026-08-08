@@ -54,6 +54,7 @@ describe('entityResolve', () => {
         name: 'Áo thun',
         defaultUnitPrice: 100000,
         unit: 'cái',
+        stockQty: 0,
         createdAt: '',
       },
     ]);
@@ -72,6 +73,7 @@ describe('entityResolve', () => {
         name: 'Kẹp tóc giá 90k sau đó lại uống nước',
         defaultUnitPrice: 16667,
         unit: 'cái',
+        stockQty: 0,
         createdAt: '',
       },
     ]);
@@ -87,6 +89,7 @@ describe('entityResolve', () => {
         name: 'Áo thun nam',
         defaultUnitPrice: 100000,
         unit: 'cái',
+        stockQty: 0,
         createdAt: '',
       },
       {
@@ -94,6 +97,7 @@ describe('entityResolve', () => {
         name: 'Áo thun nữ',
         defaultUnitPrice: 90000,
         unit: 'cái',
+        stockQty: 0,
         createdAt: '',
       },
     ]);

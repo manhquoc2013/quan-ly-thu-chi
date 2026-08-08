@@ -30,6 +30,9 @@ export interface ExpenseRow {
   supplier: string | null;
   notes: string | null;
   tags: string[] | null;
+  stock_product_id?: string | null;
+  stock_qty_in?: number | null;
+  stock_applied?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +53,7 @@ export interface ProductRow {
   name: string;
   default_unit_price: number;
   unit: string;
+  stock_qty?: number | null;
   sku: string | null;
   notes: string | null;
   image_path: string | null;
@@ -87,6 +91,7 @@ export interface RevenueRow {
   shipping_expense_id: string | null;
   platform_id: string | null;
   notes: string | null;
+  stock_applied?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,6 +120,9 @@ export function mapExpense(row: ExpenseRow): Expense {
     supplier: row.supplier ?? undefined,
     notes: row.notes ?? undefined,
     tags: row.tags ?? [],
+    stockProductId: row.stock_product_id ?? undefined,
+    stockQtyIn: row.stock_qty_in != null ? Number(row.stock_qty_in) : undefined,
+    stockApplied: row.stock_applied ? true : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -133,6 +141,9 @@ export function expenseToRow(householdId: string, e: Expense): ExpenseRow {
     supplier: e.supplier ?? null,
     notes: e.notes ?? null,
     tags: e.tags ?? [],
+    stock_product_id: e.stockProductId ?? null,
+    stock_qty_in: e.stockQtyIn ?? null,
+    stock_applied: e.stockApplied ?? false,
     created_at: e.createdAt,
     updated_at: e.updatedAt,
   };
@@ -167,6 +178,7 @@ export function mapProduct(row: ProductRow): Product {
     name: row.name,
     defaultUnitPrice: Number(row.default_unit_price),
     unit: row.unit,
+    stockQty: row.stock_qty != null ? Number(row.stock_qty) : 0,
     sku: row.sku ?? undefined,
     notes: row.notes ?? undefined,
     imagePath: row.image_path ?? undefined,
@@ -181,6 +193,7 @@ export function productToRow(householdId: string, p: Product): ProductRow {
     name: p.name,
     default_unit_price: p.defaultUnitPrice,
     unit: p.unit,
+    stock_qty: p.stockQty ?? 0,
     sku: p.sku ?? null,
     notes: p.notes ?? null,
     image_path: p.imagePath ?? null,
@@ -244,6 +257,7 @@ export function mapRevenue(row: RevenueRow, items: RevenueItemRow[]): Revenue {
     shippingExpenseId: row.shipping_expense_id ?? undefined,
     platformId: row.platform_id ?? undefined,
     notes: row.notes ?? undefined,
+    stockApplied: row.stock_applied ? true : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -276,6 +290,7 @@ export function revenueToUpsertPayload(householdId: string, r: Revenue): {
       shipping_expense_id: r.shippingExpenseId ?? null,
       platform_id: r.platformId ?? null,
       notes: r.notes ?? null,
+      stock_applied: r.stockApplied ?? false,
       created_at: r.createdAt,
       updated_at: r.updatedAt,
     },

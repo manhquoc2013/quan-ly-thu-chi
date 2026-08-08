@@ -17,6 +17,7 @@ import { geminiService } from '@/services/geminiService';
 import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
 import { openRouterService } from '@/services/openRouterService';
+import { siliconFlowService } from '@/services/siliconFlowService';
 import { useTheme, type ThemeMode } from '@/hooks/useTheme';
 import { type LlmSource, AI_PRIORITY_DEFAULT, llmSourceLabel } from '@/services/llmCall';
 import { reloadAppData } from '@/services/bootstrap';
@@ -89,6 +90,11 @@ export function SettingsScreen() {
     enableOpenRouter,
     setOpenRouterApiKey,
     setEnableOpenRouter,
+    siliconFlowApiKey,
+    siliconFlowConfigured,
+    enableSiliconFlow,
+    setSiliconFlowApiKey,
+    setEnableSiliconFlow,
     aiPriority,
     setAiPriority,
     householdId,
@@ -106,6 +112,8 @@ export function SettingsScreen() {
   const [groqKeyInput, setGroqKeyInput] = useState(groqApiKey ?? '');
   const [openRouterKeyInput, setOpenRouterKeyInput] = useState(openRouterApiKey ?? '');
   const [testingOpenRouter, setTestingOpenRouter] = useState(false);
+  const [siliconFlowKeyInput, setSiliconFlowKeyInput] = useState(siliconFlowApiKey ?? '');
+  const [testingSiliconFlow, setTestingSiliconFlow] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const supabaseConfigured = isSupabaseConfigured();
@@ -155,6 +163,8 @@ export function SettingsScreen() {
           return enableKiloFree !== false;
         case 'openrouter':
           return enableOpenRouter !== false && openRouterConfigured;
+        case 'siliconflow':
+          return enableSiliconFlow !== false && siliconFlowConfigured;
         case 'groq':
           return enableGroq !== false && groqConfigured;
         case 'gemini':
@@ -165,7 +175,7 @@ export function SettingsScreen() {
           return false;
       }
     });
-  }, [aiPriority, enableKiloFree, enableOpenRouter, openRouterConfigured, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
+  }, [aiPriority, enableKiloFree, enableOpenRouter, openRouterConfigured, enableSiliconFlow, siliconFlowConfigured, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
 
   useEffect(() => {
     setApiKey(geminiApiKey ?? '');
@@ -178,6 +188,10 @@ export function SettingsScreen() {
   useEffect(() => {
     setOpenRouterKeyInput(openRouterApiKey ?? '');
   }, [openRouterApiKey]);
+
+  useEffect(() => {
+    setSiliconFlowKeyInput(siliconFlowApiKey ?? '');
+  }, [siliconFlowApiKey]);
 
   async function handleCreateHousehold(): Promise<void> {
     setCloudBusy(true);
@@ -418,6 +432,52 @@ export function SettingsScreen() {
     setOpenRouterKeyInput('');
     queueUserSettingsSync();
     toast.message('Đã xóa OpenRouter API key');
+  }
+
+  // ── SiliconFlow handlers ──
+  function handleSaveSiliconFlowKey(): void {
+    const trimmed = siliconFlowKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập SiliconFlow API key');
+      return;
+    }
+    setSiliconFlowApiKey(trimmed);
+    siliconFlowService.configure(trimmed);
+    queueUserSettingsSync();
+    toast.success('Đã lưu SiliconFlow API key (đồng bộ cloud khi online)');
+  }
+
+  async function handleTestSiliconFlow(): Promise<void> {
+    const trimmed = siliconFlowKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập API key trước khi kiểm tra');
+      return;
+    }
+    setTestingSiliconFlow(true);
+    try {
+      siliconFlowService.configure(trimmed);
+      const result = await siliconFlowService.testConnection();
+      if (result.ok) {
+        setSiliconFlowApiKey(trimmed);
+        queueUserSettingsSync();
+        toast.success(`SiliconFlow hoạt động tốt — ${result.detail}`);
+      } else {
+        toast.error(`Kiểm tra thất bại: ${result.detail}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không kết nối được SiliconFlow';
+      toast.error(`Kiểm tra thất bại: ${msg}`);
+    } finally {
+      setTestingSiliconFlow(false);
+    }
+  }
+
+  function handleClearSiliconFlowKey(): void {
+    setSiliconFlowApiKey(null);
+    siliconFlowService.disconnect();
+    setSiliconFlowKeyInput('');
+    queueUserSettingsSync();
+    toast.message('Đã xóa SiliconFlow API key');
   }
 
   // ── AI Priority handlers ──

@@ -14,6 +14,8 @@ import { Loader2, X, Check } from 'lucide-react';
 import type { Expense, ExpenseCategory, PaymentMethod } from '@/models';
 import { EXPENSE_CATEGORY_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
 import { createExpense, updateExpense } from '@/services/expenseService';
+import { resolveProductForOrder } from '@/services/entityResolve';
+import { useProductStore } from '@/store/productStore';
 import { formatCurrencyInput, parseCurrency } from '@/utils/currency';
 import { todayISO } from '@/utils/date';
 import { notify } from '@/utils/notify';
@@ -36,6 +38,8 @@ interface FormState {
   supplier: string;
   notes: string;
   tags: string;
+  stockProductName: string;
+  stockQtyIn: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -47,6 +51,8 @@ const EMPTY_FORM: FormState = {
   supplier: '',
   notes: '',
   tags: '',
+  stockProductName: '',
+  stockQtyIn: '',
 };
 
 const CATEGORY_OPTIONS = optionsFromLabels(EXPENSE_CATEGORY_LABELS);
@@ -72,6 +78,9 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
   useEffect(() => {
     if (open) {
       if (editExpense) {
+        const linked = editExpense.stockProductId
+          ? useProductStore.getState().products.find((p) => p.id === editExpense.stockProductId)
+          : undefined;
         setForm({
           date: editExpense.date,
           category: editExpense.category,
@@ -81,6 +90,8 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
           supplier: editExpense.supplier ?? '',
           notes: editExpense.notes ?? '',
           tags: editExpense.tags.join(', '),
+          stockProductName: linked?.name ?? '',
+          stockQtyIn: editExpense.stockQtyIn != null ? String(editExpense.stockQtyIn) : '',
         });
       } else {
         setForm(EMPTY_FORM);
@@ -116,7 +127,11 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
       errs.amount = 'Số tiền phải lớn hơn 0';
     }
     setErrors(errs);
-    return Object.keys(errs).length === 0;
+    if (Object.keys(errs).length > 0) {
+      notify.error(Object.values(errs).filter(Boolean).join('. '));
+      return false;
+    }
+    return true;
   }, [form.description, form.amount]);
 
   const handleSubmit = useCallback(
@@ -128,6 +143,12 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
 
       const amountNum = parseCurrency(form.amount);
       const tagsArr = form.tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 10);
+      const stockQtyParsed = Number.parseInt(form.stockQtyIn.trim(), 10);
+      const wantStockIn =
+        !editExpense &&
+        form.stockQtyIn.trim() !== '' &&
+        Number.isFinite(stockQtyParsed) &&
+        stockQtyParsed > 0;
 
       try {
         if (editExpense) {
@@ -142,6 +163,23 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             tags: tagsArr,
           });
         } else {
+          let stockProductId: string | undefined;
+          let stockQtyIn: number | undefined;
+          if (wantStockIn) {
+            const productName =
+              form.stockProductName.trim() || form.description.trim();
+            const prod = await resolveProductForOrder(productName, {
+              suggestedPrice: Math.round(amountNum / stockQtyParsed),
+              silent: true,
+            });
+            if (prod.status !== 'resolved') {
+              notify.error('Không xác định được sản phẩm nhập hàng');
+              setSaving(false);
+              return;
+            }
+            stockProductId = prod.id;
+            stockQtyIn = stockQtyParsed;
+          }
           await createExpense({
             date: form.date,
             category: form.category,
@@ -152,6 +190,8 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             supplier: form.supplier.trim() || undefined,
             notes: form.notes.trim() || undefined,
             tags: tagsArr,
+            stockProductId,
+            stockQtyIn,
           });
         }
         onClose();
@@ -249,6 +289,45 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
               />
               {errors.description && <p className="text-[10px] text-danger-fg">{errors.description}</p>}
             </div>
+
+            {/* Stock-in (nhập hàng) — only on create; edit does not change tồn */}
+            {!editExpense ? (
+              <>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium text-text-muted">
+                    SP nhập kho (tuỳ chọn)
+                  </Label>
+                  <Input
+                    type="text"
+                    value={form.stockProductName}
+                    onChange={(e) => handleChange('stockProductName')(e.target.value)}
+                    placeholder="Tên SP — để trống = dùng mô tả"
+                    aria-label="Sản phẩm nhập kho"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium text-text-muted">SL nhập kho</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.stockQtyIn}
+                    onChange={(e) =>
+                      handleChange('stockQtyIn')(e.target.value.replace(/\D/g, ''))
+                    }
+                    placeholder="VD: 10 — có SL = cộng tồn"
+                    aria-label="Số lượng nhập kho"
+                  />
+                </div>
+              </>
+            ) : editExpense.stockQtyIn ? (
+              <div className="flex flex-col gap-1 col-span-2">
+                <p className="text-[11px] text-text-muted">
+                  Đã nhập kho: {form.stockQtyIn || editExpense.stockQtyIn}
+                  {form.stockProductName ? ` × ${form.stockProductName}` : ''}
+                  {' · '}sửa SL không đổi tồn (xoá phiếu rồi nhập lại).
+                </p>
+              </div>
+            ) : null}
 
             {/* Supplier */}
             <div className="flex flex-col gap-1">

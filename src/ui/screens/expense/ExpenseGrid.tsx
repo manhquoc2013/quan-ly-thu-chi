@@ -6,18 +6,22 @@
  * Row action buttons (Sửa / Xóa) are clickable without triggering the row click.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Expense } from '@/models';
-import { EXPENSE_CATEGORY_LABELS, PAYMENT_METHOD_LABELS } from '@/models';
+import {
+  EXPENSE_CATEGORY_LABELS,
+  EXPENSE_STATUS_LABELS,
+  PAYMENT_METHOD_LABELS,
+} from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pencil, Trash2, Square, CheckSquare } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { useProductStore } from '@/store/productStore';
 
 /* ─── Props ─── */
 
@@ -27,6 +31,9 @@ export interface ExpenseGridProps {
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
   onBulkDelete?: (ids: string[]) => void;
+  /** Open detail for this id (e.g. AI deep-link) */
+  peekExpenseId?: string | null;
+  onPeekConsumed?: () => void;
 }
 
 /* ─── Category badge colours ─── */
@@ -50,36 +57,51 @@ function paymentMethodLabel(method: Expense['paymentMethod']): string {
 
 /* ─── Detail dialog ─── */
 
-interface ExpenseDetailDialogProps {
-  expense: Expense;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onEdit: (expense: Expense) => void;
-}
+function ExpenseDetailBody({ expense }: { expense: Expense }) {
+  const products = useProductStore((s) => s.products);
+  const stockProduct = expense.stockProductId
+    ? products.find((p) => p.id === expense.stockProductId)
+    : undefined;
 
-function ExpenseDetailDialog({ expense, open, onOpenChange, onEdit }: ExpenseDetailDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg !flex !flex-col overflow-hidden p-0 gap-0">
-        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
-          <DialogTitle>{expense.description}</DialogTitle>
-          <DialogDescription>{formatDate(expense.date)}</DialogDescription>
-        </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div><Label>Danh mục</Label><Badge variant="outline">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge></div>
-            <div><Label>Số tiền</Label><p className="font-mono font-bold">{formatCurrency(expense.amount)}</p></div>
-            <div><Label>Phương thức</Label><p>{paymentMethodLabel(expense.paymentMethod)}</p></div>
-            {expense.supplier && <div><Label>Nhà cung cấp</Label><p>{expense.supplier}</p></div>}
-            {expense.notes && <div className="col-span-2"><Label>Ghi chú</Label><p className="text-muted-foreground">{expense.notes}</p></div>}
-            {expense.tags.length > 0 && <div className="col-span-2"><Label>Tags</Label><div className="flex gap-1 flex-wrap">{expense.tags.map(t => <Badge key={t} variant="secondary">#{t}</Badge>)}</div></div>}
+    <div className="grid grid-cols-2 gap-4">
+      <DetailField label="Danh mục">
+        <Badge variant="outline">{EXPENSE_CATEGORY_LABELS[expense.category]}</Badge>
+      </DetailField>
+      <DetailField label="Số tiền">
+        <p className="font-mono font-bold">{formatCurrency(expense.amount)}</p>
+      </DetailField>
+      <DetailField label="Trạng thái">
+        {EXPENSE_STATUS_LABELS[expense.status]}
+      </DetailField>
+      <DetailField label="Phương thức">{paymentMethodLabel(expense.paymentMethod)}</DetailField>
+      {expense.supplier ? (
+        <DetailField label="Nhà cung cấp">{expense.supplier}</DetailField>
+      ) : null}
+      {expense.stockQtyIn ? (
+        <DetailField label="Nhập kho" className="col-span-2">
+          +{expense.stockQtyIn}
+          {stockProduct ? ` × ${stockProduct.name}` : ''}
+          {expense.stockApplied ? ' · đã cộng tồn' : ''}
+        </DetailField>
+      ) : null}
+      {expense.notes ? (
+        <DetailField label="Ghi chú" className="col-span-2">
+          <p className="text-text-muted">{expense.notes}</p>
+        </DetailField>
+      ) : null}
+      {expense.tags.length > 0 ? (
+        <DetailField label="Tags" className="col-span-2">
+          <div className="flex gap-1 flex-wrap">
+            {expense.tags.map((t) => (
+              <Badge key={t} variant="secondary">
+                #{t}
+              </Badge>
+            ))}
           </div>
-        </div>
-        <DialogFooter className="flex items-center gap-2 px-6 py-3 border-t border-border shrink-0 bg-muted/30">
-          <Button variant="default" onClick={() => { onOpenChange(false); onEdit(expense); }}><Pencil size={14}/> Chỉnh sửa</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DetailField>
+      ) : null}
+    </div>
   );
 }
 
@@ -91,19 +113,20 @@ export function ExpenseGrid({
   onEdit,
   onDelete,
   onBulkDelete,
+  peekExpenseId,
+  onPeekConsumed,
 }: ExpenseGridProps) {
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<Expense | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
-  const handleDetailEdit = useCallback(
-    (expense: Expense) => {
-      setDetailExpense(null);
-      onEdit(expense);
-    },
-    [onEdit],
-  );
+  useEffect(() => {
+    if (!peekExpenseId) return;
+    const row = expenses.find((e) => e.id === peekExpenseId);
+    if (row) setDetailExpense(row);
+    onPeekConsumed?.();
+  }, [peekExpenseId, expenses, onPeekConsumed]);
 
   const handleRowClick = useCallback(
     (expense: Expense) => {
@@ -283,14 +306,14 @@ export function ExpenseGrid({
         </div>
       )}
 
-      {detailExpense && (
-        <ExpenseDetailDialog
-          expense={detailExpense}
-          open={detailExpense !== null}
-          onOpenChange={(open) => !open && setDetailExpense(null)}
-          onEdit={handleDetailEdit}
-        />
-      )}
+      <EntityDetailDialog
+        open={detailExpense !== null}
+        onOpenChange={(open) => !open && setDetailExpense(null)}
+        title={detailExpense?.description ?? 'Chi phí'}
+        description={detailExpense ? formatDate(detailExpense.date) : undefined}
+      >
+        {detailExpense ? <ExpenseDetailBody expense={detailExpense} /> : null}
+      </EntityDetailDialog>
 
       <AlertDialog open={confirmDeleteId !== null} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
         <AlertDialogContent>

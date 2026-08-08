@@ -26,6 +26,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ProductDialog } from './ProductDialog';
+import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { formatDate } from '@/utils/date';
 
 export function ProductScreen() {
   const products = useProductStore((s) => s.products);
@@ -36,6 +38,7 @@ export function ProductScreen() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export function ProductScreen() {
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'product') return;
     const row = products.find((p) => p.id === recordDetailRequest.id);
-    if (row) { setEditing(row); setDialogOpen(true); }
+    if (row) setDetailProduct(row);
     clearRecordDetailRequest();
   }, [recordDetailRequest, products, clearRecordDetailRequest]);
 
@@ -170,7 +173,16 @@ export function ProductScreen() {
                 return (
                   <li
                     key={p.id}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors"
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors cursor-pointer"
+                    onClick={() => setDetailProduct(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setDetailProduct(p);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -188,11 +200,28 @@ export function ProductScreen() {
                         ) : null}
                       </div>
                       <p className="text-[11px] text-text-muted">
+                        Tồn:{' '}
+                        <span
+                          className={
+                            (p.stockQty ?? 0) < 0
+                              ? 'text-danger-fg font-medium'
+                              : (p.stockQty ?? 0) === 0
+                                ? 'text-text-muted'
+                                : 'text-text-primary font-medium'
+                          }
+                        >
+                          {p.stockQty ?? 0} {p.unit}
+                        </span>
+                        {' · '}
                         Gợi ý: {formatCurrency(p.defaultUnitPrice)} / {p.unit}
                         {p.notes ? ` · ${p.notes}` : ''}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div
+                      className="flex items-center gap-1 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <Button
                         type="button"
                         variant="ghost"
@@ -233,6 +262,50 @@ export function ProductScreen() {
         }}
         editProduct={editing}
       />
+
+      <EntityDetailDialog
+        open={detailProduct !== null}
+        onOpenChange={(o) => !o && setDetailProduct(null)}
+        title={detailProduct?.name ?? 'Sản phẩm'}
+        description={
+          detailProduct?.createdAt
+            ? `Tạo ${formatDate(detailProduct.createdAt.slice(0, 10))}`
+            : undefined
+        }
+      >
+        {detailProduct ? (
+          <div className="grid grid-cols-2 gap-4">
+            <DetailField label="SKU">
+              {detailProduct.sku ? (
+                <span className="font-mono">{detailProduct.sku}</span>
+              ) : (
+                <span className="text-text-muted">—</span>
+              )}
+            </DetailField>
+            <DetailField label="Đơn vị">{detailProduct.unit}</DetailField>
+            <DetailField label="Tồn kho">
+              <span
+                className={
+                  (detailProduct.stockQty ?? 0) < 0 ? 'text-danger-fg font-medium' : 'font-medium'
+                }
+              >
+                {detailProduct.stockQty ?? 0} {detailProduct.unit}
+              </span>
+            </DetailField>
+            <DetailField label="Giá gợi ý">
+              <span className="font-mono">{formatCurrency(detailProduct.defaultUnitPrice)}</span>
+            </DetailField>
+            <DetailField label="Dùng trên đơn" className="col-span-2">
+              {usageCount.get(detailProduct.id) ?? 0} dòng
+            </DetailField>
+            {detailProduct.notes ? (
+              <DetailField label="Ghi chú" className="col-span-2">
+                <p className="text-text-muted">{detailProduct.notes}</p>
+              </DetailField>
+            ) : null}
+          </div>
+        ) : null}
+      </EntityDetailDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

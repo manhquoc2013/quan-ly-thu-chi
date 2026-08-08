@@ -64,6 +64,15 @@ export interface Expense {
   /** Tags để phân loại thêm (2–30 ký tự, tối đa 10) */
   tags: string[];
 
+  /** FK → Product khi chi phí là nhập hàng (cộng tồn) */
+  stockProductId?: string;
+
+  /** Số lượng đã cộng vào tồn khi tạo phiếu nhập (không đổi khi sửa SL) */
+  stockQtyIn?: number;
+
+  /** true khi đã cộng tồn cho phiếu này */
+  stockApplied?: boolean;
+
   /** Thời điểm tạo bản ghi (ISO 8601) */
   createdAt: string;
 

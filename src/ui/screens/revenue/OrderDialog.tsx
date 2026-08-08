@@ -323,7 +323,6 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
       };
       return { ...prev, items };
     });
-    setActiveProductRow(null);
   }, []);
 
   const quickAddProduct = useCallback(
@@ -348,9 +347,11 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
 
   const handleSubmit = useCallback(async () => {
     /* Validate */
-    if (!form.date) return;
-    if (!form.customerId) return;
-    if (form.items.some((i) => !i.name.trim() || !i.quantity || (i.unitPrice ?? 0) <= 0)) return;
+    if (!form.date) { notify.error('Vui lòng chọn ngày đơn hàng'); return; }
+    if (!form.customerId) { notify.error('Vui lòng chọn khách hàng'); return; }
+    if (form.items.some((i) => !i.name.trim())) { notify.error('Vui lòng nhập tên sản phẩm cho tất cả dòng'); return; }
+    if (form.items.some((i) => !i.quantity)) { notify.error('Vui lòng nhập số lượng cho tất cả dòng'); return; }
+    if (form.items.some((i) => (i.unitPrice ?? 0) <= 0)) { notify.error('Vui lòng nhập đơn giá > 0 cho tất cả dòng'); return; }
 
     try {
       const hasDeposit = (form.depositAmount || 0) > 0;
@@ -610,11 +611,11 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                         />
                         {showDropdown && (
                           <div className="absolute z-20 left-2 right-2 top-full mt-0.5 max-h-36 overflow-y-auto border border-border-subtle rounded-field bg-surface shadow-md">
-                            {suggestions.map((p) => (
+                            {suggestions.map((p, i) => (
                               <button
                                 key={p.id}
                                 type="button"
-                                className="w-full text-left px-2 py-1.5 text-[11px] hover:bg-surface-hover"
+                                className={`w-full text-left px-2 py-1.5 text-[11px] ${i === highlightIdx ? 'bg-accent-bg' : 'hover:bg-surface-hover'}`}
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => pickProduct(idx, p.id)}
                               >

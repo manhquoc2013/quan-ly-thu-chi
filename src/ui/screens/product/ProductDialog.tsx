@@ -24,6 +24,7 @@ interface FormState {
   name: string;
   defaultUnitPrice: string;
   unit: string;
+  stockQty: string;
   sku: string;
   notes: string;
 }
@@ -32,6 +33,7 @@ const EMPTY: FormState = {
   name: '',
   defaultUnitPrice: '',
   unit: 'cái',
+  stockQty: '0',
   sku: '',
   notes: '',
 };
@@ -55,6 +57,7 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
           ? formatCurrencyInput(String(editProduct.defaultUnitPrice))
           : '',
         unit: editProduct.unit || 'cái',
+        stockQty: String(editProduct.stockQty ?? 0),
         sku: editProduct.sku ?? '',
         notes: editProduct.notes ?? '',
       });
@@ -78,10 +81,12 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
       }
       setSaving(true);
       try {
+        const stockParsed = Number.parseInt(form.stockQty.trim(), 10);
         const payload = {
           name,
           defaultUnitPrice: parseCurrency(form.defaultUnitPrice) || 0,
           unit: form.unit.trim() || 'cái',
+          stockQty: Number.isFinite(stockParsed) ? stockParsed : 0,
           sku: form.sku.trim() || undefined,
           notes: form.notes.trim() || undefined,
         };
@@ -141,6 +146,19 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
                 required
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="prod-stock">Tồn kho</Label>
+            <Input
+              id="prod-stock"
+              value={form.stockQty}
+              onChange={(e) => setField('stockQty', e.target.value.replace(/[^\d-]/g, ''))}
+              placeholder="0"
+              inputMode="numeric"
+            />
+            <p className="text-[10px] text-text-muted">
+              Tự + khi nhập hàng, − khi đơn đã thanh toán
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="prod-sku">Mã SKU</Label>

@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  X, Send, Loader2, Plus, History, Trash2, Paperclip, Mic, MicOff, ExternalLink,
+  X, Send, Plus, History, Trash2, Paperclip, Mic, MicOff, ExternalLink,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@store/uiStore';
@@ -20,12 +20,13 @@ import { MarkdownText } from '@components/MarkdownText';
 import { DataEntryHelper } from './DataEntryHelper';
 import { toast } from 'sonner';
 import { llmSourceLabel } from '@/services/llmCall';
+import { CatBody } from '@/ui/components/MascotOverlay';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter' | 'siliconflow';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
@@ -377,7 +378,7 @@ export function ChatPanel() {
             {webLLM.isLoading && (
               <div className="mx-[var(--s-md)] mt-[var(--s-sm)] p-[var(--s-sm)] rounded-panel bg-surface border border-border">
                 <div className="flex items-center gap-2 mb-1">
-                  <Loader2 size={12} className="animate-spin text-accent-fg" />
+                  <CatBody emotion="thinking" action="walk" />
                   <span className="text-[11px]">Đang tải AI offline {modelProgress}%</span>
                 </div>
                 <div className="w-full h-1 bg-surface-hover rounded-full overflow-hidden">
@@ -447,7 +448,7 @@ export function ChatPanel() {
               {isTyping && (
                 <div className="mr-auto bg-surface border border-border rounded-panel px-[var(--s-md)] py-[var(--s-sm)]">
                   <div className="flex items-center gap-2">
-                    <Loader2 size={12} className="animate-spin text-accent-fg" />
+                    <CatBody emotion="thinking" action="walk" />
                     <span className="text-xs text-text-muted">Đang xử lý...</span>
                   </div>
                 </div>

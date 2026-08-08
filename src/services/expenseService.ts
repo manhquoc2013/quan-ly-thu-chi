@@ -12,8 +12,14 @@ import type { Expense } from '@/models';
 import { useExpenseStore } from '@/store';
 import { notify, type NotifyOpts } from '@/utils/notify';
 import { cacheGet, cacheSet } from './cacheManager';
+import {
+  applyExpenseStockIn,
+  expenseHasStockIn,
+  reverseExpenseStockIn,
+} from './stockService';
 
 const CACHE_KEY = 'expenses';
+const STOCK_TAG = 'nhap-hang';
 
 /**
  * Load all expenses from IndexedDB cache, fall back to empty array.
@@ -67,12 +73,28 @@ export async function createExpense(
   }
 
   const now = new Date().toISOString();
-  const record: Expense = {
+  let tags = [...data.tags];
+  const stockQtyIn =
+    data.stockQtyIn != null && data.stockQtyIn > 0 ? Math.round(data.stockQtyIn) : undefined;
+  const stockProductId = data.stockProductId?.trim() || undefined;
+  if (stockProductId && stockQtyIn && !tags.includes(STOCK_TAG)) {
+    tags = [...tags, STOCK_TAG].slice(0, 10);
+  }
+
+  let record: Expense = {
     ...data,
+    tags,
+    stockProductId,
+    stockQtyIn,
+    stockApplied: false,
     id: crypto.randomUUID(),
     createdAt: now,
     updatedAt: now,
   };
+
+  if (expenseHasStockIn(record) && record.status !== 'cancelled') {
+    record = await applyExpenseStockIn(record, { silent: true });
+  }
 
   // Append to cache, re-store, and sync
   const existing = (await cacheGet<Expense[]>(CACHE_KEY)) ?? [];
@@ -84,7 +106,11 @@ export async function createExpense(
     .then((m) => m.cloudUpsertExpense(record))
     .catch((err) => console.error('[cloud] expense create', err));
 
-  notify.success(`Đã thêm chi phí: ${record.description}`, opts);
+  const stockNote =
+    record.stockApplied && record.stockQtyIn
+      ? ` (+${record.stockQtyIn} tồn)`
+      : '';
+  notify.success(`Đã thêm chi phí: ${record.description}${stockNote}`, opts);
   return record;
 }
 
@@ -131,7 +157,27 @@ export async function updateExpense(
   }
 
   const current = existing[idx]!;
-  const updated: Expense = { ...current, ...patch, updatedAt: new Date().toISOString() };
+  // Stock qty/product are immutable after create (edit SL does not adjust tồn).
+  let updated: Expense = {
+    ...current,
+    ...patch,
+    stockProductId: current.stockProductId,
+    stockQtyIn: current.stockQtyIn,
+    stockApplied: current.stockApplied,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const becameCancelled =
+    current.status !== 'cancelled' && updated.status === 'cancelled';
+  const leftCancelled =
+    current.status === 'cancelled' && updated.status !== 'cancelled';
+
+  if (becameCancelled) {
+    updated = await reverseExpenseStockIn(updated, { silent: true });
+  } else if (leftCancelled) {
+    updated = await applyExpenseStockIn(updated, { silent: true });
+  }
+
   const updatedAll = [...existing];
   updatedAll[idx] = updated;
 
@@ -151,6 +197,12 @@ export async function updateExpense(
  */
 export async function deleteExpenses(ids: string[], opts?: NotifyOpts): Promise<void> {
   const existing = (await cacheGet<Expense[]>(CACHE_KEY)) ?? [];
+  const toDelete = existing.filter((r) => ids.includes(r.id));
+  for (const exp of toDelete) {
+    if (exp.stockApplied) {
+      await reverseExpenseStockIn(exp, { silent: true });
+    }
+  }
   const updated = existing.filter((r) => !ids.includes(r.id));
   await cacheSet(CACHE_KEY, updated);
   useExpenseStore.getState().setRecords(updated);

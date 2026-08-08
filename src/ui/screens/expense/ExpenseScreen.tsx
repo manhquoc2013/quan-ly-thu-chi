@@ -44,6 +44,7 @@ export function ExpenseScreen() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [peekExpenseId, setPeekExpenseId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,10 +57,7 @@ export function ExpenseScreen() {
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'expense') return;
     const row = records.find((r) => r.id === recordDetailRequest.id);
-    if (row) {
-      setEditingExpenseId(row.id);
-      setDialogOpen(true);
-    }
+    if (row) setPeekExpenseId(row.id);
     clearRecordDetailRequest();
   }, [recordDetailRequest, records, clearRecordDetailRequest]);
 
@@ -141,7 +139,6 @@ export function ExpenseScreen() {
           ) : (
             <ExpenseGrid
               expenses={filtered}
-              onRowClick={() => {}}
               onEdit={handleEdit}
               onDelete={async (expense: Expense) => {
                 await deleteExpenses([expense.id]);
@@ -149,6 +146,8 @@ export function ExpenseScreen() {
               onBulkDelete={async (ids: string[]) => {
                 await deleteExpenses(ids);
               }}
+              peekExpenseId={peekExpenseId}
+              onPeekConsumed={() => setPeekExpenseId(null)}
             />
           )}
         </CardContent>

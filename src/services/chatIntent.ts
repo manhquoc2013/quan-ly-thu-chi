@@ -414,13 +414,21 @@ export function mergeClarifyReply(base: ChatIntent, reply: string): ChatIntent {
 export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] = 'text'): DraftRecord | null {
   if (intent.intent === 'create_expense') {
     if (!intent.amount || !intent.description) return null;
+    const qty = intent.quantity ?? 1;
+    let amount = intent.amount;
+    let unitPrice = intent.unitPrice;
+    if (unitPrice && qty > 1 && amount === unitPrice) amount = unitPrice * qty;
+    if (amount && !unitPrice && qty > 1) unitPrice = Math.round(amount / qty);
     return {
       id: newDraftId(),
       kind: 'expense',
       date: todayIso(),
-      amount: intent.amount,
+      amount,
+      unitPrice,
+      quantity: qty > 1 || intent.category === 'supplies' ? qty : intent.quantity,
       description: intent.description,
       category: intent.category ?? 'other',
+      productId: intent.productId,
       paymentMethod: intent.paymentMethod,
       source,
       confidence: intent.confidence,

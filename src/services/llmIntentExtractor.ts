@@ -72,6 +72,7 @@ Schema:
 - "top khách" / "top sản phẩm" / "theo kênh" / "theo tháng".
 - "đơn đang chờ|đang xử lý" · tìm DH-… hoặc tên khách.
 - "danh sách sản phẩm|bảng giá|giá Hello Kitty" · "danh sách khách" · "các kênh".
+- "tồn kho" / "còn bao nhiêu …" / "stock" → lookup query="tồn kho" (+ tên SP nếu có).
 - "báo cáo" / "thống kê" / "phân tích chi" → lookup.
 
 ## Cập nhật đơn (update_revenue) — quan trọng
@@ -107,9 +108,10 @@ Không tên khách → customerName=null (vãng lai). "bán cho" thiếu tên �
 - Ăn uống: cà phê/cf/uống nước/ăn trưa/ăn sáng (typo "nết"≈"hết").
 - Đi lại: đổ/bơm xăng, grab, taxi, ship riêng (không gắn đơn bán).
 - Cửa hàng: trả/đóng tiền điện|nước|wifi|nhà|thuê; trả lương; phí ads/quảng cáo.
-- Nhập hàng: "mua len/bông/…" đầu câu không tên khách; "nhập len SS5 798k"; "thêm chi phí/ghi khoản chi…"; "tiêu/spend…".
+- Nhập hàng (cộng tồn kho): "nhập 10 con mèo 500k" → create_expense; category=supplies; quantity=10; description=mèo (hoặc tên SP); amount=500000; unitPrice=50000.
+  "nhập len SS5 798k"; "mua len/bông/…" đầu câu không tên khách; "thêm chi phí/ghi khoản chi…"; "tiêu/spend…".
 PHÂN BIỆT: "{Tên} mua/lấy/đặt" = revenue; "mua/nhập/chi" không tên khách / "tôi/mình mua" = expense.
-category: ăn/cf/văn phòng→office; thuê→rent; điện/nước/wifi/gas→utilities; lương→salary; ads→marketing; len/bông/sợi/túi/tem/nguyên liệu→supplies; xăng/grab/ship→transportation; sửa chữa→maintenance; thuế→tax; else→other.
+category: ăn/cf/văn phòng→office; thuê→rent; điện/nước/wifi/gas→utilities; lương→salary; ads→marketing; nhập hàng/len/bông/sợi/túi/tem/nguyên liệu→supplies; xăng/grab/ship→transportation; sửa chữa→maintenance; thuế→tax; else→other.
 
 ## Kênh (platformName) — chuẩn hóa
 Zalo (zalo/zl) · Shopee (shope/shoppe) · TikTok (tt shop) · Facebook (fb/messenger) · Website (web) · Trực tiếp (offline/tại quán).
@@ -204,14 +206,14 @@ function extractJsonObject(text: string): unknown | null {
 async function callLlm(
   prompt: string,
   localMode: 'raw' | 'chat' = 'raw',
-): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   return callLlmCascade(prompt, localMode);
 }
 
 export async function extractChatIntent(
   message: string,
   financeContext?: string,
-): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   const useCloud = canUseCloudLlm();
   const ctxLimit = useCloud ? 3500 : 400;
   const ctx = financeContext
@@ -235,7 +237,7 @@ export async function extractChatIntent(
 export async function extractMultiChatIntents(
   segments: string[],
   financeContext?: string,
-): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+): Promise<{ intents: ChatIntent[]; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   if (segments.length < 2) {
     const one = await extractChatIntent(segments[0] ?? '', financeContext);
     return one ? { intents: [one.intent], source: one.source } : null;
@@ -345,7 +347,7 @@ export async function generateChatReply(
   message: string,
   financeContext?: string,
   history?: string,
-): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   const parts = [
     `Bạn là "Mèo Lucky" — trợ lý app Quản lý thu chi. Trả lời tiếng Việt, ngắn gọn, markdown nhẹ + emoji khi hữu ích.
 Có thể hướng dẫn: ghi chi/thu, đơn (cọc/ship/TT), CRUD SP/khách/kênh, đổi đơn vị/giá, tạo SKU hàng loạt ("tạo mã SKU cho tất cả sản phẩm" hoặc nút "Gán SKU thiếu" trên màn SP), tra cứu, báo cáo, mở màn hình.

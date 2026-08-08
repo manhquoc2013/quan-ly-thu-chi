@@ -675,11 +675,29 @@ function tryExpense(lower: string, original: string, source: DraftSource): Draft
     // Ambiguous (kênh / khách mua giữa câu) → để LLM, đừng soft-nuốt thành chi phí
     if (isCatchAll && shouldDeferCreateToLlm(original)) continue;
 
+    const isNhap = i === 7 || i === 8 || /^nhập\b/i.test(desc);
+    const qtyMatch = desc.match(
+      /^(\d{1,5})\s*(?:×|x|cái|con|chiếc|bộ|cặp|set|hộp)?\s+(.+)$/i,
+    );
+    const quantity = qtyMatch ? Math.max(1, parseInt(qtyMatch[1]!, 10) || 1) : undefined;
+    let productDesc = qtyMatch ? qtyMatch[2]!.trim() : desc;
+    productDesc = productDesc.replace(/^(?:hàng\s+)/i, '').trim();
+    const category = isNhap ? 'supplies' : guessCategory(desc);
+    const description = isNhap
+      ? quantity && quantity > 1
+        ? `Nhập ${quantity} × ${capitalize(productDesc)}`
+        : `Nhập ${capitalize(productDesc)}`
+      : capitalize(desc);
+    const unitPrice =
+      quantity && quantity > 1 ? Math.round(money.amountVnd / quantity) : undefined;
+
     return makeDraft({
       kind: 'expense',
       amount: money.amountVnd,
-      description: capitalize(desc),
-      category: guessCategory(desc),
+      description,
+      category,
+      quantity,
+      unitPrice,
       source,
       confidence: isCatchAll ? 0.55 : 0.9,
       rawFx: money.rawFx,
@@ -692,15 +710,23 @@ function tryExpense(lower: string, original: string, source: DraftSource): Draft
     if (shouldDeferCreateToLlm(original)) return null;
     const money = extractMoneyFromText(original);
     if (money && money.amountVnd > 0) {
+      const isNhap = /^nhập\b/.test(lower);
       let desc = cleanDesc(
         original.replace(/\d[\d.,]*\s*(k|nghìn|ngàn|m|tr|triệu|usd|eur|\$)?/gi, ' '),
       );
       if (desc.length < 2) desc = 'Chi phí';
+      const qtyMatch = lower.match(
+        /^nhập\s+(?:hàng\s+)?(\d{1,5})\s*(?:×|x|cái|con|chiếc|bộ|cặp|set|hộp)?\s+/,
+      );
+      const quantity = qtyMatch ? Math.max(1, parseInt(qtyMatch[1]!, 10) || 1) : undefined;
       return makeDraft({
         kind: 'expense',
         amount: money.amountVnd,
         description: capitalize(desc),
-        category: guessCategory(desc),
+        category: isNhap ? 'supplies' : guessCategory(desc),
+        quantity,
+        unitPrice:
+          quantity && quantity > 1 ? Math.round(money.amountVnd / quantity) : undefined,
         source,
         confidence: 0.55,
         rawFx: money.rawFx,

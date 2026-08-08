@@ -12,6 +12,7 @@ import { geminiService } from '@/services/geminiService';
 import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
 import { openRouterService } from '@/services/openRouterService';
+import { siliconFlowService } from '@/services/siliconFlowService';
 import { webLLM } from '@/services/webLLM';
 import { type LlmSource, AI_PRIORITY_DEFAULT } from '@/services/llmTypes';
 import type { UserProfile } from '@/services/authService';
@@ -38,6 +39,9 @@ interface AuthState {
   openRouterApiKey: string | null;
   openRouterConfigured: boolean;
   enableOpenRouter: boolean;
+  siliconFlowApiKey: string | null;
+  siliconFlowConfigured: boolean;
+  enableSiliconFlow: boolean;
   aiPriority: LlmSource[];
   householdId: string | null;
   householdName: string | null;
@@ -54,6 +58,8 @@ export interface AuthActions {
   setEnableGroq: (v: boolean) => void;
   setOpenRouterApiKey: (key: string | null) => void;
   setEnableOpenRouter: (v: boolean) => void;
+  setSiliconFlowApiKey: (key: string | null) => void;
+  setEnableSiliconFlow: (v: boolean) => void;
   setAiPriority: (order: LlmSource[]) => void;
   setHousehold: (
     info: {
@@ -88,6 +94,11 @@ function syncOpenRouterService(apiKey: string | null): void {
   else openRouterService.disconnect();
 }
 
+function syncSiliconFlowService(apiKey: string | null): void {
+  if (apiKey) siliconFlowService.configure(apiKey);
+  else siliconFlowService.disconnect();
+}
+
 function syncKiloService(opts: { enabled: boolean; apiKey: string | null }): void {
   kiloService.setEnabled(opts.enabled);
   kiloService.configure(opts.apiKey);
@@ -107,6 +118,9 @@ export const useAuthStore = create<AuthStore>()(
       openRouterApiKey: null,
       openRouterConfigured: false,
       enableOpenRouter: true,
+      siliconFlowApiKey: null,
+      siliconFlowConfigured: false,
+      enableSiliconFlow: true,
       aiPriority: AI_PRIORITY_DEFAULT,
       householdId: null,
       householdName: null,
@@ -178,6 +192,21 @@ export const useAuthStore = create<AuthStore>()(
           state.enableOpenRouter = enableOpenRouter;
         });
         openRouterService.setEnabled(enableOpenRouter);
+      },
+
+      setSiliconFlowApiKey: (siliconFlowApiKey) => {
+        set((state) => {
+          state.siliconFlowApiKey = siliconFlowApiKey;
+          state.siliconFlowConfigured = !!siliconFlowApiKey;
+        });
+        syncSiliconFlowService(siliconFlowApiKey);
+      },
+
+      setEnableSiliconFlow: (enableSiliconFlow) => {
+        set((state) => {
+          state.enableSiliconFlow = enableSiliconFlow;
+        });
+        siliconFlowService.setEnabled(enableSiliconFlow);
       },
 
       setAiPriority: (aiPriority) =>
@@ -279,6 +308,8 @@ export const useAuthStore = create<AuthStore>()(
         enableGroq: state.enableGroq,
         openRouterApiKey: state.openRouterApiKey,
         enableOpenRouter: state.enableOpenRouter,
+        siliconFlowApiKey: state.siliconFlowApiKey,
+        enableSiliconFlow: state.enableSiliconFlow,
         aiPriority: state.aiPriority,
         // Do not persist isAuthenticated — AuthGuard restores from Supabase session
         userProfile: state.userProfile,
@@ -303,7 +334,12 @@ export const useAuthStore = create<AuthStore>()(
           syncOpenRouterService(state.openRouterApiKey);
           state.openRouterConfigured = true;
         }
+        if (state.siliconFlowApiKey) {
+          syncSiliconFlowService(state.siliconFlowApiKey);
+          state.siliconFlowConfigured = true;
+        }
         openRouterService.setEnabled(state.enableOpenRouter !== false);
+        siliconFlowService.setEnabled(state.enableSiliconFlow !== false);
         syncKiloService({
           enabled: state.enableKiloFree !== false,
           apiKey: state.kiloApiKey ?? null,

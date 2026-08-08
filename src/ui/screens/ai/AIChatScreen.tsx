@@ -4,9 +4,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Send, Loader2, Paperclip, Mic, MicOff, ExternalLink } from 'lucide-react';
+import { Send, Paperclip, Mic, MicOff, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiRouter } from '@/services/aiRouter';
+import { CatBody } from '@/ui/components/MascotOverlay';
 import { getAllExpenses } from '@/services/expenseService';
 import { getAllRevenues } from '@/services/revenueService';
 import { webLLM } from '@/services/webLLM';
@@ -25,7 +26,7 @@ interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: Date;
-  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter' | 'siliconflow';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
@@ -289,7 +290,7 @@ export function AIChatScreen() {
         {isTyping && (
           <div className="mr-auto bg-surface border border-border rounded-panel px-[var(--s-md)] py-[var(--s-sm)]">
             <div className="flex items-center gap-2">
-              <Loader2 size={12} className="animate-spin text-accent-fg" />
+              <CatBody emotion="thinking" action="walk" />
               <span className="text-xs text-text-muted">Đang xử lý...</span>
             </div>
           </div>

@@ -246,9 +246,14 @@ export async function executeChatIntent(
       }
       const { ok, failed, created } = await persistConfirmed([draft]);
       if (ok > 0 && created[0]) {
+        const stockNote =
+          draft.quantity &&
+          (draft.category === 'supplies' || /^nhập\b/i.test(draft.description))
+            ? ` · +${draft.quantity} tồn`
+            : '';
         return {
           ok: true,
-          message: `Đã thêm chi phí: **${draft.description}** — ${formatCurrency(draft.amount)}`,
+          message: `Đã thêm chi phí: **${created[0].description}** — ${formatCurrency(draft.amount)}${stockNote}`,
           createdRecord: { kind: created[0].kind, id: created[0].id },
         };
       }
@@ -985,6 +990,25 @@ function buildLookupAnswer(intent: ChatIntent): string {
     ].join('\n');
   }
 
+  if (/tồn\s*kho|còn\s*bao\s*nhiêu|stock\b|inventory/.test(q)) {
+    const products = useProductStore.getState().products;
+    const hint = q
+      .replace(/tồn\s*kho|còn\s*bao\s*nhiêu|stock|inventory|của|sp|sản\s*phẩm|là|hiện\s*tại/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const hits = hint ? searchProducts(hint, 20) : [...products].sort((a, b) => a.name.localeCompare(b.name, 'vi')).slice(0, 20);
+    if (!hits.length) return '😕 Chưa có sản phẩm để xem tồn.';
+    return [
+      '📦 **Tồn kho:**',
+      '',
+      ...hits.map((p) => {
+        const qty = typeof p.stockQty === 'number' ? p.stockQty : 0;
+        const warn = qty < 0 ? ' ⚠️' : qty === 0 ? ' (hết)' : '';
+        return `• **${p.name}** — **${qty}** ${p.unit}${warn}`;
+      }),
+    ].join('\n');
+  }
+
   if (/sản\s*phẩm|sp\b|catalog|bảng\s*giá/.test(q)) {
     const products = useProductStore.getState().products;
     const hint = q.replace(/sản\s*phẩm|sp\b|catalog|bảng\s*giá|danh\s*sách|liệt\s*kê|tìm/gi, '').trim();
@@ -995,7 +1019,10 @@ function buildLookupAnswer(intent: ChatIntent): string {
     return [
       '🏷️ **Sản phẩm:**',
       '',
-      ...hits.map((p) => `• **${p.name}** — ${formatCurrency(p.defaultUnitPrice)}/${p.unit}`),
+      ...hits.map((p) => {
+        const qty = typeof p.stockQty === 'number' ? p.stockQty : 0;
+        return `• **${p.name}** — ${formatCurrency(p.defaultUnitPrice)}/${p.unit} · tồn ${qty}`;
+      }),
     ].join('\n');
   }
 

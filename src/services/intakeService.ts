@@ -236,15 +236,59 @@ export async function persistConfirmed(
   for (const draft of drafts) {
     try {
       if (draft.kind === 'expense') {
+        const looksLikeStockIn =
+          /^nhập\b/i.test(draft.description.trim()) ||
+          (draft.category === 'supplies' && draft.quantity != null && draft.quantity >= 1);
+
+        let stockProductId = draft.productId;
+        let stockQtyIn: number | undefined;
+        let description = draft.description;
+
+        if (looksLikeStockIn) {
+          const { parseStockQtyFromDescription } = await import('./stockService');
+          const parsed = parseStockQtyFromDescription(draft.description);
+          const qty = Math.max(1, draft.quantity ?? parsed.quantity);
+          const productName = parsed.productName
+            .replace(/^nhập\s+(?:hàng\s+)?/i, '')
+            .trim() || draft.description;
+          const unitCost = draft.unitPrice ?? Math.round(draft.amount / qty);
+
+          if (!stockProductId) {
+            let prod = await resolveProductForOrder(productName, {
+              suggestedPrice: unitCost > 0 ? unitCost : draft.amount,
+              silent: true,
+            });
+            if (prod.status === 'ambiguous') {
+              prod = await resolveProductForOrder(productName, {
+                forceCreate: true,
+                suggestedPrice: unitCost > 0 ? unitCost : draft.amount,
+                silent: true,
+              });
+            }
+            if (prod.status === 'resolved') stockProductId = prod.id;
+          }
+
+          if (stockProductId) {
+            stockQtyIn = qty;
+            description =
+              qty > 1
+                ? `Nhập ${qty} × ${productName}`
+                : `Nhập ${productName}`;
+          }
+        }
+
         const record = await createExpense(
           {
             date: draft.date,
-            category: (draft.category ?? 'other') as ExpenseCategory,
+            category: (draft.category ??
+              (stockQtyIn ? 'supplies' : 'other')) as ExpenseCategory,
             amount: draft.amount,
-            description: draft.description,
+            description,
             status: 'pending' as ExpenseStatus,
             paymentMethod: (draft.paymentMethod ?? 'cash') as PaymentMethod,
             tags: [],
+            stockProductId,
+            stockQtyIn,
           },
           { silent: true },
         );

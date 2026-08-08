@@ -56,7 +56,7 @@ import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
 import { parseProductUnitUpdateMessage, looksLikeGenerateSkuMessage } from './productService';
 
-export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'groq' | 'gemini' | 'tesseract';
+export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'siliconflow' | 'groq' | 'gemini' | 'tesseract';
 
 /** When LLM returns prose/chat, rebuild create intents from split segments via local parsers. */
 function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
@@ -81,7 +81,7 @@ function isRunnableCreate(intent: ChatIntent): boolean {
 }
 
 function isCloudSource(source: string | undefined): boolean {
-  return source === 'cloud' || source === 'kilo' || source === 'openrouter' || source === 'gemini';
+  return source === 'cloud' || source === 'kilo' || source === 'openrouter' || source === 'siliconflow' || source === 'gemini';
 }
 
 export interface ChatAction {

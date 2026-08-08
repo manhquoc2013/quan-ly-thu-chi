@@ -21,6 +21,8 @@ import { shippingLabel } from '@/utils/orderTotals';
 
 export interface OrderRowCardProps {
   row: Revenue;
+  /** Hide mark-paid / status action buttons (detail peek) */
+  readOnly?: boolean;
   onStatusChange?: (id: string, status: OrderStatus) => void;
 }
 
@@ -45,7 +47,7 @@ function statusBadgeClass(status: OrderStatus): string {
   }
 }
 
-export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
+export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRowCardProps) {
   const customers = useCustomerStore((s) => s.customers);
 
   const customerName =
@@ -185,32 +187,33 @@ export function OrderRowCard({ row, onStatusChange }: OrderRowCardProps) {
         )}
       </div>
 
-      {/* Status actions */}
-      <div className="pt-2 border-t border-border-subtle space-y-3">
-        {canMarkPaid && (
-          <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={handleMarkPaid}>
-            <Banknote size={12} />
-            Đánh dấu đã thanh toán
-          </Button>
-        )}
-        <div>
-          <p className="text-xs font-medium text-text-muted mb-2">Thay đổi trạng thái</p>
-          <div className="flex flex-wrap gap-1.5">
-            {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
-              <Button
-                key={status}
-                variant={row.orderStatus === status ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickStatus(status)}
-                className="h-8 text-xs gap-1"
-              >
-                {icon}
-                {label}
-              </Button>
-            ))}
+      {!readOnly ? (
+        <div className="pt-2 border-t border-border-subtle space-y-3">
+          {canMarkPaid && (
+            <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={handleMarkPaid}>
+              <Banknote size={12} />
+              Đánh dấu đã thanh toán
+            </Button>
+          )}
+          <div>
+            <p className="text-xs font-medium text-text-muted mb-2">Thay đổi trạng thái</p>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_STATUS_OPTIONS.map(({ status, label, icon }) => (
+                <Button
+                  key={status}
+                  variant={row.orderStatus === status ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleQuickStatus(status)}
+                  className="h-8 text-xs gap-1"
+                >
+                  {icon}
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

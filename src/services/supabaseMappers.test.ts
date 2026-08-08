@@ -31,7 +31,11 @@ describe('supabaseMappers', () => {
     expect(row.payment_method).toBe('cash');
     expect(row.household_id).toBe('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     const back = mapExpense(row as ExpenseRow);
-    expect(back).toEqual(expense);
+    expect(back.id).toBe(expense.id);
+    expect(back.amount).toBe(expense.amount);
+    expect(back.tags).toEqual(expense.tags);
+    expect(back.stockApplied).toBeUndefined();
+    expect(back.stockProductId).toBeUndefined();
   });
 
   it('maps product with imagePath', () => {
@@ -48,7 +52,9 @@ describe('supabaseMappers', () => {
     };
     const product = mapProduct(row);
     expect(product.imagePath).toBe('hid/pid/a.jpg');
+    expect(product.stockQty).toBe(0);
     expect(productToRow(row.household_id, product as Product).image_path).toBe('hid/pid/a.jpg');
+    expect(productToRow(row.household_id, { ...product, stockQty: 12 }).stock_qty).toBe(12);
   });
 
   it('maps revenue with sorted items', () => {

@@ -17,6 +17,7 @@ import {
 } from '@/utils/revenueMetrics';
 import { cacheGet, cacheSet } from './cacheManager';
 import { createExpense, updateExpense, deleteExpenses } from './expenseService';
+import { reverseOrderStockOut, syncOrderStock } from './stockService';
 
 const CACHE_KEY = 'revenues';
 
@@ -241,6 +242,7 @@ export async function createRevenue(
     shippingFee: totals.shippingFee || undefined,
     shippingPayer: totals.shippingPayer,
     shippingExpenseId: undefined,
+    stockApplied: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -249,6 +251,9 @@ export async function createRevenue(
   if (expenseId) {
     record = { ...record, shippingExpenseId: expenseId };
   }
+
+  const stockApplied = await syncOrderStock(null, record, { silent: true });
+  record = { ...record, stockApplied };
 
   const updated = [...existing, record];
   await cacheSet(CACHE_KEY, updated);
@@ -350,9 +355,13 @@ export async function updateRevenue(
     ...pay,
   };
 
-  const prevExpenseId = existing[idx]!.shippingExpenseId;
+  const prev = existing[idx]!;
+  const prevExpenseId = prev.shippingExpenseId;
   const expenseId = await syncShippingExpense(updated, prevExpenseId);
   updated = { ...updated, shippingExpenseId: expenseId };
+
+  const stockApplied = await syncOrderStock(prev, updated, { silent: true });
+  updated = { ...updated, stockApplied };
 
   const updatedAll = [...existing];
   updatedAll[idx] = updated;
@@ -374,6 +383,11 @@ export async function updateRevenue(
 export async function deleteRevenues(ids: string[], opts?: NotifyOpts): Promise<void> {
   const existing = (await cacheGet<Revenue[]>(CACHE_KEY)) ?? [];
   const toDelete = existing.filter((r) => ids.includes(r.id));
+  for (const order of toDelete) {
+    if (order.stockApplied) {
+      await reverseOrderStockOut(order, { silent: true });
+    }
+  }
   const expenseIds = toDelete
     .map((r) => r.shippingExpenseId)
     .filter((id): id is string => !!id);

@@ -1,0 +1,50 @@
+{
+  "triage_id": "TRI-1786209516110-cd65",
+  "created_at": 1786209516110,
+  "request_summary": "Fix validation UX: OrderDialog missing toast on validate fail (3 silent returns), Mascot shrink-on-hover removed, ExpenseDialog validate fail also needs toast.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/components/MascotOverlay.tsx",
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/ui/components/MascotOverlay.tsx",
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "OrderDialog submit, ExpenseDialog submit, Mascot mouse hover",
+  "blast_radius": 3,
+  "done_oracle": "All 3 dialogs show toast on validation failure. Mascot stays full size unless fleeing. tsc --noEmit pass.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/ui/components/MascotOverlay.tsx",
+    "src/ui/screens/expense/ExpenseDialog.tsx",
+    "src/ui/screens/revenue/OrderDialog.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1786209347276",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "70023f18067d7906d0eb4df1857b8b24aff13118",
+    "dirty": true,
+    "captured_at": 1786209516145
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

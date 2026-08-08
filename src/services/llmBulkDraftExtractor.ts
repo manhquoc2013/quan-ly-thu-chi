@@ -51,7 +51,7 @@ function extractJsonObject(text: string): unknown | null {
   }
 }
 
-async function callLlm(prompt: string): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+async function callLlm(prompt: string): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   return callLlmCascade(prompt, 'raw');
 }
 
@@ -103,7 +103,7 @@ export function normalizeBulkExtract(
 export async function extractBulkDrafts(
   message: string,
   source: DraftSource = 'text',
-): Promise<{ drafts: DraftRecord[]; llmSource: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' } | null> {
+): Promise<{ drafts: DraftRecord[]; llmSource: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   const prompt = `${BULK_PROMPT}\n\nTin nhắn:\n"""${message.slice(0, 6000)}"""\n\nJSON:`;
   const res = await callLlm(prompt);
   if (!res) return null;

@@ -9,6 +9,7 @@ import { geminiService } from './geminiService';
 import { groqService } from './groqService';
 import { kiloService } from './kiloService';
 import { openRouterService } from './openRouterService';
+import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
 import { type LlmSource, AI_PRIORITY_DEFAULT, LLM_SOURCE_LABELS } from './llmTypes';
 
@@ -34,6 +35,14 @@ async function tryProvider(
       if (openRouterService.isEnabled && openRouterService.isConfigured && navigator.onLine) {
         try {
           return await openRouterService.generateContent(prompt);
+        } catch { /* fall through */ }
+      }
+      return null;
+    }
+    case 'siliconflow': {
+      if (siliconFlowService.isEnabled && siliconFlowService.isConfigured && navigator.onLine) {
+        try {
+          return await siliconFlowService.generateContent(prompt);
         } catch { /* fall through */ }
       }
       return null;
@@ -100,10 +109,11 @@ export async function callLlmCascade(
 
 /** True when any online cloud path may be used (longer finance context OK). */
 export function canUseCloudLlm(): boolean {
-  const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } = useAuthStore.getState();
+  const { geminiConfigured, groqConfigured, openRouterConfigured, siliconFlowConfigured, enableKiloFree, enableGroq, enableOpenRouter, enableSiliconFlow } = useAuthStore.getState();
   if (!navigator.onLine) return false;
   if (enableKiloFree !== false && kiloService.isEnabled) return true;
   if (enableOpenRouter !== false && openRouterConfigured && openRouterService.isConfigured) return true;
+  if (enableSiliconFlow !== false && siliconFlowConfigured && siliconFlowService.isConfigured) return true;
   if (enableGroq !== false && groqConfigured && groqService.isConfigured) return true;
   return !!(geminiConfigured && geminiService.isConfigured);
 }

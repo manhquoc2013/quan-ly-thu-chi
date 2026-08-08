@@ -3,7 +3,7 @@ feature-id: M-001
 feature-name: "Quản Lý Tài Chính"
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-05
+last-updated: 2026-08-09
 source-docs:
   - "docs/intel/_intake/TRI-1785915049449-58fd.json"
   - "docs/modules/M-001-quan-ly-thu-chi/.archive/2026-08-05T07-34-02Z/ba/00-lean-spec.md"
@@ -23,7 +23,7 @@ actor-slugs: [user]
 ## 1. Summary
 
 M-001 already ships a 3-tier AI cascade **Kilo Free → Gemini → WebLLM** implemented as a hardcoded
-if-else chain in `src/services/llmCall.ts:94` (`const { geminiConfigured, groqConfigured, enableKiloFree, enableGroq } =
+if-else chain in `src/services/llmCall.ts:103` (`const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } =
 useAuthStore.getState();` — `canUseCloudLlm()`), with per-provider toggles/keys in the Zustand store
 (`src/store/authStore.ts`) and AI config sections in `src/ui/screens/settings/SettingsScreen.tsx`.
 
@@ -41,7 +41,7 @@ This scope expansion adds:
 
 The change is **additive and backward-compatible**: `callLlmCascade`'s signature is unchanged, so its
 three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:1044`) and the
-label consumers (`AIChatScreen.tsx:255`, `ChatPanel.tsx:423`) keep working unmodified.
+label consumers (`AIChatScreen.tsx:255`, `ChatPanel.tsx:415`) keep working unmodified.
 
 Complexity: **Medium** — additive change on an implemented module; 1 actor; ~11 new business rules;
 no schema migration, no new bounded context.
@@ -56,10 +56,10 @@ no schema migration, no new bounded context.
 | `.env` / `.env.example` | `VITE_GROQ_API_KEY` env var documented and read by the service | TRI-1785915049449-58fd requirement 1; evidence.edit_target_files |
 | `LlmSource` extension | Add `'groq'` to `LlmSource` union (`src/services/llmCall.ts:11`) | requirement 2 |
 | `callLlmCascade()` priority-driven | Replace hardcoded if-else with iteration over `aiPriority: LlmSource[]` read from store at call time; default `['kilo','groq','gemini','local']` | requirement 2 |
-| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts:79`) | requirement 3 |
+| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts:91`) | requirement 3 |
 | Settings UI | Groq section card (key input, save/test/delete, enable toggle) + AI Priority section (ordered list with move-up/move-down) in `SettingsScreen.tsx` | requirement 4 |
 | `src/services/index.ts` | Barrel export of `groqService` (triage edit target) | TRI evidence.edit_target_files |
-| Label + cloud-eligibility helpers | `llmSourceLabel()` gains a `'groq'` case (`llmCall.ts:72`); `canUseCloudLlm()` includes Groq eligibility (`llmCall.ts:65`) | derived — consumers pass `source` strings through unmodified, so helpers must know `'groq'` |
+| Label + cloud-eligibility helpers | `llmSourceLabel()` gains a `'groq'` case (`llmCall.ts:111`); `canUseCloudLlm()` includes Groq eligibility (`llmCall.ts:102`) | derived — consumers pass `source` strings through unmodified, so helpers must know `'groq'` |
 
 ### Out of scope
 
@@ -79,10 +79,10 @@ no schema migration, no new bounded context.
 
 ### 3.1 AS-IS cascade (current: `src/services/llmCall.ts:13-61`)
 
-> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts:94` —
-> `const { geminiConfigured, groqConfigured, enableKiloFree, enableGroq } = useAuthStore.getState();` (in `canUseCloudLlm()`)
-> Verified this session: `LlmSource` union at `llmCall.ts:11`; `callLlmCascade` at `:13`;
-> `canUseCloudLlm` at `:65`; `llmSourceLabel` at `:72`.
+> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts:103` —
+> `const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } = useAuthStore.getState();` (in `canUseCloudLlm()`)
+> Verified this session: `LlmSource` re-export at `llmCall.ts:16`; `callLlmCascade` at `:86`;
+> `canUseCloudLlm` at `:102`; `llmSourceLabel` at `:111`.
 
 ```mermaid
 flowchart TD
@@ -99,8 +99,8 @@ flowchart TD
     L -->|null/throw| R0[return null]
 ```
 
-Order is **hardcoded** (Kilo → Gemini → WebLLM) and reads exactly two store flags
-(`geminiConfigured`, `enableKiloFree`) from `llmCall.ts:94` (`canUseCloudLlm()`).
+Order is **hardcoded** (Kilo → Gemini → WebLLM) and reads six store flags
+(`geminiConfigured`, `groqConfigured`, `openRouterConfigured`, `enableKiloFree`, `enableGroq`, `enableOpenRouter`) from `llmCall.ts:103` (`canUseCloudLlm()`).
 
 ### 3.2 TO-BE cascade (priority-driven)
 
@@ -506,7 +506,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | **Source** | TRI requirement 2 |
 | **Given** | The `LlmSource` type at `src/services/llmCall.ts:11` |
 | **When** | The type is inspected |
-| **Then** | It is `'kilo' | 'groq' | 'gemini' | 'local'`. All existing consumers that pass `source` as a string (`AIChatScreen.tsx:255`, `ChatPanel.tsx:423`) remain type-compatible without modification. |
+| **Then** | It is `'kilo' | 'groq' | 'gemini' | 'local'`. All existing consumers that pass `source` as a string (`AIChatScreen.tsx:255`, `ChatPanel.tsx:415`) remain type-compatible without modification. |
 
 ### AC-PRI-02 — Default aiPriority Order
 
@@ -556,7 +556,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | **Source** | TRI requirement 3 ("fields with persistence") |
 | **Given** | The user reordered `aiPriority` to `['groq', 'gemini', 'kilo', 'local']` and reloaded the app |
 | **When** | The store rehydrates |
-| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts:243`) and the Settings list renders in that order. |
+| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts:272`) and the Settings list renders in that order. |
 
 ### AC-PRI-07 — Priority Changes Take Effect Real-Time
 
@@ -595,7 +595,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | | |
 |---|---|
 | **AC-ID** | AC-STORE-02 |
-| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:113-127` and `syncKiloService` at `authStore.ts:79`) |
+| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:113-127` and `syncKiloService` at `authStore.ts:91`) |
 | **Given** | The user saves a Groq key or toggles Groq in Settings |
 | **When** | `setGroqApiKey(key)` / `setEnableGroq(v)` run |
 | **Then** | The store field updates AND `groqService.configure(key)` / `groqService.setEnabled(v)` are called in the same action (single source of truth; the service never reads localStorage itself). Rehydration (`onRehydrateStorage`, mirroring `authStore.ts:289-291`) re-syncs the service from persisted state. |
@@ -606,7 +606,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|
 | **AC-ID** | AC-STORE-03 |
 | **Source** | TRI requirement 3 |
-| **Given** | The `partialize` selector at `authStore.ts:243` |
+| **Given** | The `partialize` selector at `authStore.ts:272` |
 | **When** | The store persists |
 | **Then** | `groqApiKey`, `enableGroq`, and `aiPriority` are included in the persisted slice (same key `ql-tc-auth`; `groqConfigured` is derived from `groqApiKey` and not stored independently — matches the existing `geminiConfigured` derivation at `authStore.ts:269`). |
 
