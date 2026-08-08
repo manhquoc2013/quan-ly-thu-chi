@@ -28,7 +28,7 @@ interface ChatMessage {
   source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
   drafts?: DraftRecord[];
   confirmed?: boolean;
-  createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+  createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
 }
 
 export function AIChatScreen() {
@@ -205,9 +205,14 @@ export function AIChatScreen() {
     setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, drafts: next } : m)));
   }
 
-  function openCreatedDetail(rec: { kind: 'expense' | 'revenue'; id: string }) {
-    navigate(rec.kind === 'revenue' ? '/revenue' : '/expense');
-    window.setTimeout(() => requestRecordDetail(rec.kind, rec.id), 80);
+  function openCreatedDetail(rec: { kind: 'expense' | 'revenue' | 'product'; id: string }) {
+    if (rec.kind === 'product') {
+      navigate('/products');
+      return;
+    }
+    const ledgerKind = rec.kind;
+    navigate(ledgerKind === 'revenue' ? '/revenue' : '/expense');
+    window.setTimeout(() => requestRecordDetail(ledgerKind, rec.id), 80);
   }
 
   return (
@@ -241,7 +246,11 @@ export function AIChatScreen() {
                   : 'bg-surface border border-border text-text-primary mr-auto',
               ].join(' ')}
             >
-              {msg.role === 'user' ? msg.text : <MarkdownText text={msg.text} />}
+              {msg.role === 'user' ? (
+                <span className="whitespace-pre-wrap break-words">{msg.text}</span>
+              ) : (
+                <MarkdownText text={msg.text} />
+              )}
               {msg.source && (
                 <div className="mt-1 text-[10px] text-text-muted">
                   {llmSourceLabel(msg.source)}

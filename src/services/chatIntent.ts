@@ -15,10 +15,19 @@ import { newDraftId, todayIso, type DraftRecord } from './draftTypes';
 export type ChatIntentKind =
   | 'create_expense'
   | 'create_revenue'
+  | 'create_product'
+  | 'create_customer'
+  | 'create_platform'
   | 'update_expense'
   | 'update_revenue'
+  | 'update_product'
+  | 'update_customer'
+  | 'update_platform'
   | 'delete_expense'
   | 'delete_revenue'
+  | 'delete_product'
+  | 'delete_customer'
+  | 'delete_platform'
   | 'update_order_status'
   | 'lookup'
   | 'chat';
@@ -92,10 +101,19 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
   const allowed: ChatIntentKind[] = [
     'create_expense',
     'create_revenue',
+    'create_product',
+    'create_customer',
+    'create_platform',
     'update_expense',
     'update_revenue',
+    'update_product',
+    'update_customer',
+    'update_platform',
     'delete_expense',
     'delete_revenue',
+    'delete_product',
+    'delete_customer',
+    'delete_platform',
     'update_order_status',
     'lookup',
     'chat',
@@ -193,6 +211,22 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
       if (!(intent.amount && intent.amount > 0)) missing.push('amount');
       if (!intent.description || intent.description.length < 2) missing.push('description');
       break;
+    case 'create_product': {
+      const price = intent.unitPrice ?? intent.amount;
+      if (!(price && price > 0)) missing.push('amount');
+      if (!intent.description || intent.description.length < 2) missing.push('description');
+      if (price && price > 0) {
+        intent.unitPrice = price;
+        intent.amount = price;
+      }
+      break;
+    }
+    case 'create_customer':
+      if (!intent.customerName || intent.customerName.length < 2) missing.push('customerName');
+      break;
+    case 'create_platform':
+      if (!intent.platformName || intent.platformName.length < 2) missing.push('platformName');
+      break;
     case 'create_revenue': {
       const qty = intent.quantity ?? 1;
       const hasTotal = intent.amount && intent.amount > 0;
@@ -206,10 +240,16 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
     }
     case 'update_expense':
     case 'update_revenue':
+    case 'update_product':
+    case 'update_customer':
+    case 'update_platform':
     case 'delete_expense':
     case 'delete_revenue':
+    case 'delete_product':
+    case 'delete_customer':
+    case 'delete_platform':
     case 'update_order_status':
-      if (!intent.targetHint && !intent.description && !intent.amount) {
+      if (!intent.targetHint && !intent.description && !intent.amount && !intent.customerName && !intent.platformName) {
         missing.push('targetHint');
       }
       if (intent.intent === 'update_order_status' && !intent.orderStatus) {
@@ -421,6 +461,16 @@ export function parseEntityPickIndex(message: string): number | null {
 
 /** Build create_revenue intent from a text draft (regex intake). */
 export function draftToCreateIntent(draft: DraftRecord): ChatIntent {
+  if (draft.kind === 'product') {
+    return fillMissingSlots({
+      intent: 'create_product',
+      amount: draft.amount,
+      unitPrice: draft.amount,
+      description: draft.description,
+      confidence: draft.confidence ?? 0.9,
+      missing: [],
+    });
+  }
   if (draft.kind === 'expense') {
     return fillMissingSlots({
       intent: 'create_expense',

@@ -120,6 +120,41 @@ describe('draftToCreateIntent', () => {
     expect(roundTrip?.platformName).toBe('Zalo');
     expect(roundTrip?.quantity).toBe(3);
   });
+
+  it('maps product draft to create_product', () => {
+    const draft: DraftRecord = {
+      id: 'd2',
+      kind: 'product',
+      date: '2026-08-08',
+      amount: 50000,
+      description: 'Hello Kitty',
+      source: 'text',
+    };
+    const intent = draftToCreateIntent(draft);
+    expect(intent.intent).toBe('create_product');
+    expect(intent.amount).toBe(50000);
+    expect(intent.missing).toEqual([]);
+  });
+
+  it('normalizes create_product and create_customer', () => {
+    const p = normalizeIntent({
+      intent: 'create_product',
+      description: 'Luffy',
+      unitPrice: 120000,
+      confidence: 0.9,
+      missing: [],
+    });
+    expect(p!.missing).toEqual([]);
+    expect(p!.amount).toBe(120000);
+
+    const c = normalizeIntent({
+      intent: 'create_customer',
+      customerName: 'Hoa',
+      confidence: 0.9,
+      missing: [],
+    });
+    expect(c!.missing).toEqual([]);
+  });
 });
 
 describe('confirm/cancel', () => {

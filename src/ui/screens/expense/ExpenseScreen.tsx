@@ -146,6 +146,9 @@ export function ExpenseScreen() {
               onDelete={async (expense: Expense) => {
                 await deleteExpenses([expense.id]);
               }}
+              onBulkDelete={async (ids: string[]) => {
+                await deleteExpenses(ids);
+              }}
             />
           )}
         </CardContent>

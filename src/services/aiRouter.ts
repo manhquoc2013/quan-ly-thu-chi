@@ -43,6 +43,7 @@ import {
   looksLikeBulkLineList,
   parseLineListDrafts,
   parseTextToDraft,
+  isClearBulkPaste,
 } from './textDraftParser';
 import { parseOrderTableDrafts } from './orderTableParser';
 import { executeChatIntent, executeLegacyCreate } from './chatTools';
@@ -65,7 +66,11 @@ function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
 
 function isRunnableCreate(intent: ChatIntent): boolean {
   return (
-    (intent.intent === 'create_expense' || intent.intent === 'create_revenue') &&
+    (intent.intent === 'create_expense' ||
+      intent.intent === 'create_revenue' ||
+      intent.intent === 'create_product' ||
+      intent.intent === 'create_customer' ||
+      intent.intent === 'create_platform') &&
     intent.missing.length === 0
   );
 }
@@ -323,21 +328,46 @@ async function persistBulkDrafts(
   skipped: string[],
 ): Promise<{
   text: string;
-  lastCreated?: { kind: 'expense' | 'revenue'; id: string };
+  lastCreated?: { kind: 'expense' | 'revenue' | 'product'; id: string };
 }> {
   const expenseDrafts = drafts.filter((d) => d.kind === 'expense');
   const revenueDrafts = drafts.filter((d) => d.kind === 'revenue');
+  const productDrafts = drafts.filter((d) => d.kind === 'product');
   const lines: string[] = [];
-  let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
+  let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
   let okCount = 0;
   let totalAmount = 0;
+
+  if (productDrafts.length) {
+    const { created, failed } = await persistConfirmed(productDrafts);
+    okCount += created.length;
+    totalAmount += created.reduce((s, c) => s + c.amount, 0);
+    if (created[0]) lastCreated = { kind: 'product', id: created[0].id };
+    if (created.length) {
+      lines.push('🏷️ **Chi tiết sản phẩm:**');
+      created.forEach((c, i) => {
+        lines.push(
+          `${i + 1}. ✅ **${c.description}** — ${c.amount.toLocaleString('vi-VN')}₫`,
+        );
+      });
+    }
+    failed.forEach((f) => lines.push(`❌ ${f}`));
+  }
 
   if (expenseDrafts.length) {
     const { created, failed } = await persistConfirmed(expenseDrafts);
     okCount += created.length;
     totalAmount += created.reduce((s, c) => s + c.amount, 0);
     if (created[0]) lastCreated = { kind: created[0].kind, id: created[0].id };
-    if (failed[0] && created.length === 0) lines.push(`❌ ${failed[0]}`);
+    if (created.length) {
+      lines.push('💸 **Chi tiết chi phí:**');
+      created.forEach((c, i) => {
+        lines.push(
+          `${i + 1}. ✅ **${c.description}** — ${c.amount.toLocaleString('vi-VN')}₫`,
+        );
+      });
+    }
+    failed.forEach((f) => lines.push(`❌ ${f}`));
   }
 
   const tableRevenues = revenueDrafts.filter((d) => (d.orderItems?.length ?? 0) > 0);
@@ -348,12 +378,15 @@ async function persistBulkDrafts(
     okCount += created.length;
     totalAmount += created.reduce((s, c) => s + c.amount, 0);
     if (created[0]) lastCreated = { kind: created[0].kind, id: created[0].id };
-    created.forEach((c) => {
-      lines.push(
-        `✅ đơn **${c.customerName ?? c.description}** — ${c.amount.toLocaleString('vi-VN')}₫`,
-      );
-    });
-    if (failed[0] && created.length === 0) lines.push(`❌ ${failed[0]}`);
+    if (created.length) {
+      lines.push('🧾 **Chi tiết đơn:**');
+      created.forEach((c, i) => {
+        lines.push(
+          `${i + 1}. ✅ **${c.customerName ?? c.description}** — ${c.amount.toLocaleString('vi-VN')}₫`,
+        );
+      });
+    }
+    failed.forEach((f) => lines.push(`❌ ${f}`));
   }
 
   for (const rd of simpleRevenues) {
@@ -370,24 +403,29 @@ async function persistBulkDrafts(
   }
 
   const kindLabel =
-    expenseDrafts.length && !revenueDrafts.length
-      ? 'chi phí'
-      : revenueDrafts.length && !expenseDrafts.length
-        ? 'doanh thu'
-        : 'giao dịch';
+    productDrafts.length && !expenseDrafts.length && !revenueDrafts.length
+      ? 'sản phẩm'
+      : expenseDrafts.length && !revenueDrafts.length && !productDrafts.length
+        ? 'chi phí'
+        : revenueDrafts.length && !expenseDrafts.length && !productDrafts.length
+          ? 'doanh thu'
+          : 'mục';
 
   const summary =
     okCount > 0
-      ? `✅ Đã thêm **${okCount}** ${kindLabel} (tổng ${totalAmount.toLocaleString('vi-VN')}₫)`
+      ? productDrafts.length && !expenseDrafts.length && !revenueDrafts.length
+        ? `✅ Đã thêm **${okCount}** sản phẩm\n💰 Tổng giá niêm yết: **${totalAmount.toLocaleString('vi-VN')}₫**`
+        : `✅ Đã thêm **${okCount}** ${kindLabel}\n💰 Tổng: **${totalAmount.toLocaleString('vi-VN')}₫**`
       : '⚠️ Không lưu được khoản nào.';
 
+  const skipBlock: string[] = [];
   for (const s of skipped.slice(0, 5)) {
-    lines.push(`⚠️ Bỏ qua: ${s}`);
+    skipBlock.push(`⚠️ Bỏ qua: ${s}`);
   }
-  if (skipped.length > 5) lines.push(`⚠️ … và ${skipped.length - 5} dòng khác`);
+  if (skipped.length > 5) skipBlock.push(`⚠️ … và ${skipped.length - 5} dòng khác`);
 
   return {
-    text: [summary, ...lines].filter(Boolean).join('\n'),
+    text: [summary, ...lines, ...skipBlock].filter(Boolean).join('\n\n'),
     lastCreated,
   };
 }
@@ -398,7 +436,7 @@ async function runIntentTool(
 ): Promise<{
   text: string;
   source: ChatReplySource;
-  createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+  createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
 }> {
   const result = await executeChatIntent(intent, opts);
   if (result.needDeleteConfirm) {
@@ -543,7 +581,7 @@ export const aiRouter = {
     source: ChatReplySource;
     action?: ChatAction;
     drafts?: DraftRecord[];
-    createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+    createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
   }> {
     const trimmed = message.trim();
     if (!trimmed) {
@@ -645,19 +683,27 @@ export const aiRouter = {
 
     if (!bulkDrafts && looksLikeBulkLineList(trimmed)) {
       const lineAttempt = parseLineListDrafts(trimmed, 'text');
-      if (lineAttempt.drafts.length >= 2) {
+      // Policy A: only trust local parse when kind header/cue is explicit
+      if (lineAttempt.drafts.length >= 2 && isClearBulkPaste(trimmed, lineAttempt)) {
         bulkDrafts = lineAttempt.drafts;
         bulkSkipped = lineAttempt.skipped;
       } else {
         const llmBulk = await extractBulkDrafts(trimmed, 'text');
         if (llmBulk?.drafts.length) {
-          const persisted = await persistBulkDrafts(llmBulk.drafts, []);
+          const persisted = await persistBulkDrafts(llmBulk.drafts, lineAttempt.skipped);
           addToHistory(trimmed, persisted.text);
           return {
             text: persisted.text,
             source: llmBulk.llmSource,
             createdRecord: persisted.lastCreated,
           };
+        }
+        // Ambiguous unlabeled list + no LLM → do NOT guess expense
+        if (lineAttempt.drafts.length >= 2 && !lineAttempt.kindHint) {
+          const failAmbiguous =
+            '⚠️ Danh sách nhiều dòng chưa rõ loại (chi phí / doanh thu / sản phẩm). Thêm header ví dụ `thêm các sản phẩm:` hoặc `thêm chi phí:`, rồi gửi lại.';
+          addToHistory(trimmed, failAmbiguous);
+          return { text: failAmbiguous, source: 'local' };
         }
         const failText =
           '⚠️ Không nhận diện được danh sách nhiều dòng. Thử định dạng: `Tên hàng 798.000₫` mỗi dòng.';
@@ -709,8 +755,21 @@ export const aiRouter = {
 
         const expenseDrafts = bulkDrafts.filter((d) => d.kind === 'expense');
         const revenueDrafts = bulkDrafts.filter((d) => d.kind === 'revenue');
+        const productDrafts = bulkDrafts.filter((d) => d.kind === 'product');
         const lines: string[] = [];
-        let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
+        let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
+
+        if (productDrafts.length) {
+          const { created, failed } = await persistConfirmed(productDrafts);
+          productDrafts.forEach((draft, i) => {
+            const mark = created[i] ? '✅' : '⚠️';
+            lines.push(
+              `${mark} sản phẩm: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫`,
+            );
+          });
+          if (failed[0] && created.length === 0) lines.push(`❌ ${failed[0]}`);
+          if (created[0]) lastCreated = { kind: 'product', id: created[0].id };
+        }
 
         if (expenseDrafts.length) {
           const { created, failed } = await persistConfirmed(expenseDrafts);
@@ -729,13 +788,13 @@ export const aiRouter = {
           lines.push(out.text);
           if (out.createdRecord) lastCreated = out.createdRecord;
           if (getPending()?.awaitingEntityPick) {
-            const text = lines.join('\n');
+            const text = lines.join('\n\n');
             addToHistory(trimmed, text);
             return { text, source: 'local', createdRecord: lastCreated };
           }
         }
 
-        const text = lines.join('\n') || 'Không lưu được.';
+        const text = lines.join('\n\n') || 'Không lưu được.';
         addToHistory(trimmed, text);
         return { text, source: 'local', createdRecord: lastCreated };
       } catch (err) {
@@ -760,6 +819,8 @@ export const aiRouter = {
 • \`cà phê 25k\` · \`bán cho Hoa 3 cái kẹp tóc giá 40k\`
 • Câu tự nhiên: *"chi tiền tiếp khách hôm nay khoảng 200 nghìn"*
 • Nhiều dòng / paste Excel: \`thêm chi phí:\\nLen SS5 798.000₫\\nBông 98.000₫\`
+• Danh mục SP: \`thêm các sản phẩm:\\nSTT Tên Đơn giá\\n1 Móc khóa 20.000đ\`
+• Master data: \`thêm khách Hoa\` · \`đổi giá Hello Kitty 55k\` · \`danh sách sản phẩm\`
 
 **Sửa / xóa / tra cứu:**
 • *"xóa chi phí nhậu"*, *"đổi đơn DH-… sang hoàn thành"*
@@ -785,7 +846,7 @@ export const aiRouter = {
       }
       const multiResults: string[] = [];
       let source: ChatReplySource = multi?.source ?? 'local';
-      let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
+      let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
 
       for (const intent of intents) {
         if (intent.mascotSay) {
@@ -805,7 +866,7 @@ export const aiRouter = {
       }
 
       if (multiResults.length > 0) {
-        const text = multiResults.join('\n');
+        const text = multiResults.join('\n\n');
         addToHistory(trimmed, text);
         return { text, source, createdRecord: lastCreated };
       }
@@ -850,7 +911,7 @@ export const aiRouter = {
       const localOne = localCreateIntentsFromSegments([trimmed]);
       if (localOne.some(isRunnableCreate)) {
         const lines: string[] = [];
-        let lastCreated: { kind: 'expense' | 'revenue'; id: string } | undefined;
+        let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
         for (const intent of localOne) {
           if (!isRunnableCreate(intent)) continue;
           const out = await runIntentTool(intent);
@@ -858,7 +919,7 @@ export const aiRouter = {
           if (out.createdRecord) lastCreated = out.createdRecord;
         }
         if (lines.length) {
-          const text = lines.join('\n');
+          const text = lines.join('\n\n');
           addToHistory(trimmed, text);
           return { text, source: 'local', createdRecord: lastCreated };
         }

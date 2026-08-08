@@ -106,17 +106,25 @@ export function intakeFromText(message: string, source: 'text' | 'voice' = 'text
   const drafts = parseTextToDrafts(message, source);
   if (!drafts.length) return null;
 
-  const lines = drafts.map((d) => {
-    const kindLabel = d.kind === 'expense' ? 'chi phí' : 'doanh thu';
+    const lines = drafts.map((d) => {
+    const kindLabel =
+      d.kind === 'expense' ? 'chi phí' : d.kind === 'revenue' ? 'doanh thu' : 'sản phẩm';
     const cust = d.kind === 'revenue' && d.customerName ? ` · ${d.customerName}` : '';
     return `• ${kindLabel}: **${d.description}** — ${d.amount.toLocaleString('vi-VN')}₫${cust}`;
   });
 
+  const singleKind =
+    drafts[0]!.kind === 'expense'
+      ? 'chi phí'
+      : drafts[0]!.kind === 'revenue'
+        ? 'doanh thu'
+        : 'sản phẩm';
+
   return {
     text:
       drafts.length === 1
-        ? `Đã nhận diện ${drafts[0]!.kind === 'expense' ? 'chi phí' : 'doanh thu'}: **${drafts[0]!.description}** — ${drafts[0]!.amount.toLocaleString('vi-VN')}₫`
-        : `Đã nhận diện **${drafts.length}** giao dịch:\n${lines.join('\n')}`,
+        ? `Đã nhận diện ${singleKind}: **${drafts[0]!.description}** — ${drafts[0]!.amount.toLocaleString('vi-VN')}₫`
+        : `Đã nhận diện **${drafts.length}** mục:\n${lines.join('\n')}`,
     source: 'local',
     drafts,
   };
@@ -244,6 +252,22 @@ export async function persistConfirmed(
           id: record.id,
           description: record.description,
           amount: record.amount,
+        });
+      } else if (draft.kind === 'product') {
+        const { createProduct } = await import('./productService');
+        const record = await createProduct(
+          {
+            name: draft.description,
+            defaultUnitPrice: draft.amount,
+            unit: 'cái',
+          },
+          { silent: true },
+        );
+        created.push({
+          kind: 'product',
+          id: record.id,
+          description: record.name,
+          amount: record.defaultUnitPrice,
         });
       } else {
         const record = await persistRevenueDraft(draft);

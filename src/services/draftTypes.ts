@@ -10,7 +10,7 @@ import type {
   ShippingPayer,
 } from '@/models';
 
-export type DraftKind = 'expense' | 'revenue';
+export type DraftKind = 'expense' | 'revenue' | 'product';
 export type DraftSource = 'text' | 'voice' | 'ocr' | 'csv';
 
 export interface DraftOrderItem {
@@ -82,10 +82,10 @@ export function validateDraft(draft: DraftRecord): DraftRecord {
     errors.push('Ngày không hợp lệ');
   }
   if (!(draft.amount > 0)) {
-    errors.push('Số tiền phải > 0');
+    errors.push(draft.kind === 'product' ? 'Đơn giá phải > 0' : 'Số tiền phải > 0');
   }
   if (!draft.description || draft.description.trim().length < 2) {
-    errors.push('Mô tả quá ngắn');
+    errors.push(draft.kind === 'product' ? 'Tên sản phẩm quá ngắn' : 'Mô tả quá ngắn');
   }
   if (draft.kind === 'expense' && !draft.category) {
     errors.push('Thiếu danh mục');

@@ -13,7 +13,7 @@ import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
-import { getAllRevenues, deleteRevenues } from '@/services/revenueService';
+import { getAllRevenues, deleteRevenues, updateRevenue } from '@/services/revenueService';
 import { getAllCustomers } from '@/services/customerService';
 import { formatCurrency } from '@/utils/currency';
 import { sumPaidRevenue } from '@/utils/revenueMetrics';
@@ -242,6 +242,14 @@ export function RevenueScreen() {
             onRowClick={handleRowClick}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onBulkDelete={async (ids: string[]) => {
+              await deleteRevenues(ids);
+            }}
+            onBulkStatusChange={async (ids: string[], status) => {
+              for (const id of ids) {
+                await updateRevenue(id, { orderStatus: status });
+              }
+            }}
           />
         </Card>
       </div>

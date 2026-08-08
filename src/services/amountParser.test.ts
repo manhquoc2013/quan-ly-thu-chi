@@ -6,6 +6,7 @@ import {
   parseTextToDraft,
   parseTextToDrafts,
   shouldDeferCreateToLlm,
+  isClearBulkPaste,
 } from './textDraftParser';
 import { validateDraft, draftsHaveErrors } from './draftTypes';
 import { normalizeBulkExtract } from './llmBulkDraftExtractor';
@@ -187,6 +188,53 @@ describe('parseTextToDraft', () => {
     expect(drafts[2]!.kind).toBe('expense');
     expect(drafts[2]!.amount).toBe(500000);
     expect(drafts[2]!.description.toLowerCase()).toContain('len');
+  });
+
+  it('parses product catalog paste as products not expenses', () => {
+    const msg = `thêm các sản phẩm:
+STT Tên sản phẩm Đơn giá
+1 Móc khóa nón cối 20.000đ
+2 Móc khóa nón lá 25.000đ
+3 Thú mini 35.000đ
+20 Luffy 120.000đ`;
+    expect(looksLikeBulkLineList(msg)).toBe(true);
+    const { drafts, skipped, kindHint } = parseLineListDrafts(msg);
+    expect(kindHint).toBe('product');
+    expect(skipped.length).toBe(0);
+    expect(drafts).toHaveLength(4);
+    expect(drafts.every((d) => d.kind === 'product')).toBe(true);
+    expect(drafts[0]!.description).toBe('Móc khóa nón cối');
+    expect(drafts[0]!.amount).toBe(20_000);
+    expect(drafts[3]!.description).toBe('Luffy');
+    expect(drafts[3]!.amount).toBe(120_000);
+
+    const viaParse = parseTextToDrafts(msg);
+    expect(viaParse.every((d) => d.kind === 'product')).toBe(true);
+    expect(isClearBulkPaste(msg)).toBe(true);
+  });
+
+  it('does not treat unlabeled price list as clear bulk (needs LLM)', () => {
+    const msg = `Móc khóa nón cối 20.000đ
+Móc khóa nón lá 25.000đ
+Thú mini 35.000đ`;
+    expect(looksLikeBulkLineList(msg)).toBe(true);
+    const parsed = parseLineListDrafts(msg);
+    expect(parsed.kindHint).toBeNull();
+    expect(parsed.drafts.every((d) => d.kind === 'expense')).toBe(true);
+    expect(isClearBulkPaste(msg, parsed)).toBe(false);
+  });
+
+  it('normalizes LLM bulk extract as products', () => {
+    const drafts = normalizeBulkExtract({
+      kind: 'product',
+      items: [
+        { description: 'Hello Kitty', amount: 50000 },
+        { description: 'Luffy', amount: 120000 },
+      ],
+    });
+    expect(drafts).toHaveLength(2);
+    expect(drafts.every((d) => d.kind === 'product')).toBe(true);
+    expect(drafts[0]!.amount).toBe(50_000);
   });
 
   it('parses multi-line expense paste with dong amounts', () => {

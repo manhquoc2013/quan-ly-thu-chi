@@ -1,0 +1,53 @@
+{
+  "triage_id": "TRI-1786189327458-49cf",
+  "created_at": 1786189327458,
+  "request_summary": "Thêm checkbox chọn nhiều + toolbar bulk actions (xóa nhiều, cập nhật trạng thái nhiều) cho ExpenseGrid và RevenueGrid - đã implement grid, cần wire screen + verify",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Người dùng xem danh sách chi phí/đơn hàng tại ExpenseScreen và RevenueScreen, chọn nhiều dòng để thao tác hàng loạt",
+  "blast_radius": 4,
+  "done_oracle": "bun run typecheck && bun run build && kiểm tra: checkbox xuất hiện, toolbar hiện khi chọn nhiều, xóa nhiều OK, cập nhật trạng thái hàng loạt OK",
+  "change_type": "scope_expansion",
+  "declared_write_scope": [
+    "src/ui/screens/expense/ExpenseGrid.tsx",
+    "src/ui/screens/expense/ExpenseScreen.tsx",
+    "src/ui/screens/revenue/RevenueGrid.tsx",
+    "src/ui/screens/revenue/RevenueScreen.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786189137436-6da2",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "25036a2a4c5a353804b7713dcf5eda2915e58054",
+    "dirty": true,
+    "captured_at": 1786189327498
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

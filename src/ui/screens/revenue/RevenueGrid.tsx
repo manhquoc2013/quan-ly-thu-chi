@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Play, Package, X } from 'lucide-react';
 
 /* ─── Props ─── */
 
@@ -32,6 +32,8 @@ export interface RevenueGridProps {
   onRowClick?: (row: Revenue) => void;
   onEdit?: (row: Revenue) => void;
   onDelete?: (row: Revenue) => void;
+  onBulkDelete?: (ids: string[]) => void;
+  onBulkStatusChange?: (ids: string[], status: OrderStatus) => void;
 }
 
 /* ─── Badge helpers ─── */
@@ -68,16 +70,48 @@ function customerLabel(row: Revenue, customers: Array<{ id: string; name: string
 
 /* ─── Component ─── */
 
-export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGridProps) {
+export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelete, onBulkStatusChange }: RevenueGridProps) {
   const customers = useCustomerStore((s) => s.customers);
   const platforms = usePlatformStore((s) => s.platforms);
   const [confirmDelete, setConfirmDelete] = useState<Revenue | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const handleConfirmDelete = useCallback(() => {
     if (!confirmDelete) return;
     onDelete?.(confirmDelete);
     setConfirmDelete(null);
   }, [confirmDelete, onDelete]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === records.length) return new Set();
+      return new Set(records.map((r) => r.id));
+    });
+  }, [records]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    onBulkDelete?.(Array.from(selectedIds));
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+  }, [selectedIds, onBulkDelete]);
+
+  const handleBulkStatus = useCallback((status: OrderStatus) => {
+    if (selectedIds.size === 0) return;
+    onBulkStatusChange?.(Array.from(selectedIds), status);
+    setSelectedIds(new Set());
+  }, [selectedIds, onBulkStatusChange]);
+
+  const allSelected = records.length > 0 && selectedIds.size === records.length;
 
   const platformOf = (row: Revenue) =>
     row.platformId ? platforms.find((p) => p.id === row.platformId)?.name : undefined;
@@ -184,10 +218,20 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
             className={
               'flex items-center gap-[var(--s-md)] px-[var(--s-md)] ' +
               'h-8 text-xs font-semibold text-grid-header-fg ' +
-              'bg-grid-header-bg border-b border-border sticky top-0 z-10 min-w-[980px]'
+              'bg-grid-header-bg border-b border-border sticky top-0 z-10 min-w-[1020px]'
             }
             role="row"
           >
+            <div className="w-[36px] shrink-0 flex items-center justify-center" role="columnheader">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-grid-header-fg hover:text-accent-fg transition-colors"
+                aria-label={allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+              >
+                {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+              </button>
+            </div>
             <div className="w-[150px] shrink-0" role="columnheader">
               Mã đơn
             </div>
@@ -217,10 +261,11 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
           {records.map((row) => {
             const itemQty = row.items.reduce((s, i) => s + i.quantity, 0);
             const platformName = platformOf(row);
+            const isSelected = selectedIds.has(row.id);
             return (
               <div
                 key={row.id}
-                className={`${rowClass} min-w-[980px]`}
+                className={`${rowClass} min-w-[1020px] ${isSelected ? 'bg-grid-row-selected' : ''}`}
                 role="row"
                 onClick={() => onRowClick?.(row)}
                 tabIndex={0}
@@ -231,6 +276,16 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
                   }
                 }}
               >
+                <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(row.id)}
+                    className="text-text-muted hover:text-accent-fg transition-colors"
+                    aria-label={isSelected ? `Bỏ chọn ${row.orderCode}` : `Chọn ${row.orderCode}`}
+                  >
+                    {isSelected ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
+                  </button>
+                </div>
                 <div className="w-[150px] shrink-0 text-xs font-mono text-text-primary" role="gridcell">
                   <div>{row.orderCode}</div>
                   {platformName ? (
@@ -294,6 +349,52 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
         </div>
       </div>
 
+      {/* ── Bulk action toolbar ──────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 bg-accent-bg border-t-2 border-accent-fg shadow-lg rounded-t-lg mx-2 flex-wrap">
+          <span className="text-xs font-semibold text-accent-fg">
+            Đã chọn <span className="text-sm">{selectedIds.size}</span> đơn hàng
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs"
+            >
+              Bỏ chọn
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkStatus('confirmed')}
+              className="text-xs gap-1"
+            >
+              <CheckCircle2 size={13} />
+              Xác nhận
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBulkStatus('completed')}
+              className="text-xs gap-1"
+            >
+              <Package size={13} />
+              Hoàn thành
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(true)}
+              className="text-xs gap-1"
+            >
+              <Trash2 size={13} />
+              Xóa {selectedIds.size} đơn
+            </Button>
+          </div>
+        </div>
+      )}
+
       <AlertDialog
         open={confirmDelete !== null}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
@@ -302,12 +403,27 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete }: RevenueGr
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc muốn xóa đơn “{confirmDelete?.orderCode}” không? Thao tác không hoàn tác được.
+              Bạn có chắc muốn xóa đơn "{confirmDelete?.orderCode}" không? Thao tác không hoàn tác được.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete}>Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => !open && setBulkDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa nhiều</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa {selectedIds.size} đơn hàng đã chọn? Thao tác không hoàn tác được.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete}>Xóa {selectedIds.size} đơn</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

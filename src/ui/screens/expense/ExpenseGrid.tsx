@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Square, CheckSquare } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 /* ─── Props ─── */
@@ -26,6 +26,7 @@ export interface ExpenseGridProps {
   onRowClick?: (expense: Expense) => void;
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
+  onBulkDelete?: (ids: string[]) => void;
 }
 
 /* ─── Category badge colours ─── */
@@ -89,9 +90,12 @@ export function ExpenseGrid({
   onRowClick,
   onEdit,
   onDelete,
+  onBulkDelete,
 }: ExpenseGridProps) {
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<Expense | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const handleDetailEdit = useCallback(
     (expense: Expense) => {
@@ -119,13 +123,47 @@ export function ExpenseGrid({
     [onDelete, confirmDeleteId],
   );
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === expenses.length) return new Set();
+      return new Set(expenses.map((e) => e.id));
+    });
+  }, [expenses]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    onBulkDelete?.(Array.from(selectedIds));
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+  }, [selectedIds, onBulkDelete]);
+
+  const allSelected = expenses.length > 0 && selectedIds.size === expenses.length;
+
   return (
     <div className="flex flex-col h-full min-h-0 overflow-auto" role="grid" aria-label="Expense list">
       <div className="inline-block min-w-full pb-[var(--dimens-fabClearance)]">
       <div
-        className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[760px]"
+        className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[800px]"
         role="row"
       >
+        <div className="w-[36px] shrink-0 flex items-center justify-center" role="columnheader">
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            className="text-grid-header-fg hover:text-accent-fg transition-colors"
+            aria-label={allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+          >
+            {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
+          </button>
+        </div>
         <div className="w-[110px] shrink-0" role="columnheader">Ngày</div>
         <div className="w-[140px] shrink-0" role="columnheader">Danh mục</div>
         <div className="flex-1 min-w-[120px]" role="columnheader">Mô tả</div>
@@ -146,12 +184,23 @@ export function ExpenseGrid({
               }
             }}
             className={cn(
-              'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[760px]',
+              'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[800px]',
               index % 2 === 0 ? 'bg-grid-row-even' : 'bg-grid-row-odd',
               'hover:bg-grid-row-hover',
+              selectedIds.has(expense.id) ? 'bg-grid-row-selected' : '',
             )}
             data-expense-id={expense.id}
           >
+            <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => toggleSelect(expense.id)}
+                className="text-text-muted hover:text-accent-fg transition-colors"
+                aria-label={selectedIds.has(expense.id) ? `Bỏ chọn ${expense.description}` : `Chọn ${expense.description}`}
+              >
+                {selectedIds.has(expense.id) ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
+              </button>
+            </div>
             <div className="w-[110px] shrink-0 text-xs text-text-primary">
               {formatDate(expense.date)}
             </div>
@@ -206,6 +255,34 @@ export function ExpenseGrid({
         ))}
       </div>
 
+      {/* ── Bulk action toolbar ──────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 bg-accent-bg border-t-2 border-accent-fg shadow-lg rounded-t-lg mx-2">
+          <span className="text-xs font-semibold text-accent-fg">
+            Đã chọn <span className="text-sm">{selectedIds.size}</span> chi phí
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs"
+            >
+              Bỏ chọn
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(true)}
+              className="text-xs gap-1"
+            >
+              <Trash2 size={13} />
+              Xóa {selectedIds.size} mục
+            </Button>
+          </div>
+        </div>
+      )}
+
       {detailExpense && (
         <ExpenseDetailDialog
           expense={detailExpense}
@@ -224,6 +301,21 @@ export function ExpenseGrid({
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Xóa</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => !open && setBulkDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa nhiều</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa {selectedIds.size} chi phí đã chọn? Thao tác không hoàn tác được.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete}>Xóa {selectedIds.size} mục</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

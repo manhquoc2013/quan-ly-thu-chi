@@ -12,12 +12,12 @@ import {
 } from './draftTypes';
 import { guessCategory } from './textDraftParser';
 
-const BULK_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân của cửa hàng, đang giúp chủ tiệm trích xuất danh sách thu/chi từ paste nhiều dòng.
+const BULK_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân của cửa hàng, đang giúp chủ tiệm trích xuất danh sách từ paste nhiều dòng.
 CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích.
 
 Schema:
 {
-  "kind": "expense"|"revenue",
+  "kind": "expense"|"revenue"|"product",
   "items": [ { "description": string, "amount": number } ],
   "mascot_say": "1 câu ngắn Lucky nhận xét tổng quan danh sách",
   "mascot_emotion": "happy"|"thinking"|"warning"|"celebrate"
@@ -25,9 +25,12 @@ Schema:
 
 Quy tắc:
 - Mỗi dòng hàng + tiền → 1 item. amount luôn là VND số nguyên (798.000 → 798000, 25k → 25000).
-- Bỏ header kiểu "thêm chi phí:", "thêm doanh thu:".
-- kind=expense nếu ngữ cảnh chi phí; revenue nếu bán/thu.
-- Bỏ dòng không có tiền hoặc không có mô tả.`;
+- Bỏ header kiểu "thêm chi phí:", "thêm doanh thu:", "thêm các sản phẩm:", "STT Tên Đơn giá".
+- kind=product nếu danh mục SP / bảng giá / đơn giá niêm yết / "sản phẩm" / STT+Đơn giá.
+- kind=expense nếu ngữ cảnh chi phí / nhập hàng chi tiền.
+- kind=revenue nếu bán/thu theo dòng.
+- Bỏ dòng không có tiền hoặc không có mô tả.
+- Không chắc expense vs product: ưu tiên product nếu là tên đồ bán lẻ + đơn giá; expense nếu "nhập/mua/chi".`;
 
 function extractJsonObject(text: string): unknown | null {
   const cleaned = text
@@ -64,7 +67,8 @@ export function normalizeBulkExtract(
 ): DraftRecord[] {
   if (!raw || typeof raw !== 'object') return [];
   const o = raw as BulkExtractRaw;
-  const kind = o.kind === 'revenue' ? 'revenue' : 'expense';
+  const kind =
+    o.kind === 'revenue' ? 'revenue' : o.kind === 'product' ? 'product' : 'expense';
   if (!Array.isArray(o.items)) return [];
 
   const drafts: DraftRecord[] = [];

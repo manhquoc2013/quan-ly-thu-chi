@@ -23,8 +23,8 @@ actor-slugs: [user]
 ## 1. Summary
 
 M-001 already ships a 3-tier AI cascade **Kilo Free → Gemini → WebLLM** implemented as a hardcoded
-if-else chain in `src/services/llmCall.ts:17` (`const { geminiConfigured, enableKiloFree } =
-useAuthStore.getState();`), with per-provider toggles/keys in the Zustand store
+if-else chain in `src/services/llmCall.ts:94` (`const { geminiConfigured, groqConfigured, enableKiloFree, enableGroq } =
+useAuthStore.getState();` — `canUseCloudLlm()`), with per-provider toggles/keys in the Zustand store
 (`src/store/authStore.ts`) and AI config sections in `src/ui/screens/settings/SettingsScreen.tsx`.
 
 This scope expansion adds:
@@ -40,7 +40,7 @@ This scope expansion adds:
    (move-up/move-down reorder list).
 
 The change is **additive and backward-compatible**: `callLlmCascade`'s signature is unchanged, so its
-three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:892`) and the
+three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:919`) and the
 label consumers (`AIChatScreen.tsx:247`, `ChatPanel.tsx:412`) keep working unmodified.
 
 Complexity: **Medium** — additive change on an implemented module; 1 actor; ~11 new business rules;
@@ -56,7 +56,7 @@ no schema migration, no new bounded context.
 | `.env` / `.env.example` | `VITE_GROQ_API_KEY` env var documented and read by the service | TRI-1785915049449-58fd requirement 1; evidence.edit_target_files |
 | `LlmSource` extension | Add `'groq'` to `LlmSource` union (`src/services/llmCall.ts:11`) | requirement 2 |
 | `callLlmCascade()` priority-driven | Replace hardcoded if-else with iteration over `aiPriority: LlmSource[]` read from store at call time; default `['kilo','groq','gemini','local']` | requirement 2 |
-| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts:86`) | requirement 3 |
+| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts:79`) | requirement 3 |
 | Settings UI | Groq section card (key input, save/test/delete, enable toggle) + AI Priority section (ordered list with move-up/move-down) in `SettingsScreen.tsx` | requirement 4 |
 | `src/services/index.ts` | Barrel export of `groqService` (triage edit target) | TRI evidence.edit_target_files |
 | Label + cloud-eligibility helpers | `llmSourceLabel()` gains a `'groq'` case (`llmCall.ts:72`); `canUseCloudLlm()` includes Groq eligibility (`llmCall.ts:65`) | derived — consumers pass `source` strings through unmodified, so helpers must know `'groq'` |
@@ -79,8 +79,8 @@ no schema migration, no new bounded context.
 
 ### 3.1 AS-IS cascade (current: `src/services/llmCall.ts:13-61`)
 
-> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts:17` —
-> `const { geminiConfigured, enableKiloFree } = useAuthStore.getState();`
+> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts:94` —
+> `const { geminiConfigured, groqConfigured, enableKiloFree, enableGroq } = useAuthStore.getState();` (in `canUseCloudLlm()`)
 > Verified this session: `LlmSource` union at `llmCall.ts:11`; `callLlmCascade` at `:13`;
 > `canUseCloudLlm` at `:65`; `llmSourceLabel` at `:72`.
 
@@ -100,7 +100,7 @@ flowchart TD
 ```
 
 Order is **hardcoded** (Kilo → Gemini → WebLLM) and reads exactly two store flags
-(`geminiConfigured`, `enableKiloFree`) at `llmCall.ts:17`.
+(`geminiConfigured`, `enableKiloFree`) from `llmCall.ts:94` (`canUseCloudLlm()`).
 
 ### 3.2 TO-BE cascade (priority-driven)
 
@@ -556,7 +556,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | **Source** | TRI requirement 3 ("fields with persistence") |
 | **Given** | The user reordered `aiPriority` to `['groq', 'gemini', 'kilo', 'local']` and reloaded the app |
 | **When** | The store rehydrates |
-| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts:267`) and the Settings list renders in that order. |
+| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts:243`) and the Settings list renders in that order. |
 
 ### AC-PRI-07 — Priority Changes Take Effect Real-Time
 
@@ -595,7 +595,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | | |
 |---|---|
 | **AC-ID** | AC-STORE-02 |
-| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:179-192` and `syncKiloService` at `authStore.ts:86`) |
+| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:113-127` and `syncKiloService` at `authStore.ts:79`) |
 | **Given** | The user saves a Groq key or toggles Groq in Settings |
 | **When** | `setGroqApiKey(key)` / `setEnableGroq(v)` run |
 | **Then** | The store field updates AND `groqService.configure(key)` / `groqService.setEnabled(v)` are called in the same action (single source of truth; the service never reads localStorage itself). Rehydration (`onRehydrateStorage`, mirroring `authStore.ts:289-291`) re-syncs the service from persisted state. |
@@ -606,7 +606,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|
 | **AC-ID** | AC-STORE-03 |
 | **Source** | TRI requirement 3 |
-| **Given** | The `partialize` selector at `authStore.ts:267` |
+| **Given** | The `partialize` selector at `authStore.ts:243` |
 | **When** | The store persists |
 | **Then** | `groqApiKey`, `enableGroq`, and `aiPriority` are included in the persisted slice (same key `ql-tc-auth`; `groqConfigured` is derived from `groqApiKey` and not stored independently — matches the existing `geminiConfigured` derivation at `authStore.ts:269`). |
 
@@ -700,17 +700,17 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 
 | ID | Rule | Source | Applies-to | Exception |
 |---|---|---|---|---|
-| BR-AUTH-01 | Email must match `^[^\s@]+@[^\s@]+\.[^\s@]+$` before any network call | Triage brief, existing `isValidEmail` at `AuthScreen.tsx:38` | `email-input` screen | — |
+| BR-AUTH-01 | Email must match `^[^\s@]+@[^\s@]+\.[^\s@]+$` before any network call | Triage brief, existing `EMAIL_RE` regex at `src/ui/screens/auth/AuthScreen.tsx:17` | `email-input` screen | — |
 | BR-AUTH-02 | Email comparisons are case-insensitive (`email.toLowerCase()`) | Existing `userExists` at `authService.ts:276` | All email lookups in multi-user map | — |
 | BR-AUTH-03 | `userExists(email)` returns `true` when `getUserByEmail(email.toLowerCase()) !== null` | Multi-user migration spec | Branch decision in `email-input` | — |
 | BR-AUTH-04 | OTP is 6 random digits (`000000`–`999999`), generated via `crypto.getRandomValues` | Existing `generateOTP` at `authService.ts:155` | Registration + login + forgot-password | — |
-| BR-AUTH-05 | OTP resend cooldown: exactly 60 seconds from last send | Existing `forgotCountdown` in `AuthScreen.tsx:186` | `otp-verify` + `forgot-password` verify | Cooldown resets if user navigates back and re-enters email |
+| BR-AUTH-05 | OTP resend cooldown: exactly 60 seconds from last send | [cần cập nhật: OTP/resend removed in Supabase auth migration — AuthScreen.tsx no longer has forgotCountdown] | `otp-verify` + `forgot-password` verify | Cooldown resets if user navigates back and re-enters email |
 | BR-AUTH-06 | `hasPassword` is `true` when `passwordHash` is non-empty; `false` when `passwordHash === ""` | Derivation rule; triage brief | `StoredCredentials` | Computed, not user-set |
-| BR-AUTH-07 | Password (when set) must be ≥ 6 characters | Existing `handleResetPassword` at `AuthScreen.tsx:466` | `password-setup` + forgot-password reset | — |
+| BR-AUTH-07 | Password (when set) must be ≥ 6 characters | [cần cập nhật: password-reset flow removed in Supabase auth migration — AuthScreen.tsx no longer has handleResetPassword] | `password-setup` + forgot-password reset | — |
 | BR-AUTH-08 | `registerUser()` stores `hasPassword: false` when no password provided; `hasPassword: true` when password is provided and hashed | Triage brief | Registration flow | — |
 | BR-AUTH-09 | `storeName` is required (non-empty, trimmed) on onboarding | Triage brief — "show store-info setup screen" | OnboardingScreen | address/phone are optional |
 | BR-AUTH-10 | After onboarding, `userProfile.storeName` must not be empty before the user reaches the Dashboard | AuthGuard route gate | Post-registration flow | — |
-| BR-AUTH-11 | Session token generation for OTP-only users uses a derived key (e.g., `SHA-256(email + userId)`) instead of `passwordHash` | Derivation from existing `generateToken(userId, passwordHash)` contract at `authStore.ts:201` where `creds?.passwordHash` is checked | OTP-only login | Password-based users continue using `passwordHash` |
+| BR-AUTH-11 | Session token generation for OTP-only users uses a derived key (e.g., `SHA-256(email + userId)`) instead of `passwordHash` | [cần cập nhật: generateToken/passwordHash removed in Supabase auth migration — authStore no longer manages credentials locally] | OTP-only login | Password-based users continue using `passwordHash` |
 | BR-AUTH-12 | Multi-user map key is `email.toLowerCase()` | Derivation from BR-AUTH-02 | `storeUserByEmail`, `getUserByEmail`, `registerUser`, `resetPassword` | — |
 | BR-AUTH-13 | `initAdminAccount()` only creates admin if no user with `DEFAULT_ADMIN_EMAIL` exists in the map | Existing behavior preserved — `DEFAULT_ADMIN_EMAIL` defined at `authService.ts:436` | Bootstrap | — |
 | BR-AUTH-14 | `clearAuth()` removes the entire multi-user map (all users) | Semantics change from single-user; triage brief | Logout / administration | Individual user removal is out of scope |
@@ -872,7 +872,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|---|
 | CON-AI-01 | ONLY these files may change: `.env`, `src/services/groqService.ts` (NEW), `src/services/index.ts`, `src/services/llmCall.ts`, `src/store/authStore.ts`, `src/ui/screens/settings/SettingsScreen.tsx` | TRI evidence.edit_target_files |
 | CON-AI-02 | `aiRouter.ts`, `chatTools.ts`, `chatIntent.ts`, `llmIntentExtractor.ts`, `llmBulkDraftExtractor.ts`, `geminiService.ts`, `kiloService.ts`, `webLLM.ts`, and every other existing service/screen MUST NOT be modified | TRI requirement 5 |
-| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:892`) depend on it | TRI requirement 5 + verified usage |
+| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:919`) depend on it | TRI requirement 5 + verified usage |
 | CON-AI-04 | `groqService.generateContent` MUST return `null` on failure — never throw, never return an error-prefixed string | TRI requirement 5 |
 | CON-AI-05 | Existing test suite MUST remain green (`bun test --run` exits 0) — `kiloService.test.ts`, `authService.test.ts`, etc. are regression oracles | TRI requirement 5 ("Existing tests must pass") |
 | CON-AI-06 | Priority changes MUST take effect real-time (next request), no reload/restart required | TRI requirement 5 |

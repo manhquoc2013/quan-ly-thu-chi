@@ -23,9 +23,23 @@ import {
   formatEntityPickMessage,
   type EntityOption,
 } from './entityResolve';
-import { findOrCreateCustomerByName } from './customerService';
+import { findOrCreateCustomerByName, createCustomer, updateCustomer, deleteCustomer } from './customerService';
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  searchProducts,
+} from './productService';
+import {
+  createPlatform,
+  updatePlatform,
+  deletePlatform,
+} from './platformService';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useRevenueStore } from '@/store/revenueStore';
+import { useCustomerStore } from '@/store';
+import { useProductStore } from '@/store/productStore';
+import { usePlatformStore } from '@/store/platformStore';
 
 export interface ToolResult {
   ok: boolean;
@@ -36,7 +50,7 @@ export interface ToolResult {
     query: string;
     options: EntityOption[];
   };
-  createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+  createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
   matchedMultiple?: Array<{ id: string; label: string }>;
 }
 
@@ -101,16 +115,28 @@ export function findRevenues(intent: ChatIntent): Revenue[] {
 }
 
 function multiMatchMessage(
-  kind: 'expense' | 'revenue',
+  kind: string,
   items: Array<{ id: string; label: string }>,
 ): ToolResult {
+  const label =
+    kind === 'expense'
+      ? 'chi phí'
+      : kind === 'revenue'
+        ? 'đơn'
+        : kind === 'product'
+          ? 'sản phẩm'
+          : kind === 'customer'
+            ? 'khách'
+            : kind === 'platform'
+              ? 'kênh'
+              : kind;
   const lines = items
     .slice(0, 5)
     .map((i, idx) => `${idx + 1}. ${i.label}`)
     .join('\n');
   return {
     ok: false,
-    message: `Tìm thấy nhiều ${kind === 'expense' ? 'chi phí' : 'đơn'} khớp. Cho mình biết rõ hơn (mã/mô tả):\n${lines}`,
+    message: `Tìm thấy nhiều ${label} khớp. Cho mình biết rõ hơn (mã/tên):\n${lines}`,
     matchedMultiple: items,
   };
 }
@@ -119,6 +145,42 @@ async function ensureCustomer(name?: string): Promise<string> {
   if (!name?.trim()) return 'walk-in';
   const customer = await findOrCreateCustomerByName(name, { silent: true });
   return customer.id;
+}
+
+function findProducts(intent: ChatIntent) {
+  const hint = (intent.targetHint || intent.description || '').trim();
+  const all = useProductStore.getState().products;
+  if (!hint) return all.slice(0, 8);
+  return searchProducts(hint, 20)
+    .map((p) => ({ p, score: scoreText(p.name, hint) }))
+    .filter((x) => x.score >= 40)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.p);
+}
+
+function findCustomers(intent: ChatIntent) {
+  const hint = (intent.targetHint || intent.customerName || intent.description || '').trim();
+  const all = useCustomerStore.getState().customers;
+  if (!hint) return all.slice(0, 8);
+  return all
+    .map((c) => ({ c, score: Math.max(scoreText(c.name, hint), scoreText(c.phone || '', hint)) }))
+    .filter((x) => x.score >= 40)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.c);
+}
+
+function findPlatforms(intent: ChatIntent) {
+  const hint = (intent.targetHint || intent.platformName || intent.description || '').trim();
+  const all = usePlatformStore.getState().platforms;
+  if (!hint) return all.slice(0, 8);
+  return all
+    .map((p) => ({
+      p,
+      score: Math.max(scoreText(p.name, hint), scoreText(p.code || '', hint)),
+    }))
+    .filter((x) => x.score >= 40)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.p);
 }
 
 export async function executeChatIntent(
@@ -235,6 +297,43 @@ export async function executeChatIntent(
         };
       }
       return { ok: false, message: failed.join('; ') || 'Không lưu được.' };
+    }
+
+    case 'create_product': {
+      const name = (intent.description || '').trim();
+      const price = intent.unitPrice ?? intent.amount ?? 0;
+      if (name.length < 2 || !(price > 0)) {
+        return { ok: false, message: 'Thiếu tên hoặc đơn giá sản phẩm.' };
+      }
+      const record = await createProduct(
+        { name, defaultUnitPrice: price, unit: 'cái' },
+        { silent: true },
+      );
+      return {
+        ok: true,
+        message: `Đã thêm sản phẩm: **${record.name}** — ${formatCurrency(record.defaultUnitPrice)}`,
+        createdRecord: { kind: 'product', id: record.id },
+      };
+    }
+
+    case 'create_customer': {
+      const name = (intent.customerName || intent.description || '').trim();
+      if (name.length < 2) return { ok: false, message: 'Thiếu tên khách hàng.' };
+      const record = await createCustomer({ name, phone: '' }, { silent: true });
+      return {
+        ok: true,
+        message: `Đã thêm khách: **${record.name}**`,
+      };
+    }
+
+    case 'create_platform': {
+      const name = (intent.platformName || intent.description || '').trim();
+      if (name.length < 2) return { ok: false, message: 'Thiếu tên kênh.' };
+      const record = await createPlatform({ name, active: true }, { silent: true });
+      return {
+        ok: true,
+        message: `Đã thêm kênh: **${record.name}**`,
+      };
     }
 
     case 'update_expense': {
@@ -359,6 +458,144 @@ export async function executeChatIntent(
       return { ok: true, message: `Đã xóa đơn **${r.orderCode}**.` };
     }
 
+    case 'update_product': {
+      const hits = findProducts(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy sản phẩm phù hợp.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'product',
+          hits.map((p) => ({
+            id: p.id,
+            label: `${p.name} · ${formatCurrency(p.defaultUnitPrice)}`,
+          })),
+        );
+      }
+      const p = hits[0]!;
+      const price = intent.unitPrice ?? intent.amount;
+      const patch: { name?: string; defaultUnitPrice?: number } = {};
+      if (intent.description && intent.description.trim().length >= 2 && intent.description !== p.name) {
+        patch.name = intent.description.trim();
+      }
+      if (price && price > 0) patch.defaultUnitPrice = price;
+      if (!patch.name && patch.defaultUnitPrice === undefined) {
+        return { ok: false, message: 'Chưa có thay đổi (tên/giá) để cập nhật.' };
+      }
+      const updated = await updateProduct(p.id, patch, { silent: true });
+      if (!updated) return { ok: false, message: 'Không cập nhật được sản phẩm.' };
+      return {
+        ok: true,
+        message: `Đã cập nhật SP **${updated.name}** — ${formatCurrency(updated.defaultUnitPrice)}`,
+        createdRecord: { kind: 'product', id: updated.id },
+      };
+    }
+
+    case 'update_customer': {
+      const hits = findCustomers(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy khách phù hợp.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'customer',
+          hits.map((c) => ({ id: c.id, label: `${c.name}${c.phone ? ` · ${c.phone}` : ''}` })),
+        );
+      }
+      const c = hits[0]!;
+      const newName = intent.customerName || intent.description;
+      const updated = await updateCustomer(
+        c.id,
+        { name: newName && newName !== c.name ? newName : undefined },
+        { silent: true },
+      );
+      if (!updated) return { ok: false, message: 'Không cập nhật được khách.' };
+      return { ok: true, message: `Đã cập nhật khách **${updated.name}**.` };
+    }
+
+    case 'update_platform': {
+      const hits = findPlatforms(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy kênh phù hợp.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'platform',
+          hits.map((p) => ({ id: p.id, label: p.name })),
+        );
+      }
+      const p = hits[0]!;
+      const newName = intent.platformName || intent.description;
+      const updated = await updatePlatform(
+        p.id,
+        { name: newName && newName !== p.name ? newName : undefined },
+        { silent: true },
+      );
+      if (!updated) return { ok: false, message: 'Không cập nhật được kênh.' };
+      return { ok: true, message: `Đã cập nhật kênh **${updated.name}**.` };
+    }
+
+    case 'delete_product': {
+      const hits = findProducts(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy sản phẩm để xóa.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'product',
+          hits.map((p) => ({
+            id: p.id,
+            label: `${p.name} · ${formatCurrency(p.defaultUnitPrice)}`,
+          })),
+        );
+      }
+      const p = hits[0]!;
+      if (!opts?.deleteConfirmed) {
+        return {
+          ok: false,
+          needDeleteConfirm: true,
+          message: `Xóa sản phẩm **${p.name}**? Gõ **xác nhận** để xóa, hoặc **hủy**.`,
+          createdRecord: { kind: 'product', id: p.id },
+        };
+      }
+      await deleteProduct(p.id, { silent: true });
+      return { ok: true, message: `Đã xóa sản phẩm **${p.name}**.` };
+    }
+
+    case 'delete_customer': {
+      const hits = findCustomers(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy khách để xóa.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'customer',
+          hits.map((c) => ({ id: c.id, label: c.name })),
+        );
+      }
+      const c = hits[0]!;
+      if (!opts?.deleteConfirmed) {
+        return {
+          ok: false,
+          needDeleteConfirm: true,
+          message: `Xóa khách **${c.name}**? Gõ **xác nhận** để xóa, hoặc **hủy**.`,
+        };
+      }
+      await deleteCustomer(c.id, { silent: true });
+      return { ok: true, message: `Đã xóa khách **${c.name}**.` };
+    }
+
+    case 'delete_platform': {
+      const hits = findPlatforms(intent);
+      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy kênh để xóa.' };
+      if (hits.length > 1) {
+        return multiMatchMessage(
+          'platform',
+          hits.map((p) => ({ id: p.id, label: p.name })),
+        );
+      }
+      const p = hits[0]!;
+      if (!opts?.deleteConfirmed) {
+        return {
+          ok: false,
+          needDeleteConfirm: true,
+          message: `Xóa kênh **${p.name}**? Gõ **xác nhận** để xóa, hoặc **hủy**.`,
+        };
+      }
+      await deletePlatform(p.id, { silent: true });
+      return { ok: true, message: `Đã xóa kênh **${p.name}**.` };
+    }
+
     case 'update_order_status': {
       const hits = findRevenues(intent);
       if (hits.length === 0) return { ok: false, message: 'Không tìm thấy đơn để đổi trạng thái.' };
@@ -411,23 +648,62 @@ function buildLookupAnswer(intent: ChatIntent): string {
     ).length;
     return [
       '📊 **Tổng quan**',
-      `• Tổng thu (đã TT): **${formatCurrency(totalR)}**`,
-      `• Công nợ: **${formatCurrency(unpaid)}**`,
-      `• Tổng chi: **${formatCurrency(totalE)}** (${expenses.length} khoản)`,
-      `• Lợi nhuận: **${formatCurrency(totalR - totalE)}**`,
-      `• Đơn đang xử lý: **${pending}**`,
+      '',
+      `💰 Tổng thu (đã TT): **${formatCurrency(totalR)}**`,
+      `🧾 Công nợ: **${formatCurrency(unpaid)}**`,
+      `💸 Tổng chi: **${formatCurrency(totalE)}** (${expenses.length} khoản)`,
+      `📈 Lợi nhuận: **${formatCurrency(totalR - totalE)}**`,
+      `⏳ Đơn đang xử lý: **${pending}**`,
     ].join('\n');
   }
 
   if (/đơn|doanh thu|bán|order/.test(q)) {
     const hits = findRevenues({ ...intent, targetHint: q });
-    if (!hits.length) return 'Không thấy đơn khớp.';
+    if (!hits.length) return '😕 Không thấy đơn khớp.';
     return [
       '🧾 **Đơn gần khớp:**',
+      '',
       ...hits.slice(0, 8).map(
         (r) =>
           `• ${r.orderCode} · ${r.date} · ${formatCurrency(r.finalAmount)} · ${ORDER_STATUS_LABELS[r.orderStatus]}`,
       ),
+    ].join('\n');
+  }
+
+  if (/sản\s*phẩm|sp\b|catalog|bảng\s*giá/.test(q)) {
+    const products = useProductStore.getState().products;
+    const hint = q.replace(/sản\s*phẩm|sp\b|catalog|bảng\s*giá|danh\s*sách|liệt\s*kê|tìm/gi, '').trim();
+    const hits = hint
+      ? searchProducts(hint, 12)
+      : products.slice(0, 12);
+    if (!hits.length) return '😕 Chưa có sản phẩm khớp.';
+    return [
+      '🏷️ **Sản phẩm:**',
+      '',
+      ...hits.map((p) => `• **${p.name}** — ${formatCurrency(p.defaultUnitPrice)}/${p.unit}`),
+    ].join('\n');
+  }
+
+  if (/khách|customer/.test(q)) {
+    const customers = useCustomerStore.getState().customers;
+    const hint = q.replace(/khách(\s*hàng)?|customer|danh\s*sách|liệt\s*kê|tìm/gi, '').trim();
+    const hits = hint
+      ? customers.filter((c) => scoreText(c.name, hint) >= 40).slice(0, 12)
+      : customers.slice(0, 12);
+    if (!hits.length) return '😕 Chưa có khách khớp.';
+    return [
+      '👤 **Khách:**',
+      '',
+      ...hits.map((c) => `• **${c.name}**${c.phone ? ` · ${c.phone}` : ''}`),
+    ].join('\n');
+  }
+
+  if (/kênh|platform|sàn/.test(q)) {
+    const platforms = usePlatformStore.getState().platforms;
+    return [
+      '📣 **Kênh:**',
+      '',
+      ...platforms.slice(0, 12).map((p) => `• **${p.name}**${p.active ? '' : ' (tắt)'}`),
     ].join('\n');
   }
 
@@ -445,13 +721,20 @@ function buildLookupAnswer(intent: ChatIntent): string {
     const recent = (hits.length ? hits : [...expenses].sort((a, b) => b.date.localeCompare(a.date)))
       .slice(0, 6)
       .map((e) => `• ${e.date} · ${e.description} · ${formatCurrency(e.amount)}`);
-    return ['💸 **Chi phí**', 'Theo danh mục:', ...catLines, '', 'Gần đây:', ...recent].join('\n');
+    return ['💸 **Chi phí**', '', '📁 Theo danh mục:', ...catLines, '', '🕒 Gần đây:', ...recent].join(
+      '\n',
+    );
   }
 
-  // generic search both
-  const eHits = findExpenses({ ...intent, targetHint: q }).slice(0, 5);
-  const rHits = findRevenues({ ...intent, targetHint: q }).slice(0, 5);
-  if (!eHits.length && !rHits.length) {
+  // generic search ledger + master
+  const eHits = findExpenses({ ...intent, targetHint: q }).slice(0, 4);
+  const rHits = findRevenues({ ...intent, targetHint: q }).slice(0, 4);
+  const pHits = searchProducts(q, 4);
+  const cHits = useCustomerStore
+    .getState()
+    .customers.filter((c) => scoreText(c.name, q) >= 40)
+    .slice(0, 4);
+  if (!eHits.length && !rHits.length && !pHits.length && !cHits.length) {
     return `Không tìm thấy kết quả cho “${intent.query || intent.targetHint}”.`;
   }
   const lines: string[] = ['🔍 **Kết quả:**'];
@@ -461,6 +744,10 @@ function buildLookupAnswer(intent: ChatIntent): string {
   rHits.forEach((r) =>
     lines.push(`• [Thu] ${r.orderCode} · ${formatCurrency(r.finalAmount)} · ${ORDER_STATUS_LABELS[r.orderStatus]}`),
   );
+  pHits.forEach((p) =>
+    lines.push(`• [SP] ${p.name} · ${formatCurrency(p.defaultUnitPrice)}`),
+  );
+  cHits.forEach((c) => lines.push(`• [Khách] ${c.name}`));
   return lines.join('\n');
 }
 

@@ -22,11 +22,15 @@ import { parseOrderTableDrafts } from './orderTableParser';
 const MONEY = String.raw`(\d[\d.,]*\s*(?:k|nghìn|ngàn|m|tr|triệu|trieu|usd|eur|jpy|cny|krw|sgd|aud|\$|đô(?:\s*la)?|₫|đ|vnd|đồng)?)`;
 
 const BULK_HEADER =
-  /^(?:thêm|tạo|ghi)\s+(?:chi\s*phí|khoản\s*chi|chi|doanh\s*thu|khoản\s*thu|thu)\s*:?\s*$/i;
+  /^(?:thêm|tạo|ghi|hêm)\s+(?:chi\s*phí|khoản\s*chi|chi|doanh\s*thu|khoản\s*thu|thu|(?:các\s+)?(?:sản\s*phẩm|sp))\s*:?\s*$/i;
 const EXPENSE_HEADER =
-  /^(?:thêm|tạo|ghi)\s+(?:chi\s*phí|khoản\s*chi|chi)\s*:?\s*$|^chi\s*phí\s*:?\s*$/i;
+  /^(?:thêm|tạo|ghi|hêm)\s+(?:chi\s*phí|khoản\s*chi|chi)\s*:?\s*$|^chi\s*phí\s*:?\s*$/i;
 const REVENUE_HEADER =
-  /^(?:thêm|tạo|ghi)\s+(?:doanh\s*thu|khoản\s*thu|thu)\s*:?\s*$|^doanh\s*thu\s*:?\s*$/i;
+  /^(?:thêm|tạo|ghi|hêm)\s+(?:doanh\s*thu|khoản\s*thu|thu)\s*:?\s*$|^doanh\s*thu\s*:?\s*$/i;
+const PRODUCT_HEADER =
+  /^(?:thêm|tạo|ghi|hêm)\s+(?:các\s+)?(?:sản\s*phẩm|sp|hàng\s*hóa)\s*:?\s*$|^(?:danh\s*mục\s+)?(?:sản\s*phẩm|sp)\s*:?\s*$/i;
+/** Column title row e.g. "STT Tên sản phẩm Đơn giá" */
+const PRODUCT_COLUMN_HEADER = /^stt\b[\s\S]{0,40}đơn\s*giá/i;
 
 /** Keywords that typically start a new create clause in a compound message */
 const CLAUSE_START =
@@ -79,25 +83,44 @@ export function parseTextToDraft(
 
 /**
  * Parse spreadsheet-style paste: one "description + amount" per line.
- * Header lines like "thêm chi phí:" set kind hint and are skipped.
+ * Header lines like "thêm chi phí:" / "thêm sản phẩm:" set kind hint and are skipped.
  */
 export function parseLineListDrafts(
   message: string,
   source: DraftSource = 'text',
-): { drafts: DraftRecord[]; skipped: string[]; kindHint: 'expense' | 'revenue' | null } {
+): {
+  drafts: DraftRecord[];
+  skipped: string[];
+  kindHint: 'expense' | 'revenue' | 'product' | null;
+} {
   const rawLines = message
     .replace(/\r\n/g, '\n')
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
 
-  let kindHint: 'expense' | 'revenue' | null = null;
+  let kindHint: 'expense' | 'revenue' | 'product' | null = null;
   const drafts: DraftRecord[] = [];
   const skipped: string[] = [];
 
+  // Whole-message product cue (even if header is glued on first line)
+  if (
+    /(?:thêm|tạo|ghi|hêm)\s+(?:các\s+)?(?:sản\s*phẩm|sp)\b/i.test(message) ||
+    /\bstt\b[\s\S]{0,40}đơn\s*giá/i.test(message)
+  ) {
+    kindHint = 'product';
+  }
+
   for (const line of rawLines) {
-    if (BULK_HEADER.test(line) || EXPENSE_HEADER.test(line) || REVENUE_HEADER.test(line)) {
-      if (EXPENSE_HEADER.test(line)) kindHint = 'expense';
+    if (
+      BULK_HEADER.test(line) ||
+      EXPENSE_HEADER.test(line) ||
+      REVENUE_HEADER.test(line) ||
+      PRODUCT_HEADER.test(line) ||
+      PRODUCT_COLUMN_HEADER.test(line)
+    ) {
+      if (PRODUCT_HEADER.test(line) || PRODUCT_COLUMN_HEADER.test(line)) kindHint = 'product';
+      else if (EXPENSE_HEADER.test(line)) kindHint = 'expense';
       else if (REVENUE_HEADER.test(line)) kindHint = 'revenue';
       continue;
     }
@@ -108,11 +131,15 @@ export function parseLineListDrafts(
       continue;
     }
 
-    const kind: 'expense' | 'revenue' =
+    const kind: 'expense' | 'revenue' | 'product' =
       kindHint ??
       (/\b(bán|doanh\s*thu|khoản\s*thu)\b/i.test(trailing.description) ? 'revenue' : 'expense');
 
-    const description = capitalize(trailing.description);
+    // Only strip STT for product catalogs — keep "300 móc khóa" as expense qty wording
+    const description = capitalize(
+      kind === 'product' ? stripLeadingRowIndex(trailing.description) : trailing.description.trim(),
+    );
+
     drafts.push(
       validateDraft(
         makeDraft({
@@ -130,6 +157,24 @@ export function parseLineListDrafts(
   return { drafts, skipped, kindHint };
 }
 
+/** Strip "1 ", "1.", "1)" at start of a catalog line. */
+function stripLeadingRowIndex(text: string): string {
+  return text.replace(/^\d{1,4}[\.\)\-]?\s+/, '').trim();
+}
+
+/**
+ * Policy A clear-gate: strong kind header/cue + ≥2 money lines all same kind.
+ * Unlabeled multi-line lists are NOT clear (need LLM classify).
+ */
+export function isClearBulkPaste(
+  message: string,
+  parsed?: ReturnType<typeof parseLineListDrafts>,
+): boolean {
+  const { drafts, kindHint } = parsed ?? parseLineListDrafts(message, 'text');
+  if (drafts.length < 2 || !kindHint) return false;
+  return drafts.every((d) => d.kind === kindHint);
+}
+
 /** ≥2 non-header lines that look like they end with a money token. */
 export function looksLikeBulkLineList(message: string): boolean {
   const lines = message
@@ -137,7 +182,14 @@ export function looksLikeBulkLineList(message: string): boolean {
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean)
-    .filter((l) => !BULK_HEADER.test(l) && !EXPENSE_HEADER.test(l) && !REVENUE_HEADER.test(l));
+    .filter(
+      (l) =>
+        !BULK_HEADER.test(l) &&
+        !EXPENSE_HEADER.test(l) &&
+        !REVENUE_HEADER.test(l) &&
+        !PRODUCT_HEADER.test(l) &&
+        !PRODUCT_COLUMN_HEADER.test(l),
+    );
 
   if (lines.length < 2) return false;
 
@@ -163,7 +215,11 @@ export function parseTextToDrafts(
   }
 
   const lineList = parseLineListDrafts(message, source);
-  if (lineList.drafts.length >= 2) return lineList.drafts;
+  if (lineList.drafts.length >= 2) {
+    // Policy A: unlabeled multi-line lists are ambiguous — defer to LLM / header
+    if (!isClearBulkPaste(message, lineList)) return [];
+    return lineList.drafts;
+  }
 
   // Avoid collapsing a bulk paste into one junk expense
   if (looksLikeBulkLineList(message) && lineList.drafts.length < 2) {

@@ -28,7 +28,7 @@ interface ChatMessage {
   source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
   drafts?: DraftRecord[];
   confirmed?: boolean;
-  createdRecord?: { kind: 'expense' | 'revenue'; id: string };
+  createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
 }
 
 const WELCOME =
@@ -238,11 +238,16 @@ export function ChatPanel() {
     }
   }
 
-  function openCreatedDetail(rec: { kind: 'expense' | 'revenue'; id: string }) {
+  function openCreatedDetail(rec: { kind: 'expense' | 'revenue' | 'product'; id: string }) {
     setFabOpen(false);
-    navigate(rec.kind === 'revenue' ? '/revenue' : '/expense');
+    if (rec.kind === 'product') {
+      navigate('/products');
+      return;
+    }
+    const ledgerKind = rec.kind;
+    navigate(ledgerKind === 'revenue' ? '/revenue' : '/expense');
     window.setTimeout(() => {
-      requestRecordDetail(rec.kind, rec.id);
+      requestRecordDetail(ledgerKind, rec.id);
     }, 80);
   }
 
@@ -406,7 +411,11 @@ export function ChatPanel() {
                         : 'bg-surface border border-border text-text-primary mr-auto',
                     ].join(' ')}
                   >
-                    {msg.role === 'user' ? msg.text : <MarkdownText text={msg.text} />}
+                    {msg.role === 'user' ? (
+                      <span className="whitespace-pre-wrap break-words">{msg.text}</span>
+                    ) : (
+                      <MarkdownText text={msg.text} />
+                    )}
                     {msg.source && (
                       <div className="mt-1 text-[10px] text-text-muted">
                         {llmSourceLabel(msg.source)}

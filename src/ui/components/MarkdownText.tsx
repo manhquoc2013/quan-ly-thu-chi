@@ -1,20 +1,53 @@
 /**
- * MarkdownText — Renders Markdown text from AI responses with proper formatting.
- *
- * Uses react-markdown to parse markdown and applies Tailwind utility classes
- * that inherit the parent container's font size.
+ * MarkdownText — AI/chat replies with line breaks, lists, and emoji preserved.
  */
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown from 'react-markdown';
 
 interface MarkdownTextProps {
   text: string;
+  className?: string;
 }
 
-export function MarkdownText({ text }: MarkdownTextProps) {
+/** Single newlines → hard breaks; keep blank lines as paragraphs. */
+export function prepareChatMarkdown(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim()
+    .split('\n')
+    .map((line) => (line.trim() === '' ? '' : `${line}  `))
+    .join('\n');
+}
+
+export function MarkdownText({ text, className }: MarkdownTextProps) {
+  const prepared = prepareChatMarkdown(text);
   return (
-    <div className="prose prose-sm max-w-none [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>li]:marker:text-text-muted [&>p]:my-1 [&>p:last-child]:mb-0 [&>strong]:font-bold [&>em]:italic [&>h1]:text-xl [&>h2]:text-lg [&>h3]:text-base [&>h4]:text-sm [&>blockquote]:border-l-4 [&>blockquote]:border-border [&>blockquote]:pl-3 [&>blockquote]:text-text-muted [&>code]:bg-surface-secondary [&>code]:rounded [&>code]:px-1 [&>code]:font-mono [&>pre]:bg-surface-secondary [&>pre]:rounded [&>pre]:p-2 [&>pre]:font-mono [&>pre>code]:bg-transparent [&>table]:border-collapse [&>table]:w-full [&>table]:text-xs [&>th]:border [&>th]:px-2 [&>th]:py-1 [&>th]:bg-surface-secondary [&>td]:border [&>td]:px-2 [&>td]:py-1">
-      <ReactMarkdown>{text}</ReactMarkdown>
+    <div
+      className={[
+        'chat-md max-w-none text-inherit leading-relaxed break-words',
+        '[&>p]:my-1.5 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0',
+        '[&>ul]:my-1.5 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:my-1.5 [&>ol]:list-decimal [&>ol]:pl-4',
+        '[&>li]:my-0.5 [&>li]:marker:text-text-muted',
+        '[&>strong]:font-semibold',
+        '[&>hr]:my-2 [&>hr]:border-border',
+        '[&>code]:rounded [&>code]:bg-surface-secondary [&>code]:px-1 [&>code]:font-mono [&>code]:text-[0.9em]',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a href={href} className="underline text-accent-fg" target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {prepared}
+      </ReactMarkdown>
     </div>
   );
 }

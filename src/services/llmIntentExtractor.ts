@@ -16,7 +16,7 @@ CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích
 
 Schema:
 {
-  "intent": "create_expense"|"create_revenue"|"update_expense"|"update_revenue"|"delete_expense"|"delete_revenue"|"update_order_status"|"lookup"|"chat",
+  "intent": "create_expense"|"create_revenue"|"create_product"|"create_customer"|"create_platform"|"update_expense"|"update_revenue"|"update_product"|"update_customer"|"update_platform"|"delete_expense"|"delete_revenue"|"delete_product"|"delete_customer"|"delete_platform"|"update_order_status"|"lookup"|"chat",
   "amount": number|null,
   "unitPrice": number|null,
   "quantity": number|null,
@@ -122,9 +122,26 @@ Ví dụ tương đương: "qua Zalo giá 60k" = "giá 60k ở Zalo" = "60k trê
 - orderStatus ∈ new|confirmed|processing|completed|cancelled.
 - "đánh dấu đã thanh toán đơn DH-…" → update_revenue + targetHint + summaryVi đã thanh toán (hoặc update nếu app hỗ trợ).
 
+## Master data — sản phẩm / khách / kênh
+- "thêm sản phẩm Hello Kitty giá 50k" / "tạo SP móc khóa 20k" → create_product; description=tên; amount|unitPrice=đơn giá.
+- "đổi giá Hello Kitty thành 55k" / "sửa giá móc khóa 22k" → update_product; targetHint=tên; amount|unitPrice=giá mới.
+- "đổi tên SP X thành Y" → update_product; targetHint=X; description=Y.
+- "xóa sản phẩm Hello Kitty" → delete_product; targetHint.
+- "thêm khách Hoa" / "tạo khách Hùng" → create_customer; customerName.
+- "đổi tên khách Hoa thành Chị Hoa" → update_customer; targetHint=Hoa; customerName=Chị Hoa.
+- "xóa khách Hoa" → delete_customer; targetHint.
+- "thêm kênh Lazada" / "tạo kênh bán Instagram" → create_platform; platformName.
+- "đổi tên kênh X thành Y" → update_platform; targetHint=X; platformName=Y.
+- "xóa kênh Lazada" → delete_platform; targetHint.
+PHÂN BIỆT:
+- "thêm các sản phẩm:" + nhiều dòng giá = danh mục (app bulk parser / product); nếu 1 JSON: create_product không đủ — dùng summaryVi nêu "danh sách N SP".
+- "mua Hello Kitty 50k" (shop chi) = create_expense; "thêm SP Hello Kitty 50k" = create_product.
+- "bán Hello Kitty 50k" = create_revenue (không phải create_product).
+
 ## Tra cứu / chat
 - "tổng quan" / "tổng chi" / "tổng thu" / "lợi nhuận" / "phân tích" / "báo cáo tháng này/tháng trước"
 - "đơn đang chờ" / "đơn chưa thanh toán" / "công nợ" / "chi phí tháng này" / "liệt kê" / "bao nhiêu" / "thống kê"
+- "danh sách sản phẩm" / "tìm SP móc khóa" / "khách Hoa" / "các kênh bán"
 → lookup, query=ý chính ngắn.
 - "help" / "hướng dẫn" / "chào" / hỏi ngoài phạm vi → chat.
 - Không chắc ghi/sửa/xóa → chat (đừng bịa create).
@@ -132,11 +149,15 @@ Ví dụ tương đương: "qua Zalo giá 60k" = "giá 60k ở Zalo" = "60k trê
 ## Paste nhiều dòng
 - Header "thêm chi phí:" / "chi phí:" + nhiều dòng "tên + tiền" → create_expense (app có bulk parser); nếu chỉ trả 1 JSON: summaryVi liệt kê số dòng + tổng; confidence vừa phải.
 - Tương tự "thêm doanh thu:" nhiều dòng → create_revenue.
+- "thêm các sản phẩm:" / "STT Tên Đơn giá" + nhiều dòng → product catalog (app bulk); summaryVi nêu số SP.
 
 ## Missing & confidence
 - missing ∈ amount|description|customerName|platformName|targetHint|orderStatus|query|quantity.
 - create_expense: cần amount+description.
 - create_revenue: cần description + (amount|unitPrice); customerName không bắt buộc.
+- create_product: cần description + (amount|unitPrice).
+- create_customer: cần customerName.
+- create_platform: cần platformName.
 - update/delete/update_order_status: cần targetHint (mã DH-… hoặc mô tả đủ nhận diện).
 - summaryVi: 1 câu tiếng Việt đã hiểu gì (kèm kênh/SL nếu có).
 - confidence: ≥0.85 rõ; 0.5–0.7 đoán; <0.5 → chat hoặc missing đầy đủ.
