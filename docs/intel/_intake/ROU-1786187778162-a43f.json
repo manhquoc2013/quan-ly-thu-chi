@@ -1,0 +1,100 @@
+{
+  "route_id": "ROU-1786187778162-a43f",
+  "created_at": "2026-08-08T11:16:18.162Z",
+  "declared": {
+    "summary": "Thiết kế lại toàn bộ giao diện ứng dụng Quản Lý Tài Chính: theme tokens mới (Navy+Teal), sidebar layout thay thế top tabs, dark mode toggle, dashboard mới với KPI glass cards và area chart, animation system. Triển khai Wave 1 trước: tokens + layout + dark mode.",
+    "askKind": "work",
+    "boundedChange": false,
+    "goal": "software"
+  },
+  "evidence": {
+    "workspaceExists": true,
+    "vcs": {
+      "present": true,
+      "commitCount": 18,
+      "hasRemote": true,
+      "dirtyManagedPaths": [],
+      "siblingWorktrees": [],
+      "worktreeCheckpoint": false
+    },
+    "sync": {
+      "fetched": true,
+      "behindCount": 0,
+      "behindTouchesManaged": false,
+      "incomingDirtyOverlap": [],
+      "incomingAnyBotAuthor": false,
+      "checkpointBaseOrphaned": false
+    },
+    "crossBranchIdCollision": false,
+    "inputs": {
+      "canonicalCount": 0,
+      "canonicalNewestMs": 1785573611000,
+      "strategicGenreHint": false,
+      "strayOfficeDocs": []
+    },
+    "code": {
+      "manifestCount": 1,
+      "sourceFileCount": 186,
+      "newestMs": 1786187696000
+    },
+    "intel": {
+      "present": false,
+      "catalogState": "absent",
+      "tier1Complete": false,
+      "newestMs": 1786187645000,
+      "semanticMismatch": false,
+      "lineage": "unstamped"
+    },
+    "modules": {
+      "present": true,
+      "anyNonTerminal": true,
+      "allTerminal": false
+    },
+    "mono": {
+      "isMono": false,
+      "greenfieldServiceAmongMature": false
+    },
+    "ledger": {
+      "rows": [
+        {
+          "id": "M-000",
+          "staging": false,
+          "live": false
+        },
+        {
+          "id": "M-001",
+          "staging": false,
+          "claimedBy": "tab-e55affe5673db0e6",
+          "heartbeatAgeMs": 269731528,
+          "live": false
+        },
+        {
+          "id": "M-003",
+          "staging": false,
+          "live": false
+        },
+        {
+          "id": "M-006",
+          "staging": false,
+          "live": false
+        }
+      ],
+      "stagingClaimLive": false,
+      "clockSkewAheadMs": 0
+    },
+    "checkpoints": [],
+    "sessionOwnedArtifactPresent": false
+  },
+  "directive": {
+    "kind": "reenter_pipeline",
+    "pipeline": "software",
+    "rule": "R11",
+    "reason": "scaffolded pipeline exists (stages pending) — enter the orchestrate loop, no intake left to do"
+  },
+  "resolution": {
+    "dispatch": "pmo-software-project-manager",
+    "owner_role": "delivery",
+    "line": "software",
+    "reason": "re-entering the \"software\" pipeline on existing modules; no intake left to do"
+  }
+}

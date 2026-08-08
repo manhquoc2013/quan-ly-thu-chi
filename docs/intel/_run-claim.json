@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-08-02T07:26:42.710Z",
-  "last_modified_at": "2026-08-05T08:20:44.460Z",
+  "last_modified_at": "2026-08-08T11:19:18.192Z",
   "modules": {
     "M-000": {
       "depends_on": [],
@@ -22,20 +22,20 @@
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "failed",
-      "claimed_by": "tab-e55affe5673db0e6",
-      "claimed_at": "2026-08-05T07:49:15.071Z",
-      "heartbeat_at": "2026-08-05T08:20:44.460Z",
+      "status": "in_progress",
+      "claimed_by": "tab-97b91e9708d84aad",
+      "claimed_at": "2026-08-08T11:19:18.192Z",
+      "heartbeat_at": "2026-08-08T11:19:18.192Z",
       "current_stage": null,
       "started_at": "2026-08-02T07:26:46.045Z",
-      "completed_at": "2026-08-05T08:20:44.460Z",
+      "completed_at": null,
       "auto_pass_count": 0,
-      "attempt": 4,
+      "attempt": 5,
       "name": "Quản Lý Tài Chính",
       "slug": "quan-ly-thu-chi",
       "risk_path": "M",
-      "claimed_pid": null,
-      "claimed_host": null,
+      "claimed_pid": 98078,
+      "claimed_host": "Qs-MacBook-Pro.local",
       "previous_claimed_by": "tab-b10d2f03b1b36ac5",
       "reopened_at": "2026-08-05T07:34:02.638Z",
       "reopened_reason": "Scope expansion: add Groq AI provider + user-configurable AI priority ordering"
@@ -103,6 +103,16 @@
         "M-001",
         "M-001"
       ],
+      "skipped_modules": []
+    },
+    "tab-97b91e9708d84aad": {
+      "started_at": "2026-08-08T11:19:18.192Z",
+      "last_seen": "2026-08-08T11:19:18.192Z",
+      "claimed_modules": [
+        "M-001"
+      ],
+      "completed_modules": [],
+      "failed_modules": [],
       "skipped_modules": []
     }
   }

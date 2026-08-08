@@ -1,0 +1,107 @@
+{
+  "triage_id": "TRI-1786187888656-d5ac",
+  "created_at": 1786187888656,
+  "request_summary": "Thiết kế lại UI Wave 1: đổi theme tokens (Navy+Teal), sidebar layout thay top tabs, dark mode toggle, top bar mới",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/App.tsx",
+      "src/index.css",
+      "src/ui/components/StatusBar.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx",
+      "src/ui/theme/presets.ts",
+      "src/ui/theme/tokens.ts"
+    ],
+    "impact_files": [
+      "src/App.tsx",
+      "src/index.css",
+      "src/ui/components/StatusBar.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx",
+      "src/ui/theme/presets.ts",
+      "src/ui/theme/tokens.ts"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 11 edit-target files exceed the inline gate (11 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Người dùng truy cập ứng dụng qua Layout.tsx - thanh điều hướng chính và giao diện tổng thể",
+  "blast_radius": 11,
+  "done_oracle": "bun run typecheck && bun run build && kiểm tra trực quan: sidebar điều hướng 8 route, dark mode toggle hoạt động, mobile bottom tabs còn hoạt động",
+  "change_type": "architecture",
+  "seam_claims": [
+    {
+      "file": "src/index.css",
+      "line": 8,
+      "quote": "  --color-background: #EFF2F7;",
+      "source_hash": "950c6d4ed682e3dbebfba8951fa682c268b8d8540a473a5d962f6ac34147fc0c",
+      "quote_hash": "639879e2748aafc406baeafa6c8e798354686d313344eb5d4e9c07886f8b1c22",
+      "note": "Background color token defining the entire theme palette"
+    },
+    {
+      "file": "src/index.css",
+      "line": 22,
+      "quote": "  --color-accent-fg: #1565C0;",
+      "source_hash": "950c6d4ed682e3dbebfba8951fa682c268b8d8540a473a5d962f6ac34147fc0c",
+      "quote_hash": "d259d1d3b0907a4523f82c3f048519c05e49b93d8a5249af1bf5a634d5c6f9aa",
+      "note": "Primary accent color token"
+    },
+    {
+      "file": "src/ui/theme/tokens.ts",
+      "line": 7,
+      "quote": "  background:       '#EFF2F7',",
+      "source_hash": "d819bdce7a9d43584f17dccbb10d45a82de78b09ed3b730164893b3e6586a110",
+      "quote_hash": "a05cdf4baed29ed482ad66a4314a8da817993798d37346c3053902543a7e2dea",
+      "note": "JS colors export - background surface"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 28,
+      "quote": "  { label: 'Tổng quan', route: '/', tab: 'dashboard' as const },",
+      "source_hash": "601b6f30bd9549e574e955e2c0a6b3a0d31bd32b6c4de789c8dba1b4809b381d",
+      "quote_hash": "ee2466db1b4cf4ace39324d068c979be1e14da1cdf30e3a30816768ce313b88e",
+      "note": "Navigation tabs array - first tab"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 152,
+      "quote": "        className=\"shrink-0 flex items-center justify-between gap-2 px-[var(--s-md)] h-12 bg-surface border-b border-border sticky top-0 z-20 min-w-0\"",
+      "source_hash": "601b6f30bd9549e574e955e2c0a6b3a0d31bd32b6c4de789c8dba1b4809b381d",
+      "quote_hash": "d14135a2355ab62c705c82b139cd18deb0a5b1c43cb7c0ccba434f6a275daccb",
+      "note": "Current header element with top nav bar styling"
+    },
+    {
+      "file": "src/App.tsx",
+      "line": 58,
+      "quote": "            <Route element={<AuthGuard />}>",
+      "source_hash": "66c4e4db31599963f4c08d3bb7cb84c2f7c0e2fd2d99942ae8a73278175ffac8",
+      "quote_hash": "e36f17ae1cab2dff49a4f62de3753e1f9a8832b7ebc3769cd45ad8708a3be4ea",
+      "note": "Route structure wrapping Layout component"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "968cda14e4aad67d5fdad765d143aa862b251551",
+    "dirty": true,
+    "captured_at": 1786187888686
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}
