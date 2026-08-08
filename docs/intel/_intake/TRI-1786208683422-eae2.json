@@ -1,0 +1,37 @@
+{
+  "triage_id": "TRI-1786208683422-eae2",
+  "created_at": 1786208683422,
+  "request_summary": "Nâng cấp mascot SVG: full-body cat illustration chi tiết, đẹp hơn.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/components/MascotOverlay.tsx"
+    ],
+    "impact_files": [
+      "src/ui/components/MascotOverlay.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Mascot góc phải dưới",
+  "blast_radius": 1,
+  "done_oracle": "Mèo mascot SVG full-body chi tiết, giống style AI Studio. Build pass.",
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786208683451
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

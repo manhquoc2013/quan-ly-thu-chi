@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2, Phone, Mail, MapPin } from 'lucide-react';
 import type { Customer } from '@/models';
 import { useCustomerStore } from '@/store/customerStore';
 import { useRevenueStore } from '@/store/revenueStore';
+import { useUIStore } from '@/store/uiStore';
 import { getAllCustomers, deleteCustomer } from '@/services/customerService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,6 +39,16 @@ export function CustomerScreen() {
   useEffect(() => {
     getAllCustomers().finally(() => setLoading(false));
   }, []);
+
+  const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);
+  const clearRecordDetailRequest = useUIStore((s) => s.clearRecordDetailRequest);
+
+  useEffect(() => {
+    if (!recordDetailRequest || recordDetailRequest.kind !== 'customer') return;
+    const row = customers.find((c) => c.id === recordDetailRequest.id);
+    if (row) { setEditing(row); setDialogOpen(true); }
+    clearRecordDetailRequest();
+  }, [recordDetailRequest, customers, clearRecordDetailRequest]);
 
   const orderCountByCustomer = useMemo(() => {
     const map = new Map<string, number>();

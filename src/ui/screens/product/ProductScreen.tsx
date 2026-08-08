@@ -7,8 +7,10 @@ import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import type { Product } from '@/models';
 import { useProductStore } from '@/store/productStore';
 import { useRevenueStore } from '@/store/revenueStore';
-import { getAllProducts, deleteProduct } from '@/services/productService';
+import { useUIStore } from '@/store/uiStore';
+import { getAllProducts, deleteProduct, generateSkusForProducts } from '@/services/productService';
 import { formatCurrency } from '@/utils/currency';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +41,16 @@ export function ProductScreen() {
   useEffect(() => {
     getAllProducts().finally(() => setLoading(false));
   }, []);
+
+  const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);
+  const clearRecordDetailRequest = useUIStore((s) => s.clearRecordDetailRequest);
+
+  useEffect(() => {
+    if (!recordDetailRequest || recordDetailRequest.kind !== 'product') return;
+    const row = products.find((p) => p.id === recordDetailRequest.id);
+    if (row) { setEditing(row); setDialogOpen(true); }
+    clearRecordDetailRequest();
+  }, [recordDetailRequest, products, clearRecordDetailRequest]);
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -77,6 +89,30 @@ export function ProductScreen() {
     }
   }, [deleteTarget]);
 
+  const [skuBusy, setSkuBusy] = useState(false);
+
+  const missingSkuCount = useMemo(
+    () => products.filter((p) => !p.sku?.trim()).length,
+    [products],
+  );
+
+  const handleGenerateSkus = useCallback(async () => {
+    if (skuBusy) return;
+    setSkuBusy(true);
+    try {
+      const { updated, skipped } = await generateSkusForProducts({ onlyMissing: true });
+      if (updated.length === 0) {
+        toast.message('Tất cả sản phẩm đã có mã SKU');
+      } else {
+        toast.success(`Đã gán ${updated.length} SKU` + (skipped ? ` · bỏ qua ${skipped}` : ''));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không gán được SKU');
+    } finally {
+      setSkuBusy(false);
+    }
+  }, [skuBusy]);
+
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
@@ -89,6 +125,17 @@ export function ProductScreen() {
           aria-label="Tìm sản phẩm"
         />
         <span className="text-xs text-text-muted">{filtered.length} SP</span>
+        {missingSkuCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={skuBusy}
+            onClick={() => void handleGenerateSkus()}
+            title="Gán mã SKU cho sản phẩm còn thiếu"
+          >
+            <Tag /> {skuBusy ? 'Đang gán…' : `Gán SKU thiếu (${missingSkuCount})`}
+          </Button>
+        )}
         <Button
           variant="default"
           size="sm"

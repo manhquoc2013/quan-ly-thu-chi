@@ -13,7 +13,7 @@ import { useCustomerStore } from '@/store/customerStore';
 import { useProductStore } from '@/store/productStore';
 import { usePlatformStore } from '@/store/platformStore';
 import { createCustomer } from './customerService';
-import { createProduct } from './productService';
+import { createProduct, guessProductUnit } from './productService';
 import { createPlatform, getDefaultPlatformId } from './platformService';
 import type { NotifyOpts } from '@/utils/notify';
 
@@ -207,7 +207,7 @@ export async function resolveProductForOrder(
 
   if (opts?.forceCreate) {
     const created = await createProduct(
-      { name: query, defaultUnitPrice: price, unit: 'cái' },
+      { name: query, defaultUnitPrice: price, unit: guessProductUnit(query) },
       notifyOpts,
     );
     return {
@@ -248,7 +248,7 @@ export async function resolveProductForOrder(
 
   if (matches.length === 0) {
     const created = await createProduct(
-      { name: query, defaultUnitPrice: price, unit: 'cái' },
+      { name: query, defaultUnitPrice: price, unit: guessProductUnit(query) },
       notifyOpts,
     );
     return {

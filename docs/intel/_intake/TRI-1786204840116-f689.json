@@ -1,0 +1,95 @@
+{
+  "triage_id": "TRI-1786204840116-f689",
+  "created_at": 1786204840116,
+  "request_summary": "CommandPalette: click kết quả tìm kiếm mở dialog chi tiết (ProductDialog/CustomerDialog/detail revenue/edit expense) thay vì chỉ navigate tới trang danh sách.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/store/uiStore.ts",
+      "src/ui/components/CommandPalette.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx"
+    ],
+    "impact_files": [
+      "src/store/uiStore.ts",
+      "src/ui/components/CommandPalette.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "⌘K CommandPalette — người dùng tìm kiếm và click kết quả",
+  "blast_radius": 4,
+  "done_oracle": "Search sản phẩm \"Hello Kitty\" → click → mở ProductDialog. Search khách \"Hoa\" → click → mở CustomerDialog. Search đơn hàng → click → mở detail revenue. Search chi phí → click → mở dialog sửa. Build + typecheck pass.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/store/uiStore.ts",
+    "src/ui/components/CommandPalette.tsx",
+    "src/ui/screens/customer/CustomerScreen.tsx",
+    "src/ui/screens/product/ProductScreen.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/store/uiStore.ts",
+      "line": 26,
+      "quote": "export type RecordDetailKind = 'expense' | 'revenue' | 'customer' | 'product';",
+      "source_hash": "4805f1c9a019f32241d4161e6415d4c903bbe5c29cd3eb2be4b655a20f329b4c",
+      "quote_hash": "d14b0dd84ddb3c638ed6b8836eca14580ed11ab9bf1585b68701055f6bf9a645",
+      "note": "RecordDetailKind already extended — wire consumers"
+    },
+    {
+      "file": "src/ui/components/CommandPalette.tsx",
+      "line": 101,
+      "quote": "  const handleSelect = useCallback((item: Result) => {",
+      "source_hash": "5bbca5fe1ca2e536bf49cc5f2beb9ccfd9a73a9c0fb743c93a032094b0920dc7",
+      "quote_hash": "4db6b26a8147ae256539d1209fb1e2f690396966b4bab857bd9088c2987a53cd",
+      "note": "Search result click handler — replace navigate with requestRecordDetail"
+    },
+    {
+      "file": "src/ui/components/CommandPalette.tsx",
+      "line": 103,
+      "quote": "    if (item.type === 'nav' && item.route) navigate(item.route);",
+      "source_hash": "5bbca5fe1ca2e536bf49cc5f2beb9ccfd9a73a9c0fb743c93a032094b0920dc7",
+      "quote_hash": "4de0c129eb7646414d2027acbe4c3eb0df91f8e6d5e79f04193d8281e76f5fa4",
+      "note": "Nav items keep navigate; data items switch to requestRecordDetail"
+    },
+    {
+      "file": "src/ui/screens/customer/CustomerScreen.tsx",
+      "line": 8,
+      "quote": "import { useCustomerStore } from '@/store/customerStore';",
+      "source_hash": "f327b2bd2cace64946d6a3bb70298bba7b324ecc7d042286196f43185372bde9",
+      "quote_hash": "6ffe09d76a62b065d0fd37835b940eb8011f9f51fee628e41f14b3e5f5e5e088",
+      "note": "Add useUIStore import for recordDetailRequest listener"
+    },
+    {
+      "file": "src/ui/screens/product/ProductScreen.tsx",
+      "line": 8,
+      "quote": "import { useProductStore } from '@/store/productStore';",
+      "source_hash": "1c732d4c9aea3349300127e3b0ebf6b795f90e82dbe2724b0eda9a7395c6e7d2",
+      "quote_hash": "987a9d664f1db7833b9a69234d1975f7c393e9fe6e7afaa9826a4a0921bdd5ce",
+      "note": "Add useUIStore import for recordDetailRequest listener"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786204687017-ccbe",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786204840149
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

@@ -8,6 +8,7 @@ import { getAllCustomers } from '@/services/customerService';
 import { getAllProducts } from '@/services/productService';
 import { getAllPlatforms } from '@/services/platformService';
 import { initAdminAccount } from '@/services/authService';
+import { startRealtimeSync } from '@/services/realtimeSync';
 
 let bootstrapped = false;
 let bootstrapPromise: Promise<void> | null = null;
@@ -31,6 +32,7 @@ export function bootstrapAppData(): Promise<void> {
     try {
       await initAdminAccount();
       await hydrateStores();
+      startRealtimeSync();
       bootstrapped = true;
     } catch (err) {
       console.error('Bootstrap data failed:', err);

@@ -1,0 +1,56 @@
+{
+  "triage_id": "TRI-1786206735680-5e5a",
+  "created_at": 1786206735680,
+  "request_summary": "Fix 5 type errors: thêm 'openrouter' vào local source types trong llmBulkDraftExtractor, llmIntentExtractor, AIChatScreen, ChatPanel, và thêm openrouter_api_key vào UserSettingsRow.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/syncEngine.ts",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx"
+    ],
+    "impact_files": [
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/syncEngine.ts",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Build pipeline — các file consumer của LlmSource/ChatReplySource cần được cập nhật sau khi OpenRouter task thêm 'openrouter'",
+  "blast_radius": 5,
+  "done_oracle": "tsc --noEmit pass 0 errors. tất cả file có local type source được thêm 'openrouter'.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/services/llmBulkDraftExtractor.ts",
+    "src/services/llmIntentExtractor.ts",
+    "src/services/syncEngine.ts",
+    "src/ui/screens/ai/AIChatScreen.tsx",
+    "src/ui/screens/ai/ChatPanel.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786206592127-8002",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786206735714
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

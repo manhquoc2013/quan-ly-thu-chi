@@ -25,7 +25,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'ai';
   text: string;
-  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
@@ -136,7 +136,11 @@ export function ChatPanel() {
           createdRecord: result.createdRecord,
         },
       ]);
-      if (result.text.startsWith('✅')) {
+      if (result.navigateTo) {
+        setFabOpen(false);
+        navigate(result.navigateTo);
+      }
+      if (result.text.startsWith('✅') || result.text.includes('✅')) {
         void getAllExpenses();
         void getAllRevenues();
       }
@@ -260,17 +264,7 @@ export function ChatPanel() {
   const QUICK_ACTIONS = ['Phân tích chi phí', 'Tổng quan tháng', 'Dự báo'] as const;
 
   return (
-    <>
-      <div
-        className="fixed inset-0 bg-black/20 z-40"
-        onClick={toggleFab}
-        aria-hidden="true"
-      />
-      <div
-        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-background shadow-dialog flex flex-col"
-        role="dialog"
-        aria-label="AI Chat Panel"
-      >
+    <div className="flex flex-col h-full bg-background" role="dialog" aria-label="AI Chat Panel">
         <div className="flex items-center justify-between px-[var(--s-md)] py-[var(--s-sm)] border-b border-border">
           <div className="flex items-center gap-[var(--s-xs)]">
             <button
@@ -292,7 +286,7 @@ export function ChatPanel() {
               <Plus size={14} />
             </button>
             <span className="text-sm">🤖</span>
-            <h3 className="text-sm font-semibold text-text-primary">AI Assistant</h3>
+            <h3 className="text-sm font-semibold text-text-primary">🐱 Mèo Lucky</h3>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -534,6 +528,5 @@ export function ChatPanel() {
           </>
         )}
       </div>
-    </>
   );
 }

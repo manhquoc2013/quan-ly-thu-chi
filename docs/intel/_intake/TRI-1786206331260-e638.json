@@ -1,0 +1,107 @@
+{
+  "triage_id": "TRI-1786206331260-e638",
+  "created_at": 1786206331260,
+  "request_summary": "Multiple fixes: OrderDialog pickProduct, AuthGuard cat+retry, sidebar CSS, openrouter type errors.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/index.css",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/syncEngine.ts",
+      "src/ui/components/AuthGuard.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/index.css",
+      "src/services/llmBulkDraftExtractor.ts",
+      "src/services/llmIntentExtractor.ts",
+      "src/services/syncEngine.ts",
+      "src/ui/components/AuthGuard.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/ai/AIChatScreen.tsx",
+      "src/ui/screens/ai/ChatPanel.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 9 edit-target files exceed the inline gate (9 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tạo đơn hàng / reload trang / dark-light mode",
+  "blast_radius": 9,
+  "done_oracle": "(1) Chọn SP auto-fill giá catalog. (2) Mèo nhảy sync chữ. (3) Sidebar light/dark. (4) Fix openrouter type errors. Build pass.",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/revenue/OrderDialog.tsx",
+      "line": 314,
+      "quote": "      // Suggest catalog price only when row has no price yet",
+      "source_hash": "44c3af79510084d98dae0d4172a98b610c87e08d8eeb67fef035e36e4febaf47",
+      "quote_hash": "c69135e048e16570fe6e914668a3642c4ce99680ee779efb08bcf7bc0b8aa51f",
+      "note": "Change to always fill catalog price"
+    },
+    {
+      "file": "src/ui/components/AuthGuard.tsx",
+      "line": 165,
+      "quote": "export function AuthGuard({ children }: { children?: ReactNode }) {",
+      "source_hash": "17a4f07bef3a6d967a3b633060b616ffc2ce16a27c22d86ef4e53913e3d1fd76",
+      "quote_hash": "c285cf9919d07a61f63d88e01ad239098210ca6d1467350d3ce0655aa5d3e598",
+      "note": "Fix hard reload — add retry for getSession"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 157,
+      "quote": "className=\"text-sm font-semibold text-sidebar-fg truncate overflow-hidden whitespace-nowrap\">Quản Lý Tài Chính</span>",
+      "source_hash": "56f48d8c88060238ab6053f7dfd55de849e5c11fd536cb00dff446dc480fdceb",
+      "quote_hash": "ac892574efdd89695ac3398dd0befb38bd125a54de7e8a9c6c517137902cebd8",
+      "note": "Already fixed sidebar title color"
+    },
+    {
+      "file": "src/index.css",
+      "line": 98,
+      "quote": "  --color-sidebar-bg: #F1F5F9;",
+      "source_hash": "b2b27ae93a3bb2f6fa2a6882cc8e974e751e25df717c29bb76a4f3d036c05d98",
+      "quote_hash": "30bf2893c1573580d2f260b2d866db59d5b92d475eabe3b082a42a905282a18b",
+      "note": "Already fixed sidebar light mode colors"
+    },
+    {
+      "file": "src/ui/screens/ai/ChatPanel.tsx",
+      "line": 28,
+      "quote": "  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';",
+      "source_hash": "bbc4d9b5e19a913ff2a8417fbe57637660f766a64cf33ae60ae1fa52a9cc0f9a",
+      "quote_hash": "7fc5400963326573bf67c1ff8282c89c9022a29a15afbce8d76c4db6e04a70f8",
+      "note": "Add 'openrouter' to source type"
+    },
+    {
+      "file": "src/services/llmBulkDraftExtractor.ts",
+      "line": 55,
+      "quote": "async function callLlm(prompt: string): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' } | null> {",
+      "source_hash": "d5f260cfa166c87b350e8276683c955243f3389ff4c626215152d9b01369ad5c",
+      "quote_hash": "869d07f32f41bc264d4813316a10a2727e008ce1871d98b9c0c885dbb46e4444",
+      "note": "Add 'openrouter' to source type"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786206019074-34f2",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786206331295
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

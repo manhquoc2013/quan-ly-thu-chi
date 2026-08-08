@@ -14,6 +14,7 @@ import {
 import { useExpenseStore } from "@/store/expenseStore";
 import { useRevenueStore } from "@/store/revenueStore";
 import { useReportStore } from "@/store/reportStore";
+import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd, chartTooltipFormatter } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
@@ -21,6 +22,7 @@ import { allCashEvents, sumCashEventsInRange } from "@/utils/revenueMetrics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function ProfitReport() {
+  const { isDark } = useTheme();
   const expenses = useExpenseStore((s) => s.records);
   const revenues = useRevenueStore((s) => s.records);
   const { from, to } = useReportStore((s) => s.dateRange);
@@ -121,7 +123,7 @@ export function ProfitReport() {
                 <ComposedChart data={byMonth}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="#E0E3E8"
+                    stroke={isDark ? '#334155' : '#CBD5E1'}
                     vertical={false}
                   />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -135,14 +137,14 @@ export function ProfitReport() {
                   <Bar
                     dataKey="thu"
                     name="Thu"
-                    fill="#059669"
+                    fill={isDark ? '#34D399' : '#059669'}
                     radius={[4, 4, 0, 0]}
                     maxBarSize={28}
                   />
                   <Bar
                     dataKey="chi"
                     name="Chi"
-                    fill="#DC2626"
+                    fill={isDark ? '#F87171' : '#DC2626'}
                     radius={[4, 4, 0, 0]}
                     maxBarSize={28}
                   />
@@ -150,7 +152,7 @@ export function ProfitReport() {
                     type="monotone"
                     dataKey="loi"
                     name="Lãi"
-                    stroke="#2563EB"
+                    stroke={isDark ? '#60A5FA' : '#2563EB'}
                     strokeWidth={2}
                   />
                 </ComposedChart>

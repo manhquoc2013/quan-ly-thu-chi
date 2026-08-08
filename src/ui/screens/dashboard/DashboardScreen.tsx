@@ -19,6 +19,7 @@ import { useRevenueStore } from '@/store/revenueStore';
 import { useCustomerStore } from '@/store/customerStore';
 import { formatCurrency } from '@/utils/currency';
 import { bootstrapAppData } from '@/services/bootstrap';
+import { useTheme } from '@/hooks/useTheme';
 import { formatAxisVnd, chartTooltipFormatter } from '@/utils/chartFormat';
 import {
   sumPaidRevenue,
@@ -69,6 +70,7 @@ function orderSummary(order: Revenue): string {
 }
 
 export function DashboardScreen() {
+  const { isDark } = useTheme();
   const expenses = useExpenseStore((s) => s.records);
   const revenues = useRevenueStore((s) => s.records);
   const customers = useCustomerStore((s) => s.customers);
@@ -240,10 +242,10 @@ export function DashboardScreen() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E0E3E8" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#CBD5E1'} vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: isDark ? '#94A3B8' : '#64748B' }} axisLine={false} tickLine={false} />
                   <YAxis
-                    tick={{ fontSize: 11, fill: '#64748B' }}
+                    tick={{ fontSize: 11, fill: isDark ? '#94A3B8' : '#64748B' }}
                     axisLine={false}
                     tickLine={false}
                     width={48}
@@ -253,16 +255,16 @@ export function DashboardScreen() {
                     formatter={chartTooltipFormatter as never}
                     labelFormatter={(label) => `Ngày ${label}`}
                     contentStyle={{
-                      background: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
+                      background: isDark ? '#1E293B' : '#FFFFFF',
+                      border: `1px solid ${isDark ? '#334155' : '#CBD5E1'}`,
                       borderRadius: 8,
-                      color: '#1E293B',
+                      color: isDark ? '#F1F5F9' : '#0F172A',
                       fontSize: 12,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                      boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.08)',
                     }}
                   />
-                  <Bar dataKey="thu" name="Thu" fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey="chi" name="Chi" fill="#DC2626" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="thu" name="Thu" fill={isDark ? '#34D399' : '#059669'} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="chi" name="Chi" fill={isDark ? '#F87171' : '#DC2626'} radius={[4, 4, 0, 0]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>
             )}

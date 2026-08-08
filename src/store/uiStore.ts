@@ -23,7 +23,7 @@ export interface DialogConfig {
   dismissible?: boolean;
 }
 
-export type RecordDetailKind = 'expense' | 'revenue';
+export type RecordDetailKind = 'expense' | 'revenue' | 'customer' | 'product';
 
 interface UIState {
   sidebarOpen: boolean;

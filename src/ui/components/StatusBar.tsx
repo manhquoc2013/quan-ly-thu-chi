@@ -24,20 +24,20 @@ const statusConfig: Record<
   { label: string; dotColor: string }
 > = {
   synced: {
-    label: 'Synced',
-    dotColor: '#065F46',
-  },
-  syncing: {
-    label: 'Syncing…',
-    dotColor: '#1565C0',
-  },
-  error: {
-    label: 'Sync error',
-    dotColor: '#C62828',
-  },
-  offline: {
-    label: 'Offline',
-    dotColor: '#64748B',
+   label: 'Synced',
+    dotColor: 'var(--color-success-fg)',
+ },
+ syncing: {
+   label: 'Syncing…',
+    dotColor: 'var(--color-accent-fg)',
+ },
+ error: {
+   label: 'Sync error',
+    dotColor: 'var(--color-danger-fg)',
+ },
+ offline: {
+   label: 'Offline',
+    dotColor: 'var(--color-text-muted)',
   },
 };
 

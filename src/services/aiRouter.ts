@@ -31,6 +31,7 @@ import {
   mergeIntent,
   parseEntityPickIndex,
   draftToCreateIntent,
+  fillMissingSlots,
 } from './chatIntent';
 import {
   extractChatIntent,
@@ -46,12 +47,16 @@ import {
   isClearBulkPaste,
 } from './textDraftParser';
 import { parseOrderTableDrafts } from './orderTableParser';
-import { executeChatIntent, executeLegacyCreate } from './chatTools';
+import {
+  executeChatIntent,
+  executeLegacyCreate,
+} from './chatTools';
 import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
+import { parseProductUnitUpdateMessage, looksLikeGenerateSkuMessage } from './productService';
 
-export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
+export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'groq' | 'gemini' | 'tesseract';
 
 /** When LLM returns prose/chat, rebuild create intents from split segments via local parsers. */
 function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
@@ -76,7 +81,7 @@ function isRunnableCreate(intent: ChatIntent): boolean {
 }
 
 function isCloudSource(source: string | undefined): boolean {
-  return source === 'cloud' || source === 'kilo' || source === 'gemini';
+  return source === 'cloud' || source === 'kilo' || source === 'openrouter' || source === 'gemini';
 }
 
 export interface ChatAction {
@@ -437,6 +442,7 @@ async function runIntentTool(
   text: string;
   source: ChatReplySource;
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
+  navigateTo?: string;
 }> {
   const result = await executeChatIntent(intent, opts);
   if (result.needDeleteConfirm) {
@@ -459,9 +465,10 @@ async function runIntentTool(
   }
   setPending(null);
   return {
-    text: `✅ ${result.message}`,
+    text: `✅ ${result.message}`.replace(/^✅ ✅/, '✅'),
     source: 'local',
     createdRecord: result.createdRecord,
+    navigateTo: result.navigateTo,
   };
 }
 
@@ -582,6 +589,7 @@ export const aiRouter = {
     action?: ChatAction;
     drafts?: DraftRecord[];
     createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
+    navigateTo?: string;
   }> {
     const trimmed = message.trim();
     if (!trimmed) {
@@ -672,6 +680,80 @@ export const aiRouter = {
       const out = await runIntentTool(merged);
       addToHistory(trimmed, out.text);
       return out;
+    }
+
+    // ── 0b. Local: đổi/sửa đơn vị sản phẩm (không cần LLM) ───────────────
+    const unitUpdate = parseProductUnitUpdateMessage(trimmed);
+    if (unitUpdate) {
+      const intent = fillMissingSlots({
+        intent: 'update_product',
+        targetHint: unitUpdate.targetHint,
+        unit: unitUpdate.unit,
+        confidence: 0.95,
+        missing: [],
+        summaryVi: `đổi đơn vị ${unitUpdate.targetHint} → ${unitUpdate.unit}`,
+      });
+      const out = await runIntentTool(intent);
+      addToHistory(trimmed, out.text);
+      return out;
+    }
+
+    // ── 0c. Local: mở màn hình ───────────────────────────────────────────
+    const navMatch = /^(?:mở|vào|đi\s*(?:tới|đến)|chuyển\s*(?:sang|tới))\s+(.+)$/i.exec(trimmed);
+    if (navMatch) {
+      const intent = fillMissingSlots({
+        intent: 'navigate',
+        query: navMatch[1]!.trim(),
+        confidence: 0.95,
+        missing: [],
+      });
+      const out = await runIntentTool(intent);
+      addToHistory(trimmed, out.text);
+      return out;
+    }
+
+    // ── 0d. Local: đánh dấu đã thanh toán đơn ───────────────────────────
+    const paidMatch =
+      /(?:đánh\s*dấu\s*)?(?:đã\s*)?thanh\s*toán(?:\s+đơn)?\s+(.+)/i.exec(trimmed) ||
+      /đơn\s+(.+?)\s+(?:đã\s*)?thanh\s*toán/i.exec(trimmed);
+    if (paidMatch && !/thêm|bán|mua|chi\b/i.test(trimmed)) {
+      const intent = fillMissingSlots({
+        intent: 'update_revenue',
+        targetHint: paidMatch[1]!.trim(),
+        paymentStatus: 'paid',
+        confidence: 0.92,
+        missing: [],
+        summaryVi: `đánh dấu đã TT ${paidMatch[1]!.trim()}`,
+      });
+      const out = await runIntentTool(intent);
+      addToHistory(trimmed, out.text);
+      return out;
+    }
+
+    // ── 0e. Local: tạo mã SKU hàng loạt ──────────────────────────────────
+    if (looksLikeGenerateSkuMessage(trimmed)) {
+      const onlyMissing = !/ghi\s*đè|đổi\s*hết|tạo\s*lại|force|overwrite/i.test(trimmed);
+      const { generateSkusForProducts } = await import('./productService');
+      const { updated, skipped } = await generateSkusForProducts({
+        onlyMissing,
+        silent: true,
+      });
+      const lines =
+        updated.length === 0
+          ? ['ℹ️ Tất cả sản phẩm đã có mã SKU.']
+          : [
+              `✅ Đã gán **${updated.length}** mã SKU${onlyMissing ? ' (chỉ SP thiếu)' : ''}.`,
+              skipped ? `⏭️ Bỏ qua ${skipped} SP đã có SKU.` : '',
+              '',
+              '🏷️ **Chi tiết:**',
+              ...updated
+                .slice(0, 30)
+                .map((p, i) => `${i + 1}. **${p.name}** → \`${p.sku}\``),
+              updated.length > 30 ? `… và ${updated.length - 30} SP khác` : '',
+            ];
+      const text = lines.filter(Boolean).join('\n');
+      addToHistory(trimmed, text);
+      return { text, source: 'local' };
     }
 
     // ── 1. Structured paste only (order table / multi-line bulk list) ────
@@ -813,21 +895,29 @@ export const aiRouter = {
       lower === 'cách dùng' ||
       lower === 'giúp đỡ'
     ) {
-      const helpText = `📋 **Trợ lý Tài Chính — hướng dẫn**
+      const helpText = `📋 **Mèo Lucky — hướng dẫn**
 
-**Ghi sổ qua AI** (Gemini/WebLLM — mọi câu chat đều đi qua LLM):
-• \`cà phê 25k\` · \`bán cho Hoa 3 cái kẹp tóc giá 40k\`
-• Câu tự nhiên: *"chi tiền tiếp khách hôm nay khoảng 200 nghìn"*
-• Nhiều dòng / paste Excel: \`thêm chi phí:\\nLen SS5 798.000₫\\nBông 98.000₫\`
-• Danh mục SP: \`thêm các sản phẩm:\\nSTT Tên Đơn giá\\n1 Móc khóa 20.000đ\`
-• Master data: \`thêm khách Hoa\` · \`đổi giá Hello Kitty 55k\` · \`danh sách sản phẩm\`
+**💸 Chi / 🧾 Thu**
+• \`cà phê 25k\` · \`nhập len 500k\`
+• \`bán cho Hoa 3 kẹp tóc giá 90k, cọc 30k, ship 11k ở Zalo\`
+• Paste: \`thêm chi phí:\` / \`thêm doanh thu:\` + mỗi dòng tên + tiền
 
-**Sửa / xóa / tra cứu:**
-• *"xóa chi phí nhậu"*, *"đổi đơn DH-… sang hoàn thành"*
-• *"tổng quan"*, *"đơn đang chờ"*, *"chi phí tháng này"*
-• Thiếu thông tin → bot hỏi lại; xóa cần gõ **xác nhận**
+**🏷️ Sản phẩm · 👤 Khách · 📣 Kênh**
+• \`thêm các sản phẩm:\` + STT / Đơn giá
+• \`thêm SP Hello Kitty 50k\` · \`đổi giá …\` · \`đổi đơn vị thú thành con\`
+• \`thêm khách Hoa\` · \`thêm kênh Lazada\`
 
-**File:** ảnh/PDF/CSV/XLS → preview → Xác nhận.`;
+**🔍 Tra cứu · ➡️ Điều hướng**
+• \`tổng quan\` · \`công nợ\` · \`top khách\` · \`theo kênh\`
+• \`mở chi phí\` · \`mở sản phẩm\` · \`mở cài đặt\`
+
+**✏️ Sửa / 🗑️ Xóa / 💳 Đơn**
+• \`đánh dấu đã thanh toán đơn DH-…\` · \`đổi đơn … sang hoàn thành\`
+• \`xóa chi phí …\` (gõ **xác nhận**)
+• \`đổi đơn vị thú thành con\` · \`tạo mã SKU cho tất cả sản phẩm\`
+
+**⚙️ Mật khẩu / API / sync:** \`mở cài đặt\`
+**📎 File:** ảnh / PDF / CSV / XLS → xem trước → Xác nhận.`;
       addToHistory(trimmed, helpText);
       return { text: helpText, source: 'local' };
     }
@@ -888,6 +978,7 @@ export const aiRouter = {
 
       if (
         intent.intent === 'lookup' ||
+        intent.intent === 'navigate' ||
         intent.intent.startsWith('create_') ||
         intent.intent.startsWith('update_') ||
         intent.intent.startsWith('delete_')

@@ -16,6 +16,8 @@ import { useAuthStore } from '@/store/authStore';
 import { geminiService } from '@/services/geminiService';
 import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
+import { openRouterService } from '@/services/openRouterService';
+import { useTheme, type ThemeMode } from '@/hooks/useTheme';
 import { type LlmSource, AI_PRIORITY_DEFAULT, llmSourceLabel } from '@/services/llmCall';
 import { reloadAppData } from '@/services/bootstrap';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
@@ -55,10 +57,18 @@ import {
   GripVertical,
   Zap,
   CloudUpload,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+  Save,
+  Trash2,
+  LogIn,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 export function SettingsScreen() {
+  const { mode, setTheme } = useTheme();
   const {
     geminiApiKey,
     geminiConfigured,
@@ -74,6 +84,11 @@ export function SettingsScreen() {
     enableGroq,
     setGroqApiKey,
     setEnableGroq,
+    openRouterApiKey,
+    openRouterConfigured,
+    enableOpenRouter,
+    setOpenRouterApiKey,
+    setEnableOpenRouter,
     aiPriority,
     setAiPriority,
     householdId,
@@ -89,6 +104,8 @@ export function SettingsScreen() {
   const [testingKilo, setTestingKilo] = useState(false);
   const [testingGroq, setTestingGroq] = useState(false);
   const [groqKeyInput, setGroqKeyInput] = useState(groqApiKey ?? '');
+  const [openRouterKeyInput, setOpenRouterKeyInput] = useState(openRouterApiKey ?? '');
+  const [testingOpenRouter, setTestingOpenRouter] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const supabaseConfigured = isSupabaseConfigured();
@@ -136,6 +153,8 @@ export function SettingsScreen() {
       switch (src) {
         case 'kilo':
           return enableKiloFree !== false;
+        case 'openrouter':
+          return enableOpenRouter !== false && openRouterConfigured;
         case 'groq':
           return enableGroq !== false && groqConfigured;
         case 'gemini':
@@ -146,7 +165,7 @@ export function SettingsScreen() {
           return false;
       }
     });
-  }, [aiPriority, enableKiloFree, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
+  }, [aiPriority, enableKiloFree, enableOpenRouter, openRouterConfigured, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
 
   useEffect(() => {
     setApiKey(geminiApiKey ?? '');
@@ -155,6 +174,10 @@ export function SettingsScreen() {
   useEffect(() => {
     setGroqKeyInput(groqApiKey ?? '');
   }, [groqApiKey]);
+
+  useEffect(() => {
+    setOpenRouterKeyInput(openRouterApiKey ?? '');
+  }, [openRouterApiKey]);
 
   async function handleCreateHousehold(): Promise<void> {
     setCloudBusy(true);
@@ -351,6 +374,52 @@ export function SettingsScreen() {
     toast.message('Đã xóa Groq API key');
   }
 
+  // ── OpenRouter handlers ──
+  function handleSaveOpenRouterKey(): void {
+    const trimmed = openRouterKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập OpenRouter API key');
+      return;
+    }
+    setOpenRouterApiKey(trimmed);
+    openRouterService.configure(trimmed);
+    queueUserSettingsSync();
+    toast.success('Đã lưu OpenRouter API key (đồng bộ cloud khi online)');
+  }
+
+  async function handleTestOpenRouter(): Promise<void> {
+    const trimmed = openRouterKeyInput.trim();
+    if (!trimmed) {
+      toast.error('Vui lòng nhập API key trước khi kiểm tra');
+      return;
+    }
+    setTestingOpenRouter(true);
+    try {
+      openRouterService.configure(trimmed);
+      const result = await openRouterService.testConnection();
+      if (result.ok) {
+        setOpenRouterApiKey(trimmed);
+        queueUserSettingsSync();
+        toast.success(`OpenRouter hoạt động tốt — ${result.detail}`);
+      } else {
+        toast.error(`Kiểm tra thất bại: ${result.detail}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không kết nối được OpenRouter';
+      toast.error(`Kiểm tra thất bại: ${msg}`);
+    } finally {
+      setTestingOpenRouter(false);
+    }
+  }
+
+  function handleClearOpenRouterKey(): void {
+    setOpenRouterApiKey(null);
+    openRouterService.disconnect();
+    setOpenRouterKeyInput('');
+    queueUserSettingsSync();
+    toast.message('Đã xóa OpenRouter API key');
+  }
+
   // ── AI Priority handlers ──
   function swapAdjacent(order: LlmSource[], i: number): LlmSource[] {
     const result = [...order];
@@ -420,7 +489,7 @@ export function SettingsScreen() {
                   </span>
                 </div>
               )}
-              <div className="flex flex-wrap gap-[var(--s-xs)] pt-2">
+              <div className="flex flex-wrap gap-[var(--s-xs)] pt-2 justify-end">
                 <Button variant="secondary" size="sm" onClick={() => setProfileOpen(true)}>
                   <Pencil className="mr-1.5 h-3.5 w-3.5" />
                   Sửa thông tin
@@ -496,7 +565,7 @@ export function SettingsScreen() {
                     onChange={(e) => setHouseholdNameInput(e.target.value)}
                   />
                   <Button disabled={cloudBusy} onClick={() => void handleCreateHousehold()}>
-                    Tạo sổ chung
+                    <Users className="mr-2 h-4 w-4" />Tạo sổ chung
                   </Button>
                   <Label htmlFor="invite-in">Hoặc nhập mã mời</Label>
                   <Input
@@ -506,7 +575,7 @@ export function SettingsScreen() {
                     placeholder="ABCD1234"
                   />
                   <Button variant="secondary" disabled={cloudBusy || !inviteCodeInput} onClick={() => void handleRedeemInvite()}>
-                    Tham gia bằng mã
+                    <LogIn className="mr-2 h-4 w-4" />Tham gia bằng mã
                   </Button>
                 </div>
               )}
@@ -526,21 +595,23 @@ export function SettingsScreen() {
                     <span className="text-xs text-text-primary truncate max-w-[60%]">{supabaseEmail}</span>
                   </div>
                   {householdRole === 'owner' && (
-                    <Button variant="secondary" disabled={cloudBusy} onClick={() => void handleCreateInviteCode()}>
-                      Tạo mã mời (72h)
-                    </Button>
+                    <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
+                      <Button variant="secondary" disabled={cloudBusy} onClick={() => void handleCreateInviteCode()}>
+                        <Key className="mr-2 h-4 w-4" />Tạo mã mời (72h)
+                      </Button>
+                      <div className="flex items-center gap-[var(--s-xs)] ml-auto">
+                        <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePullCloud()}>
+                          <RefreshCw className="mr-2 h-4 w-4" />Tải từ cloud
+                        </Button>
+                        <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePushLocalToCloud()}>
+                          <Download className="mr-2 h-4 w-4" />Đẩy local lên
+                        </Button>
+                      </div>
+                    </div>
                   )}
                   {lastInviteCode && (
                     <p className="text-xs font-mono bg-muted rounded-field px-2 py-1.5">Mã: {lastInviteCode}</p>
                   )}
-                  <div className="flex flex-wrap gap-[var(--s-xs)]">
-                    <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePullCloud()}>
-                      <RefreshCw className="mr-2 h-4 w-4" />Tải từ cloud
-                    </Button>
-                    <Button variant="outline" disabled={cloudBusy} onClick={() => void handlePushLocalToCloud()}>
-                      <Download className="mr-2 h-4 w-4" />Đẩy local lên
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>
@@ -679,8 +750,10 @@ export function SettingsScreen() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
-                <Button onClick={handleSaveGroqKey}>Lưu API key</Button>
+              <div className="flex items-center gap-[var(--s-xs)] flex-wrap justify-end">
+                <Button onClick={handleSaveGroqKey}>
+                  <Save className="mr-2 h-4 w-4" />Lưu API key
+                </Button>
                 <Button
                   variant="secondary"
                   disabled={!groqKeyInput.trim() || testingGroq}
@@ -692,7 +765,107 @@ export function SettingsScreen() {
                 </Button>
                 {groqConfigured && (
                   <Button variant="destructive" onClick={handleClearGroqKey}>
-                    Xóa API key
+                    <Trash2 className="mr-2 h-4 w-4" />Xóa API key
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="OpenRouter AI settings">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-accent-fg" />
+                <CardTitle>OpenRouter</CardTitle>
+              </div>
+              {openRouterConfigured ? (
+                <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1">
+                  <CheckCircle size={12} className="inline" aria-hidden="true" />
+                  Đã cấu hình
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1">
+                  <XCircle size={12} className="inline" aria-hidden="true" />
+                  Chưa cấu hình
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-[var(--s-md)]">
+              <p className="text-xs text-text-muted">
+                Nhập API key từ{' '}
+                <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-fg underline"
+                >
+                  OpenRouter Keys
+                </a>
+                {' '}rồi bấm Lưu hoặc Kiểm tra. Tự động thử 4 model free (Gemini Flash, Llama 4, Qwen3, DeepSeek V3).
+              </p>
+
+              <div className="flex items-center gap-[var(--s-xs)]">
+                <input
+                  type="password"
+                  value={openRouterKeyInput}
+                  onChange={(e) => setOpenRouterKeyInput(e.target.value)}
+                  placeholder="Nhập OpenRouter API key..."
+                  className={
+                    'flex-1 bg-input-bg border border-input-border ' +
+                    'rounded-field px-[var(--s-sm)] py-1 text-xs ' +
+                    'text-text-primary placeholder:text-input-placeholder ' +
+                    'focus:outline-none focus:ring-2 focus:ring-input-focus-ring'
+                  }
+                  aria-label="OpenRouter API key"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-primary">Bật OpenRouter</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={enableOpenRouter !== false}
+                  onClick={() => {
+                    setEnableOpenRouter(!(enableOpenRouter !== false));
+                    queueUserSettingsSync();
+                  }}
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ' +
+                    (enableOpenRouter !== false ? 'bg-accent-fg' : 'bg-input-bg border-input-border')
+                  }
+                >
+                  <span
+                    className={
+                      'pointer-events-none inline-block size-4 rounded-full bg-white shadow transform transition-transform ' +
+                      (enableOpenRouter !== false ? 'translate-x-4' : 'translate-x-0')
+                    }
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-[var(--s-xs)] flex-wrap justify-end">
+                <Button onClick={handleSaveOpenRouterKey}>
+                  <Save className="mr-2 h-4 w-4" />Lưu API key
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={!openRouterKeyInput.trim() || testingOpenRouter}
+                  onClick={() => void handleTestOpenRouter()}
+                >
+                  {testingOpenRouter
+                    ? <><Loader2 className="animate-spin mr-2 h-4 w-4" />Đang kiểm tra…</>
+                    : <><SettingsIcon className="mr-2 h-4 w-4" />Kiểm tra</>}
+                </Button>
+                {openRouterConfigured && (
+                  <Button variant="destructive" onClick={handleClearOpenRouterKey}>
+                    <Trash2 className="mr-2 h-4 w-4" />Xóa API key
                   </Button>
                 )}
               </div>
@@ -840,8 +1013,10 @@ export function SettingsScreen() {
                 />
               </div>
 
-              <div className="flex items-center gap-[var(--s-xs)] flex-wrap">
-                <Button onClick={handleSaveGeminiKey}>Lưu API key</Button>
+              <div className="flex items-center gap-[var(--s-xs)] flex-wrap justify-end">
+                <Button onClick={handleSaveGeminiKey}>
+                  <Save className="mr-2 h-4 w-4" />Lưu API key
+                </Button>
                 <Button
                   variant="secondary"
                   disabled={!apiKey.trim() || testing}
@@ -853,7 +1028,7 @@ export function SettingsScreen() {
                 </Button>
                 {geminiConfigured && (
                   <Button variant="destructive" onClick={handleClearGeminiKey}>
-                    Xóa API key
+                    <Trash2 className="mr-2 h-4 w-4" />Xóa API key
                   </Button>
                 )}
               </div>
@@ -900,6 +1075,48 @@ export function SettingsScreen() {
                   />
                 </button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section aria-label="Theme">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-accent-fg" />
+              <CardTitle>Giao diện</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-text-muted mb-3">
+              Chọn chế độ sáng/tối hoặc tự động theo hệ thống.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: 'light' as ThemeMode, label: 'Sáng', icon: Sun },
+                { value: 'dark' as ThemeMode, label: 'Tối', icon: Moon },
+                { value: 'system' as ThemeMode, label: 'Hệ thống', icon: Monitor },
+              ]).map((opt) => {
+                const Icon = opt.icon;
+                const active = mode === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTheme(opt.value)}
+                    className={[
+                      'flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border transition-all duration-150',
+                      active
+                        ? 'border-accent-fg bg-accent-bg text-accent-fg'
+                        : 'border-border bg-surface hover:bg-surface-hover text-text-secondary',
+                    ].join(' ')}
+                  >
+                    <Icon size={20} />
+                    <span className="text-xs font-medium">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

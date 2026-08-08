@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-08-02T07:26:42.710Z",
-  "last_modified_at": "2026-08-08T11:39:22.129Z",
+  "last_modified_at": "2026-08-08T16:42:35.343Z",
   "modules": {
     "M-000": {
       "depends_on": [],
@@ -22,21 +22,21 @@
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-97b91e9708d84aad",
-      "claimed_at": "2026-08-08T11:19:18.192Z",
-      "heartbeat_at": "2026-08-08T11:39:22.129Z",
+      "status": "skipped",
+      "claimed_by": "tab-0c305877961d0082",
+      "claimed_at": "2026-08-08T16:36:25.138Z",
+      "heartbeat_at": "2026-08-08T16:42:35.343Z",
       "current_stage": null,
       "started_at": "2026-08-02T07:26:46.045Z",
-      "completed_at": null,
+      "completed_at": "2026-08-08T16:42:35.343Z",
       "auto_pass_count": 0,
-      "attempt": 5,
+      "attempt": 8,
       "name": "Quản Lý Tài Chính",
       "slug": "quan-ly-thu-chi",
       "risk_path": "M",
-      "claimed_pid": 98078,
-      "claimed_host": "Qs-MacBook-Pro.local",
-      "previous_claimed_by": "tab-b10d2f03b1b36ac5",
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-0c305877961d0082",
       "reopened_at": "2026-08-05T07:34:02.638Z",
       "reopened_reason": "Scope expansion: add Groq AI provider + user-configurable AI priority ordering"
     },
@@ -108,11 +108,29 @@
     "tab-97b91e9708d84aad": {
       "started_at": "2026-08-08T11:19:18.192Z",
       "last_seen": "2026-08-08T11:39:22.129Z",
-      "claimed_modules": [
-        "M-001"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-0c305877961d0082": {
+      "started_at": "2026-08-08T15:55:22.108Z",
+      "last_seen": "2026-08-08T16:42:35.343Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-001"
+      ]
+    },
+    "tab-4a707c5f0af801bd": {
+      "started_at": "2026-08-08T16:07:47.512Z",
+      "last_seen": "2026-08-08T16:23:37.810Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-001"
+      ],
       "skipped_modules": []
     }
   }

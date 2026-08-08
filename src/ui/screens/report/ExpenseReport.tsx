@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useExpenseStore } from "@/store/expenseStore";
 import { useReportStore } from "@/store/reportStore";
+import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
@@ -34,6 +35,7 @@ const COLORS = [
 ];
 
 export function ExpenseReport() {
+  const { isDark } = useTheme();
   const expenses = useExpenseStore((s) => s.records);
   const { from, to } = useReportStore((s) => s.dateRange);
 
@@ -156,7 +158,7 @@ export function ExpenseReport() {
                   <BarChart data={byMonth} barCategoryGap="30%">
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#E0E3E8"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
                       vertical={false}
                     />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -171,7 +173,7 @@ export function ExpenseReport() {
                     />
                     <Bar
                       dataKey="total"
-                      fill="#DC2626"
+                      fill={isDark ? '#F87171' : '#DC2626'}
                       radius={[4, 4, 0, 0]}
                       name="Chi"
                       maxBarSize={36}

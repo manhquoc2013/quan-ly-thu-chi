@@ -1,0 +1,37 @@
+{
+  "triage_id": "TRI-1786206343752-be27",
+  "created_at": 1786206343752,
+  "request_summary": "OrderDialog pickProduct: luôn fill defaultUnitPrice từ catalog khi chọn sản phẩm (thay vì chỉ khi row chưa có giá).",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tạo đơn hàng → gõ tên SP → chọn từ dropdown",
+  "blast_radius": 1,
+  "done_oracle": "Chọn SP trong OrderDialog auto-fill giá catalog của sản phẩm (không cần row có price mới fill). Build pass.",
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786206343779
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

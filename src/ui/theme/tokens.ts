@@ -1,78 +1,78 @@
 // src/ui/theme/tokens.ts
-// Port từ FeColors + FeSpacing + FeDimens của fe-simulator
-// Dùng khi cần giá trị trong JS (chart config, inline styles, canvas...)
+// Design tokens for JS use (charts, inline styles, canvas, etc.)
+// Navy + Teal theme — matches src/index.css @theme block
 
 export const colors = {
   // Surface
-  background:       '#EFF2F7',
-  surface:          '#FAFBFC',
+  background:       '#F8FAFC',
+  surface:          '#FFFFFF',
   surfaceHover:     '#F1F5F9',
   surfaceActive:    '#E2E8F0',
   border:           '#CBD5E1',
   borderSubtle:     '#E0E3E8',
-  borderFocus:      '#1565C0',
+  borderFocus:      '#0D9488',
 
   // Text
-  textPrimary:      '#333333',
-  textSecondary:    '#475569',
+  textPrimary:      '#0F172A',
+  textSecondary:    '#334155',
   textMuted:        '#64748B',
   textDisabled:     '#94A3B8',
   textInverse:      '#FFFFFF',
 
-  // Accent
-  accentBg:         '#E3F2FD',
-  accentBgHover:    '#BBDEFB',
-  accentFg:         '#1565C0',
-  accentFgHover:    '#0D47A1',
+  // Accent — Teal
+  accentBg:         '#CCFBF1',
+  accentBgHover:    '#99F6E4',
+  accentFg:         '#0D9488',
+  accentFgHover:    '#0F766E',
 
   // Secondary
-  secondaryBg:      '#E0F2F1',
+  secondaryBg:      '#CCFBF1',
   secondaryFg:      '#0F766E',
 
   // Neutral
-  neutralBg:        '#ECEFF1',
-  neutralBgHover:   '#CFD8DC',
-  neutralFg:        '#37474F',
+  neutralBg:        '#F1F5F9',
+  neutralBgHover:   '#E2E8F0',
+  neutralFg:        '#334155',
 
   // Semantic
   success:  { bg: '#ECFDF5', fg: '#065F46', badge: '#D1FAE5' },
-  warning:  { bg: '#FEF3C7', fg: '#92400E' },
-  danger:   { bg: '#FFEBEE', fg: '#C62828', hover: '#B71C1C' },
+  warning:  { bg: '#FFFBEB', fg: '#92400E' },
+  danger:   { bg: '#FEF2F2', fg: '#DC2626', hover: '#B91C1C' },
   info:     { bg: '#E0F2FE', fg: '#1E3A8A', banner: '#EFF6FF' },
 
   // Button variants
-  run:        { bg: '#1565C0', fg: '#FFFFFF', hover: '#0D47A1' },
-  cancel:     { bg: '#F57C00', fg: '#FFFFFF' },
-  disconnect: { bg: '#C62828', fg: '#FFFFFF' },
-  neutral:    { bg: '#ECEFF1', fg: '#37474F', hover: '#CFD8DC' },
-  accent:     { bg: '#E3F2FD', fg: '#1565C0' },
+  run:        { bg: '#0D9488', fg: '#FFFFFF', hover: '#0F766E' },
+  cancel:     { bg: '#F59E0B', fg: '#FFFFFF' },
+  disconnect: { bg: '#DC2626', fg: '#FFFFFF' },
+  neutral:    { bg: '#F1F5F9', fg: '#334155', hover: '#E2E8F0' },
+  accent:     { bg: '#CCFBF1', fg: '#0D9488' },
 
   // Grid
   grid: {
     headerBg:    '#F1F5F9',
     headerFg:    '#334155',
     rowEven:     '#FFFFFF',
-    rowOdd:      '#FAFBFC',
+    rowOdd:      '#F8FAFC',
     rowHover:    '#F1F5F9',
-    rowSelected: '#E3F2FD',
+    rowSelected: '#CCFBF1',
     divider:     '#E2E8F0',
     statusOk:    '#15803D',
-    statusFail:  '#B91C1C',
+    statusFail:  '#DC2626',
     statusNeutral: '#64748B',
   },
 
-  // Charts
+  // Charts — warmer tones
   chart: [
-    '#2563EB', '#7C3AED', '#16A34A', '#D97706',
-    '#EC4899', '#14B8A6', '#F97316', '#8B5CF6',
+    '#0D9488', '#8B5CF6', '#F59E0B', '#EC4899',
+    '#3B82F6', '#10B981', '#F97316', '#6366F1',
   ],
   chartGrid: '#CBD5E1',
 
   // Sidebar
   sidebar: {
-    bg: '#1E293B',
+    bg: '#0F172A',
     fg: '#CBD5E1',
-    activeBg: '#334155',
+    activeBg: '#0D9488',
     activeFg: '#FFFFFF',
   },
 
@@ -81,10 +81,10 @@ export const colors = {
     online:  { bg: '#D1FAE5', fg: '#065F46' },
     offline: { bg: '#E2E8F0', fg: '#64748B' },
     warning: { bg: '#FEF3C7', fg: '#92400E' },
-    error:   { bg: '#FEE2E2', fg: '#B91C1C' },
+    error:   { bg: '#FEE2E2', fg: '#DC2626' },
   },
 
-  // Expense categories (mapped to FR-EXP-006)
+  // Expense categories
   category: {
     office:         '#3B82F6',
     rent:           '#8B5CF6',
@@ -110,9 +110,9 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  field:  4,
-  panel:  6,
-  dialog: 8,
+  field:  6,
+  panel:  8,
+  dialog: 10,
   badge:  12,
   full:   9999,
 } as const;
@@ -123,12 +123,12 @@ export const typography = {
     mono: "'JetBrains Mono', 'Fira Code', monospace",
   },
   fontSize: {
-    xs:   11,
-    sm:   12,
-    base: 13,
-    lg:   14,
-    xl:   16,
-    '2xl': 20,
+    xs:   12,
+    sm:   13,
+    base: 14,
+    lg:   15,
+    xl:   17,
+    '2xl': 22,
   },
   fontWeight: {
     normal:   400,
@@ -158,8 +158,8 @@ export const dimens = {
   dialogElevation: 12,
   pickListMaxHeight: 280,
   chartDefaultHeight: 180,
-  sidebarWidth: 220,
-  sidebarCollapsedWidth: 56,
+  sidebarWidth: 240,
+  sidebarCollapsedWidth: 64,
   headerHeight: 48,
   statusBarHeight: 32,
   gridRowHeight: 48,

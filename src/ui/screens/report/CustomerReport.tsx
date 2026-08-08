@@ -12,6 +12,7 @@ import {
 import { useRevenueStore } from "@/store/revenueStore";
 import { useCustomerStore } from "@/store/customerStore";
 import { useReportStore } from "@/store/reportStore";
+import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
@@ -31,6 +32,7 @@ const COLORS = [
 ];
 
 export function CustomerReport() {
+  const { isDark } = useTheme();
   const revenues = useRevenueStore((s) => s.records);
   const customers = useCustomerStore((s) => s.customers);
   const { from, to } = useReportStore((s) => s.dateRange);
@@ -127,7 +129,7 @@ export function CustomerReport() {
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#E0E3E8"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
                       horizontal={false}
                     />
                     <XAxis
@@ -178,7 +180,7 @@ export function CustomerReport() {
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#E0E3E8"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
                       horizontal={false}
                     />
                     <XAxis

@@ -27,6 +27,7 @@ import { useProductStore } from '@/store/productStore';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { notify } from '@/utils/notify';
+import { useNotificationStore } from '@/store/notificationStore';
 import { sumPaidRevenue, sumUnpaidReceivable, isUnpaidReceivable } from '@/utils/revenueMetrics';
 import {
   resolveCustomerForOrder,
@@ -242,7 +243,7 @@ export async function persistConfirmed(
             amount: draft.amount,
             description: draft.description,
             status: 'pending' as ExpenseStatus,
-            paymentMethod: 'cash' as PaymentMethod,
+            paymentMethod: (draft.paymentMethod ?? 'cash') as PaymentMethod,
             tags: [],
           },
           { silent: true },
@@ -254,12 +255,12 @@ export async function persistConfirmed(
           amount: record.amount,
         });
       } else if (draft.kind === 'product') {
-        const { createProduct } = await import('./productService');
+        const { createProduct, guessProductUnit } = await import('./productService');
         const record = await createProduct(
           {
             name: draft.description,
             defaultUnitPrice: draft.amount,
-            unit: 'cái',
+            unit: guessProductUnit(draft.description),
           },
           { silent: true },
         );
@@ -288,7 +289,9 @@ export async function persistConfirmed(
   }
 
   if (ok > 0) {
-    notify.success(ok > 1 ? `Đã lưu ${ok} khoản` : 'Đã lưu 1 khoản');
+    const msg = ok > 1 ? `Đã lưu ${ok} khoản` : 'Đã lưu 1 khoản';
+    notify.success(msg);
+    useNotificationStore.getState().addNotification('import', 'Nhập dữ liệu', msg);
   }
   if (failed.length > 0 && ok === 0) {
     notify.error(failed[0] ?? 'Không lưu được dữ liệu');

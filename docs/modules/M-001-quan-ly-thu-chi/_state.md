@@ -6,8 +6,8 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-08-01T08:39:46Z
-last-updated: 2026-08-08T11:38:41Z
-current-stage: engineering-technical-lead
+last-updated: 2026-08-08T16:41:49Z
+current-stage: engineering-backend-developer-wave-1
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -15,10 +15,8 @@ project: ""
 docs-path: docs/modules/M-001-quan-ly-thu-chi
 intel-path: docs/intel
 stages-queue:
-  - engineering-technical-lead
   - engineering-backend-developer-wave-1
   - engineering-qa-engineer-wave-1
-  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -34,6 +32,22 @@ completed-stages:
   engineering-system-architect:
     verdict: Pass
     artifact: docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md
+    completed-at: 2026-08-08
+  engineering-backend-developer-wave-2:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w2-notification-store-panel.md
+    completed-at: 2026-08-08
+  engineering-technical-lead:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md
+    completed-at: 2026-08-08
+  engineering-qa-engineer-wave-2:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md
+    completed-at: 2026-08-08
+  engineering-code-reviewer:
+    verdict: Pass
+    artifact: docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md
     completed-at: 2026-08-08
 kpi:
   tokens-total: 0
@@ -74,18 +88,20 @@ reopened-reason: "Scope expansion: add Groq AI provider + user-configurable AI p
 | 2 | engineering-business-analyst | engineering-business-analyst | Pass | docs/modules/M-001-quan-ly-thu-chi/ba/00-lean-spec.md | 2026-08-05 |
 | 3 | engineering-solution-designer | engineering-solution-designer | Pass | docs/modules/M-001-quan-ly-thu-chi/design/00-design-plan.md | 2026-08-05 |
 | 4 | engineering-system-architect | engineering-system-architect | Pass | docs/modules/M-001-quan-ly-thu-chi/sa/00-lean-architecture.md | 2026-08-08 |
-| 5 | engineering-technical-lead | engineering-technical-lead | — | — | — |
-| 6 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
-| 7 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
-| 8 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
+| 5 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/dev/05-dev-w2-notification-store-panel.md | 2026-08-08 |
+| 6 | engineering-technical-lead | engineering-technical-lead | Pass | docs/modules/M-001-quan-ly-thu-chi/tech-lead/04-plan.md | 2026-08-08 |
+| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md | 2026-08-08 |
+| 8 | engineering-code-reviewer | engineering-code-reviewer | Pass | docs/modules/M-001-quan-ly-thu-chi/reviewer/08-review-report.md | 2026-08-08 |
+| 9 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
+| 10 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
 
 ## Current Stage
 
-**engineering-technical-lead** — Ready to start. Input: `docs/modules/M-001-quan-ly-thu-chi/module-brief.md`.
+**engineering-backend-developer-wave-1** — Ready to start. Input: `docs/modules/M-001-quan-ly-thu-chi/module-brief.md`.
 
 ## Next Action
 
-Next stage `engineering-technical-lead` — dispatched by the project manager (via the build receptionist); no slash command to run.
+Next stage `engineering-backend-developer-wave-1` — dispatched by the project manager (via the build receptionist); no slash command to run.
 
 ## Active Blockers
 

@@ -1,0 +1,89 @@
+{
+  "triage_id": "TRI-1786204432263-fb1c",
+  "created_at": 1786204432263,
+  "request_summary": "Làm giàu chuông thông báo: thêm notification store tập trung, hiển thị lịch sử thông báo (import, AI, realtime, lỗi, đồng bộ) trong panel thay vì chỉ trạng thái sync.",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/intakeService.ts",
+      "src/services/realtimeSync.ts",
+      "src/services/syncEngine.ts",
+      "src/store/index.ts",
+      "src/store/notificationStore.ts",
+      "src/ui/Layout.tsx"
+    ],
+    "impact_files": [
+      "src/services/intakeService.ts",
+      "src/services/realtimeSync.ts",
+      "src/services/syncEngine.ts",
+      "src/store/index.ts",
+      "src/store/notificationStore.ts",
+      "src/ui/Layout.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 6 edit-target files exceed the inline gate (6 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Chuông thông báo trên top bar (Layout.tsx) - người dùng click vào icon Bell để xem panel thông báo",
+  "blast_radius": 6,
+  "done_oracle": "Panel thông báo hiển thị: (1) trạng thái đồng bộ, (2) danh sách thông báo gần đây (import CSV/OCR, AI xử lý, realtime changes, lỗi), (3) badge số thông báo chưa đọc trên icon chuông. Build và typecheck pass.",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 89,
+      "quote": "      const n = userId ? pendingCount(userId) : 0; setPending(n);",
+      "source_hash": "c8404abe8c43894161e0539fc611a00c80d699fa922ac17130286ebdc8562cee",
+      "quote_hash": "7dc1918adf4f8ee39434d20e002a73ff5fa26118c7834aad5c37852c9bd0c8ff",
+      "note": "Where pending sync count is read for bell badge dot"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 90,
+      "quote": "      setSyncState(n > 0 ? 'pending' : 'synced');",
+      "source_hash": "c8404abe8c43894161e0539fc611a00c80d699fa922ac17130286ebdc8562cee",
+      "quote_hash": "0887dba3279c1a2bcfa665486356c8b29b7757d1dd57a1c447c9c16b4d0ad531",
+      "note": "Where sync state is computed for bell panel display"
+    },
+    {
+      "file": "src/services/intakeService.ts",
+      "line": 291,
+      "quote": "    notify.success(ok > 1 ? `Đã lưu ${ok} khoản` : 'Đã lưu 1 khoản');",
+      "source_hash": "1e20f669829230e2af50cd80e7f42df8e7201ebe14f2c34af6e316a738ee4378",
+      "quote_hash": "5d5ac0a982f60125fb6accb2836cb322f240aaef5ed221dc56964ce8998de2e6",
+      "note": "Where persistConfirmed triggers toast after import/persist - wire to notification store"
+    },
+    {
+      "file": "src/services/realtimeSync.ts",
+      "line": 45,
+      "quote": "            notify.message(`Có ${verb} ${label} từ thiết bị khác — đang đồng bộ...`);",
+      "source_hash": "96b97c1620e30c81446c224d0325005555c6822080f894f716df17c0cdc3ddaf",
+      "quote_hash": "f885bc49a47e5ab9fcc13c9471b21e5d374a76d0e25b6b1d235659ca4bcd19a0",
+      "note": "Where realtime change events trigger toast - wire to notification store"
+    },
+    {
+      "file": "src/services/syncEngine.ts",
+      "line": 59,
+      "quote": "  return { flushed, failed };",
+      "source_hash": "b6f2d9edeb976f6b6dc9141e15285e9cf8a53bf43ebe36b14c71e76b682243d6",
+      "quote_hash": "f0d9ff34a858095b466bed36cbb1a0f7da47af0247a42069233adc814e14510f",
+      "note": "Where flushOutbox returns sync results - caller can notify on errors"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786204432303
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

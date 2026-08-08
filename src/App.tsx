@@ -6,11 +6,12 @@
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { lazy } from 'react';
 import { Layout } from '@ui/Layout';
 import { AuthGuard } from '@ui/components/AuthGuard';
 import { AuthProvider } from '@ui/components/AuthProvider';
 import { Toaster } from '@/components/ui/sonner';
+import { CursorGlow } from '@/ui/components/CursorGlow';
 
 const DashboardScreen = lazy(
   () => import('@screens/dashboard/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
@@ -40,21 +41,12 @@ const PlatformScreen = lazy(
   () => import('@screens/platform/PlatformScreen').then((m) => ({ default: m.PlatformScreen }))
 );
 
-function LoadingFallback() {
-  return (
-    <div className="flex items-center justify-center h-screen" role="status" aria-label="Loading">
-      <div className="animate-spin size-8 border-2 border-accent-fg border-t-transparent rounded-full" />
-    </div>
-  );
-}
-
 const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 export function App() {
   return (
     <BrowserRouter basename={routerBasename === '/' ? undefined : routerBasename}>
       <AuthProvider>
-        <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route element={<AuthGuard />}>
               <Route element={<Layout />}>
@@ -70,9 +62,9 @@ export function App() {
               </Route>
             </Route>
           </Routes>
-        </Suspense>
       </AuthProvider>
       <Toaster richColors position="top-right" closeButton />
+      <CursorGlow />
     </BrowserRouter>
   );
 }

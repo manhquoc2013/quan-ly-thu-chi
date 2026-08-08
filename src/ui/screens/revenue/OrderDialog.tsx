@@ -5,7 +5,8 @@
  * Auto-calculates: totalAmount = sum(items.total), finalAmount = totalAmount - discount.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   Revenue,
   OrderItem,
@@ -121,6 +122,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
   const platforms = usePlatformStore((s) => s.platforms);
   const revenues = useRevenueStore((s) => s.records);
   const [activeProductRow, setActiveProductRow] = useState<number | null>(null);
+  const [highlightIdx, setHighlightIdx] = useState(0);
 
   const platformOptions = useMemo(
     () =>
@@ -310,8 +312,8 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
       const row = items[idx];
       if (!row) return prev;
       const qty = row.quantity || 1;
-      // Suggest catalog price only when row has no price yet
-      const unitPrice = row.unitPrice > 0 ? row.unitPrice : p.defaultUnitPrice;
+      // Always use catalog price when selecting a product
+      const unitPrice = p.defaultUnitPrice > 0 ? p.defaultUnitPrice : row.unitPrice;
       items[idx] = {
         ...row,
         productId: p.id,
@@ -552,7 +554,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
               </Button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border-subtle">
@@ -569,6 +571,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                       activeProductRow === idx && item.name.trim().length >= 1 && !item.productId
                         ? searchProducts(item.name, 8)
                         : [];
+                    const showDropdown = activeProductRow === idx && item.name.trim().length >= 1 && !item.productId;
                     return (
                     <tr key={item.id} className="border-b border-border-subtle">
                       <td className="py-1 px-2 relative">
@@ -576,7 +579,19 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                           type="text"
                           value={item.name}
                           onChange={(e) => updateItem(idx, 'name', e.target.value)}
-                          onFocus={() => setActiveProductRow(idx)}
+                          onFocus={() => { setActiveProductRow(idx); setHighlightIdx(0); if (item.productId) updateItem(idx, 'name', item.name); }}
+                          onKeyDown={(e) => {
+                            if (!showDropdown) return;
+                            const total = suggestions.length + (item.name.trim().length >= 2 ? 1 : 0);
+                            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIdx(h => Math.min(h + 1, total - 1)); }
+                            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIdx(h => Math.max(h - 1, 0)); }
+                            else if (e.key === 'Enter' && total > 0) {
+                              e.preventDefault();
+                              if (highlightIdx < suggestions.length) pickProduct(idx, suggestions[highlightIdx]!.id);
+                              else quickAddProduct(idx);
+                            }
+                            else if (e.key === 'Escape') { e.preventDefault(); setActiveProductRow(null); }
+                          }}
                           onBlur={() => {
                             // delay so click on suggestion registers
                             window.setTimeout(() => {
@@ -593,7 +608,7 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
                           }
                           aria-label={`Tên sản phẩm dòng ${idx + 1}`}
                         />
-                        {suggestions.length > 0 && (
+                        {showDropdown && (
                           <div className="absolute z-20 left-2 right-2 top-full mt-0.5 max-h-36 overflow-y-auto border border-border-subtle rounded-field bg-surface shadow-md">
                             {suggestions.map((p) => (
                               <button

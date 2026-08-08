@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Acceptance Map — Email-First Auth Flow",
+  "title": "Acceptance Map — Email-First Auth Flow + Notification Store & Bell Panel",
   "module": "M-001-quan-ly-thu-chi",
   "feature": "local-email-auth",
-  "total_acs": 27,
+  "total_acs": 38,
   "test_file": "test/acceptance/quan-ly-thu-chi/local-email-auth.acceptance.test.ts",
   "layer": "gray-box",
-  "last_updated": "2026-08-02",
+  "last_updated": "2026-08-08",
   "cases": [
     {
       "ac_id": "AC-AUTH-01",
@@ -411,6 +411,171 @@
         "given": "Tất cả dữ liệu xác thực đã bị xóa (multi-user map rỗng)",
         "when": "Nhập bất kỳ email nào",
         "then": "Email được coi là CHƯA đăng ký → luồng đăng ký OTP. Không có lỗi hoặc crash."
+      }
+    },
+    {
+      "ac_id": "AC-NS-01",
+      "feature": "notification-store-panel",
+      "title": "addNotification lưu thông báo với id, loại, tiêu đề, nội dung, thời gian và trạng thái chưa đọc",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-01: addNotification stores entry with id, type, title, message, timestamp, read=false",
+      "layer": "gray-box",
+      "tags": ["notification-store", "happy-path"],
+      "priority": "high",
+      "steps": {
+        "given": "Notification store đang trống",
+        "when": "Gọi addNotification('sync', 'Đồng bộ dữ liệu', 'Đã đồng bộ 5 thay đổi')",
+        "then": "Store có 1 thông báo với id dạng string, type='sync', title='Đồng bộ dữ liệu', message='Đã đồng bộ 5 thay đổi', timestamp dạng number, read=false"
+      }
+    },
+    {
+      "ac_id": "AC-NS-02",
+      "feature": "notification-store-panel",
+      "title": "markRead đánh dấu thông báo đúng mục tiêu là đã đọc, các mục khác giữ nguyên",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-02: markRead sets read=true on target, others unchanged",
+      "layer": "gray-box",
+      "tags": ["notification-store", "mark-read"],
+      "priority": "high",
+      "steps": {
+        "given": "Store có 2 thông báo: một import và một error",
+        "when": "Gọi markRead(id của thông báo import)",
+        "then": "Thông báo import có read=true, thông báo error vẫn read=false"
+      }
+    },
+    {
+      "ac_id": "AC-NS-03",
+      "feature": "notification-store-panel",
+      "title": "markRead với id không tồn tại không gây lỗi và không thay đổi trạng thái",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-03: markRead is idempotent — no-op for unknown id",
+      "layer": "gray-box",
+      "tags": ["notification-store", "mark-read", "edge-case"],
+      "priority": "medium",
+      "steps": {
+        "given": "Store có 1 thông báo chưa đọc",
+        "when": "Gọi markRead với id không tồn tại 'nonexistent-id'",
+        "then": "Thông báo vẫn chưa đọc, không có lỗi xảy ra"
+      }
+    },
+    {
+      "ac_id": "AC-NS-04",
+      "feature": "notification-store-panel",
+      "title": "markAllRead đánh dấu tất cả thông báo là đã đọc",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-04: markAllRead marks all notifications as read",
+      "layer": "gray-box",
+      "tags": ["notification-store", "mark-all-read"],
+      "priority": "high",
+      "steps": {
+        "given": "Store có 3 thông báo chưa đọc",
+        "when": "Gọi markAllRead()",
+        "then": "Cả 3 thông báo đều có read=true"
+      }
+    },
+    {
+      "ac_id": "AC-NS-05",
+      "feature": "notification-store-panel",
+      "title": "markAllRead trên store trống không gây lỗi",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-05: markAllRead is safe on empty list",
+      "layer": "gray-box",
+      "tags": ["notification-store", "mark-all-read", "edge-case"],
+      "priority": "medium",
+      "steps": {
+        "given": "Store đang trống",
+        "when": "Gọi markAllRead()",
+        "then": "Không có lỗi xảy ra, store vẫn trống"
+      }
+    },
+    {
+      "ac_id": "AC-NS-06",
+      "feature": "notification-store-panel",
+      "title": "Số lượng thông báo chưa đọc được tính đúng",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-06: unread count returns correct number via getState",
+      "layer": "gray-box",
+      "tags": ["notification-store", "unread-count"],
+      "priority": "high",
+      "steps": {
+        "given": "Store có 3 thông báo, trong đó 1 đã đánh dấu đọc",
+        "when": "Đếm số thông báo chưa đọc qua getState().notifications.filter(n => !n.read).length",
+        "then": "Kết quả là 2"
+      }
+    },
+    {
+      "ac_id": "AC-NS-07",
+      "feature": "notification-store-panel",
+      "title": "Thêm thông báo thứ 51 sẽ xóa thông báo cũ nhất (giới hạn 50)",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-07: adding 51st notification trims oldest (max 50)",
+      "layer": "gray-box",
+      "tags": ["notification-store", "max-capacity", "edge-case"],
+      "priority": "high",
+      "steps": {
+        "given": "Store đã có 55 thông báo được thêm tuần tự",
+        "when": "Kiểm tra số lượng thông báo trong store",
+        "then": "Store chỉ còn 50 thông báo, 5 thông báo cũ nhất bị xóa, thông báo cũ nhất còn lại là Title 5"
+      }
+    },
+    {
+      "ac_id": "AC-NS-08",
+      "feature": "notification-store-panel",
+      "title": "clear xóa toàn bộ thông báo trong store",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-08: clear removes all notifications",
+      "layer": "gray-box",
+      "tags": ["notification-store", "clear"],
+      "priority": "medium",
+      "steps": {
+        "given": "Store có 2 thông báo",
+        "when": "Gọi clear()",
+        "then": "Store trống, notifications là mảng rỗng"
+      }
+    },
+    {
+      "ac_id": "AC-NS-09",
+      "feature": "notification-store-panel",
+      "title": "Tất cả 5 loại thông báo (sync, import, ai, realtime, error) được chấp nhận",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-09: all 5 NotificationType values accepted",
+      "layer": "gray-box",
+      "tags": ["notification-store", "types"],
+      "priority": "high",
+      "steps": {
+        "given": "Store đang trống",
+        "when": "Thêm lần lượt 5 thông báo với các loại sync, import, ai, realtime, error",
+        "then": "Store có 5 thông báo với đúng 5 loại trên"
+      }
+    },
+    {
+      "ac_id": "AC-NS-10",
+      "feature": "notification-store-panel",
+      "title": "Thông báo được sắp xếp theo thứ tự thêm vào (mới nhất ở cuối)",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-10: notifications maintain insertion order (newest at end)",
+      "layer": "gray-box",
+      "tags": ["notification-store", "ordering"],
+      "priority": "medium",
+      "steps": {
+        "given": "Store đang trống",
+        "when": "Thêm 3 thông báo 'First' (sync), 'Second' (import), 'Third' (error)",
+        "then": "Thứ tự trong store là First, Second, Third"
+      }
+    },
+    {
+      "ac_id": "AC-NS-11",
+      "feature": "notification-store-panel",
+      "title": "Sau khi clear, có thể thêm thông báo mới bình thường",
+      "file": "test/acceptance/quan-ly-thu-chi/notification-store-panel.acceptance.test.ts",
+      "test_name": "AC-NS-11: clear then add works correctly after reset",
+      "layer": "gray-box",
+      "tags": ["notification-store", "clear", "edge-case"],
+      "priority": "medium",
+      "steps": {
+        "given": "Store có thông báo cũ, sau đó clear",
+        "when": "Thêm thông báo mới 'New after clear' (realtime)",
+        "then": "Store có đúng 1 thông báo với title='New after clear'"
       }
     }
   ]

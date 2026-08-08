@@ -6,14 +6,15 @@
  */
 
 /** Who actually answered — UI should not label all cloud as Gemini. */
-export type LlmSource = 'kilo' | 'groq' | 'gemini' | 'local';
+export type LlmSource = 'kilo' | 'openrouter' | 'groq' | 'gemini' | 'local';
 
 /** Default priority order. User can reorder in Settings. */
-export const AI_PRIORITY_DEFAULT: LlmSource[] = ['kilo', 'groq', 'gemini', 'local'];
+export const AI_PRIORITY_DEFAULT: LlmSource[] = ['kilo', 'openrouter', 'groq', 'gemini', 'local'];
 
 /** Source → human label (used in AIChatScreen & ChatPanel). */
 export const LLM_SOURCE_LABELS: Record<LlmSource, string> = {
   kilo: '🟢 Kilo Free',
+  openrouter: '🟠 OpenRouter',
   groq: '🟣 Groq',
   gemini: '🟢 Gemini',
   local: '⚡ Local',

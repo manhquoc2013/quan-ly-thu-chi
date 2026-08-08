@@ -46,3 +46,6 @@ export type {
 
 export { useAuthStore } from './authStore';
 export type { AuthActions } from './authStore';
+
+export { useNotificationStore, useUnreadCount } from './notificationStore';
+export type { NotificationType, NotificationItem, NotificationActions } from './notificationStore';

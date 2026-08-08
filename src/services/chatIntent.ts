@@ -30,6 +30,7 @@ export type ChatIntentKind =
   | 'delete_platform'
   | 'update_order_status'
   | 'lookup'
+  | 'navigate'
   | 'chat';
 
 export interface ChatIntent {
@@ -40,11 +41,15 @@ export interface ChatIntent {
   description?: string;
   category?: ExpenseCategory;
   customerName?: string;
+  /** Customer phone (0xxxxxxxxx) */
+  phone?: string;
   /** Resolved after entity pick */
   customerId?: string;
   productId?: string;
   platformName?: string;
   platformId?: string;
+  /** Platform active flag for update_platform */
+  platformActive?: boolean;
   depositAmount?: number;
   shippingFee?: number;
   shippingPayer?: ShippingPayer;
@@ -54,9 +59,13 @@ export interface ChatIntent {
   forceNewProduct?: boolean;
   forceNewPlatform?: boolean;
   orderStatus?: OrderStatus;
+  /** Product/order unit label e.g. cái, con, hộp */
+  unit?: string;
   /** Free text to find a record (order code, description fragment) */
   targetHint?: string;
   query?: string;
+  /** App route for navigate intent e.g. /expense */
+  route?: string;
   confidence: number;
   /** Slots still required before execute */
   missing: string[];
@@ -116,6 +125,7 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     'delete_platform',
     'update_order_status',
     'lookup',
+    'navigate',
     'chat',
   ];
   if (!allowed.includes(intent)) return null;
@@ -184,15 +194,24 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     description: str(o.description),
     category,
     customerName: str(o.customerName),
+    phone: str(o.phone),
     platformName: str(o.platformName),
+    platformActive:
+      typeof o.platformActive === 'boolean'
+        ? o.platformActive
+        : typeof o.active === 'boolean'
+          ? o.active
+          : undefined,
     depositAmount: num(o.depositAmount),
     shippingFee: num(o.shippingFee),
     shippingPayer,
     paymentStatus,
     paymentMethod,
     orderStatus,
+    unit: str(o.unit),
     targetHint: str(o.targetHint),
     query: str(o.query),
+    route: str(o.route),
     confidence,
     missing: missingRaw,
     summaryVi: str(o.summaryVi),
@@ -249,15 +268,31 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
     case 'delete_customer':
     case 'delete_platform':
     case 'update_order_status':
-      if (!intent.targetHint && !intent.description && !intent.amount && !intent.customerName && !intent.platformName) {
+      if (
+        !intent.targetHint &&
+        !intent.description &&
+        !intent.amount &&
+        !intent.customerName &&
+        !intent.platformName &&
+        !intent.unit
+      ) {
         missing.push('targetHint');
       }
       if (intent.intent === 'update_order_status' && !intent.orderStatus) {
         missing.push('orderStatus');
       }
+      if (intent.intent === 'update_product' && intent.unit && !intent.targetHint && !intent.description) {
+        // unit-only update still needs who/what to change
+        missing.push('targetHint');
+      }
       break;
     case 'lookup':
       if (!intent.query && !intent.targetHint) missing.push('query');
+      break;
+    case 'navigate':
+      if (!intent.route && !intent.query && !intent.targetHint && !intent.description) {
+        missing.push('query');
+      }
       break;
     default:
       break;
@@ -272,12 +307,15 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     amount: patch.amount ?? base.amount,
     unitPrice: patch.unitPrice ?? base.unitPrice,
     quantity: patch.quantity ?? base.quantity,
+    unit: patch.unit ?? base.unit,
     description: patch.description ?? base.description,
     category: patch.category ?? base.category,
     customerName: patch.customerName ?? base.customerName,
+    phone: patch.phone ?? base.phone,
     customerId: patch.customerId ?? base.customerId,
     productId: patch.productId ?? base.productId,
     platformName: patch.platformName ?? base.platformName,
+    platformActive: patch.platformActive ?? base.platformActive,
     platformId: patch.platformId ?? base.platformId,
     depositAmount: patch.depositAmount ?? base.depositAmount,
     shippingFee: patch.shippingFee ?? base.shippingFee,
@@ -290,6 +328,7 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     orderStatus: patch.orderStatus ?? base.orderStatus,
     targetHint: patch.targetHint ?? base.targetHint,
     query: patch.query ?? base.query,
+    route: patch.route ?? base.route,
     confidence: Math.max(base.confidence, patch.confidence),
     missing: [],
     summaryVi: patch.summaryVi ?? base.summaryVi,
@@ -382,6 +421,7 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
       amount: intent.amount,
       description: intent.description,
       category: intent.category ?? 'other',
+      paymentMethod: intent.paymentMethod,
       source,
       confidence: intent.confidence,
     };

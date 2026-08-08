@@ -10,6 +10,59 @@ import { cacheGet, cacheSet } from './cacheManager';
 
 const CACHE_KEY = 'products';
 
+/** Names that are counted as animals / plush → unit "con". */
+const ANIMAL_PRODUCT_RE =
+  /thú|vịt|chó|mèo|gấu|thỏ|cáo|chim|trâu|cánh\s*cụt|penguin|hello\s*kitty|luffy|nhồi\s*bông/i;
+
+export function isAnimalProductName(name: string): boolean {
+  return ANIMAL_PRODUCT_RE.test(name.trim());
+}
+
+/** Default unit from product name (thú/vịt/… → con; else cái). */
+export function guessProductUnit(name: string): string {
+  if (isAnimalProductName(name)) return 'con';
+  return 'cái';
+}
+
+/** Strip chat noise so "đơn vị các sản phẩm thú" → "thú". */
+export function cleanProductSearchHint(raw: string): string {
+  return raw
+    .trim()
+    .replace(
+      /(?:sửa|đổi|đặt|chỉnh)\s*(?:lại\s*)?(?:đơn\s*)?vị(?:\s+(?:của|cho|thành|là))?\s*/gi,
+      ' ',
+    )
+    .replace(/\b(?:các|những|của|cho|thành|là|=)\b/gi, ' ')
+    .replace(/\b(?:sản\s*phẩm|sp|đơn\s*vị|unit)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Local parse: "sửa đơn vị các sản phẩm thú là con" / "đổi đơn vị Hello Kitty thành cái"
+ */
+export function parseProductUnitUpdateMessage(message: string): {
+  targetHint: string;
+  unit: string;
+  categoryBulk: boolean;
+} | null {
+  const t = message.trim();
+  const m =
+    /(?:sửa|đổi|đặt|chỉnh|để)\s*(?:lại\s*)?(?:đơn\s*)?vị(?:\s+(?:của|cho))?\s+(.+?)\s+(?:thành|là|=)\s*([a-zA-Zàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+)\s*$/i.exec(
+      t,
+    );
+  if (!m) return null;
+  const rawTarget = m[1]!.trim();
+  const unit = m[2]!.trim().toLowerCase();
+  if (unit.length < 1 || unit.length > 30) return null;
+  const targetHint = cleanProductSearchHint(rawTarget) || cleanProductSearchHint(t);
+  if (!targetHint) return null;
+  const categoryBulk =
+    /(?:các|những)\s+(?:sản\s*phẩm|sp)/i.test(rawTarget) ||
+    /^(?:thú|vịt|chó|mèo|gấu|thỏ)$/i.test(targetHint);
+  return { targetHint, unit, categoryBulk };
+}
+
 function assertName(name: string): void {
   if (name.trim().length < 2 || name.trim().length > 100) {
     throw new Error('Tên sản phẩm phải từ 2–100 ký tự');
@@ -28,6 +81,90 @@ function assertUnit(unit: string): void {
   }
 }
 
+const SKU_PAD = 4;
+
+/** Pure numeric SKU → number; else null. */
+export function parseNumericSku(sku: string): number | null {
+  const t = sku.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
+/** Next sequential SKU: 0001, 0002, … (padded to ≥4 digits). */
+export function nextSeqSku(usedLower: Set<string>): string {
+  let max = 0;
+  for (const s of usedLower) {
+    const n = parseNumericSku(s);
+    if (n !== null && n > max) max = n;
+  }
+  let next = max + 1;
+  let candidate = String(next).padStart(SKU_PAD, '0');
+  while (usedLower.has(candidate.toLowerCase())) {
+    next += 1;
+    candidate = String(next).padStart(SKU_PAD, '0');
+  }
+  return candidate;
+}
+
+export function buildSkuForProduct(_name: string | undefined, usedLower: Set<string>): string {
+  return nextSeqSku(usedLower);
+}
+
+/**
+ * Assign SKUs to products (sequential numeric).
+ * @param onlyMissing — default true: skip products that already have sku
+ */
+export async function generateSkusForProducts(
+  opts?: { onlyMissing?: boolean } & NotifyOpts,
+): Promise<{ updated: Product[]; skipped: number }> {
+  const onlyMissing = opts?.onlyMissing !== false;
+  const existing = (await cacheGet<Product[]>(CACHE_KEY)) ?? [];
+  const used = new Set<string>();
+  if (onlyMissing) {
+    for (const p of existing) {
+      const s = p.sku?.trim();
+      if (s) used.add(s.toLowerCase());
+    }
+  }
+
+  const updated: Product[] = [];
+  let skipped = 0;
+  const nextAll = existing.map((p) => {
+    if (onlyMissing && p.sku?.trim()) {
+      skipped += 1;
+      return p;
+    }
+    const sku = nextSeqSku(used);
+    used.add(sku.toLowerCase());
+    const row: Product = { ...p, sku };
+    updated.push(row);
+    return row;
+  });
+
+  if (updated.length === 0) {
+    notify.success('Tất cả sản phẩm đã có mã SKU', opts);
+    return { updated, skipped };
+  }
+
+  await cacheSet(CACHE_KEY, nextAll);
+  useProductStore.getState().setProducts(nextAll);
+  for (const p of updated) {
+    void import('./cloudSync')
+      .then((m) => m.cloudUpsertProduct(p))
+      .catch((err) => console.error('[cloud] product sku', err));
+  }
+  notify.success(`Đã gán SKU cho ${updated.length} sản phẩm`, opts);
+  return { updated, skipped };
+}
+
+/** True when message asks to auto-generate product SKUs. */
+export function looksLikeGenerateSkuMessage(message: string): boolean {
+  const t = message.trim().toLowerCase();
+  if (!/(?:mã\s*)?sku|mã\s*sp|mã\s*hàng/.test(t)) return false;
+  return /(?:tạo|sinh|gán|cấp|generate|auto)/i.test(t);
+}
+
 export async function getAllProducts(): Promise<Product[]> {
   const records = await cacheGet<Product[]>(CACHE_KEY);
   useProductStore.getState().setProducts(records ?? []);
@@ -41,9 +178,15 @@ export async function createProduct(
   const name = data.name.trim();
   assertName(name);
   assertPrice(data.defaultUnitPrice);
-  const unit = (data.unit || 'cái').trim();
+  const unit = (data.unit || guessProductUnit(name)).trim();
   assertUnit(unit);
-  const sku = data.sku?.trim() || undefined;
+  const existing = (await cacheGet<Product[]>(CACHE_KEY)) ?? [];
+  const used = new Set(
+    existing
+      .map((p) => p.sku?.trim().toLowerCase())
+      .filter((s): s is string => Boolean(s)),
+  );
+  const sku = data.sku?.trim() || buildSkuForProduct(name, used);
   const notes = data.notes?.trim() || undefined;
 
   const record: Product = {
@@ -57,7 +200,6 @@ export async function createProduct(
     createdAt: new Date().toISOString(),
   };
 
-  const existing = (await cacheGet<Product[]>(CACHE_KEY)) ?? [];
   const updated = [...existing, record];
   await cacheSet(CACHE_KEY, updated);
   useProductStore.getState().setProducts(updated);

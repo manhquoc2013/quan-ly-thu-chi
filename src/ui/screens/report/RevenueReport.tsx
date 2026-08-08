@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useRevenueStore } from "@/store/revenueStore";
 import { useReportStore } from "@/store/reportStore";
+import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd } from "@/utils/chartFormat";
 import { allCashEvents, sumCashEventsInRange } from "@/utils/revenueMetrics";
@@ -29,6 +30,7 @@ const COLORS = [
 ];
 
 export function RevenueReport() {
+  const { isDark } = useTheme();
   const revenues = useRevenueStore((s) => s.records);
   const { from, to } = useReportStore((s) => s.dateRange);
 
@@ -110,7 +112,7 @@ export function RevenueReport() {
                   <BarChart data={byMonth} barCategoryGap="30%">
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#E0E3E8"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
                       vertical={false}
                     />
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
@@ -125,7 +127,7 @@ export function RevenueReport() {
                     />
                     <Bar
                       dataKey="total"
-                      fill="#059669"
+                      fill={isDark ? '#34D399' : '#059669'}
                       radius={[4, 4, 0, 0]}
                       name="Thu"
                       maxBarSize={36}

@@ -40,8 +40,8 @@ This scope expansion adds:
    (move-up/move-down reorder list).
 
 The change is **additive and backward-compatible**: `callLlmCascade`'s signature is unchanged, so its
-three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:919`) and the
-label consumers (`AIChatScreen.tsx:247`, `ChatPanel.tsx:412`) keep working unmodified.
+three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:1044`) and the
+label consumers (`AIChatScreen.tsx:255`, `ChatPanel.tsx:423`) keep working unmodified.
 
 Complexity: **Medium** — additive change on an implemented module; 1 actor; ~11 new business rules;
 no schema migration, no new bounded context.
@@ -506,7 +506,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | **Source** | TRI requirement 2 |
 | **Given** | The `LlmSource` type at `src/services/llmCall.ts:11` |
 | **When** | The type is inspected |
-| **Then** | It is `'kilo' | 'groq' | 'gemini' | 'local'`. All existing consumers that pass `source` as a string (`AIChatScreen.tsx:247`, `ChatPanel.tsx:412`) remain type-compatible without modification. |
+| **Then** | It is `'kilo' | 'groq' | 'gemini' | 'local'`. All existing consumers that pass `source` as a string (`AIChatScreen.tsx:255`, `ChatPanel.tsx:423`) remain type-compatible without modification. |
 
 ### AC-PRI-02 — Default aiPriority Order
 
@@ -872,7 +872,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|---|
 | CON-AI-01 | ONLY these files may change: `.env`, `src/services/groqService.ts` (NEW), `src/services/index.ts`, `src/services/llmCall.ts`, `src/store/authStore.ts`, `src/ui/screens/settings/SettingsScreen.tsx` | TRI evidence.edit_target_files |
 | CON-AI-02 | `aiRouter.ts`, `chatTools.ts`, `chatIntent.ts`, `llmIntentExtractor.ts`, `llmBulkDraftExtractor.ts`, `geminiService.ts`, `kiloService.ts`, `webLLM.ts`, and every other existing service/screen MUST NOT be modified | TRI requirement 5 |
-| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:177`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:919`) depend on it | TRI requirement 5 + verified usage |
+| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:1044`) depend on it | TRI requirement 5 + verified usage |
 | CON-AI-04 | `groqService.generateContent` MUST return `null` on failure — never throw, never return an error-prefixed string | TRI requirement 5 |
 | CON-AI-05 | Existing test suite MUST remain green (`bun test --run` exits 0) — `kiloService.test.ts`, `authService.test.ts`, etc. are regression oracles | TRI requirement 5 ("Existing tests must pass") |
 | CON-AI-06 | Priority changes MUST take effect real-time (next request), no reload/restart required | TRI requirement 5 |

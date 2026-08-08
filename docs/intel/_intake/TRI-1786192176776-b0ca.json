@@ -1,0 +1,95 @@
+{
+  "triage_id": "TRI-1786192176776-b0ca",
+  "created_at": 1786192176776,
+  "request_summary": "UI redesign Wave 1 hoàn thiện: theme Navy+Teal đã implement, cần fix App.tsx routing + verify build",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/App.tsx",
+      "src/index.css",
+      "src/ui/components/StatusBar.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx",
+      "src/ui/theme/presets.ts",
+      "src/ui/theme/tokens.ts"
+    ],
+    "impact_files": [
+      "src/App.tsx",
+      "src/index.css",
+      "src/ui/components/StatusBar.tsx",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx",
+      "src/ui/theme/presets.ts",
+      "src/ui/theme/tokens.ts"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 11 edit-target files exceed the inline gate (11 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "App.tsx + Layout.tsx",
+  "blast_radius": 11,
+  "done_oracle": "npm run typecheck && npm run build && sidebar hoạt động, dark mode toggle hoạt động, mobile responsive",
+  "change_type": "architecture",
+  "seam_claims": [
+    {
+      "file": "src/index.css",
+      "line": 17,
+      "quote": "  --color-background: #F8FAFC;",
+      "source_hash": "ae02639cebbc2d311f9c31a38091d0ee503e84ead6772c479151260e498c2a24",
+      "quote_hash": "fe234dad202ef6d68ae88736f1d8348c86cae4e00ca6c6ad06cff03e9ef736fa",
+      "note": "New Navy+Teal theme background token"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 56,
+      "quote": "const navItems: NavItem[] = [",
+      "source_hash": "0e355fbf2b07bb2c4e2951e30eb09fbe3226f221b04cb1c303acbc6b076248c2",
+      "quote_hash": "348a0d84f4b21472602e9be8e581ebf57e1e8be5a64b071bbeb53be6215b41dc",
+      "note": "New sidebar navigation items replacing old top tabs"
+    },
+    {
+      "file": "src/App.tsx",
+      "line": 68,
+      "quote": "          root.classList.remove('dark');",
+      "source_hash": "96f043444dae60405573333512fd1372e2bdf00e37fd4e345eea0a7cb0242136",
+      "quote_hash": "7c72a7dd02db335a9ce3d81e13b74491637266676a6917e4ecbfca8da143ab42",
+      "note": "Dark mode init logic currently broken — needs routing fix"
+    },
+    {
+      "file": "src/ui/theme/tokens.ts",
+      "line": 7,
+      "quote": "  background:       '#F8FAFC',",
+      "source_hash": "6ac3db659464c15e78a09b63e48c017947d73e61605fb3637f9c28f3af552e3f",
+      "quote_hash": "7f4fa64fa8dd01e1330f4519c50aa6f5db0147d048eb62e5e5f7bac6a8be2787",
+      "note": "JS tokens synced to new Navy+Teal theme"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786189327458-49cf",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786192176808
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

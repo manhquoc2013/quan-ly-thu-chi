@@ -4,8 +4,24 @@
 
 import type { Expense, Revenue, OrderStatus } from '@/models';
 import { EXPENSE_CATEGORY_LABELS, ORDER_STATUS_LABELS } from '@/models';
+import { resolveNavigateTarget } from './appNavigation';
 import { formatCurrency } from '@/utils/currency';
-import { sumPaidRevenue, sumUnpaidReceivable } from '@/utils/revenueMetrics';
+import {
+  sumPaidRevenue,
+  sumUnpaidReceivable,
+  isUnpaidReceivable,
+  getRemainingBalance,
+} from '@/utils/revenueMetrics';
+import { todayISO } from '@/utils/date';
+import {
+  getExpenseByCategory,
+  getExpenseByMonth,
+  getRevenueByMonth,
+  getProfitSummary,
+  getTopCustomersByRevenue,
+  getTopProductsByRevenue,
+  getRevenueByPlatform,
+} from './reportService';
 import {
   updateExpense,
   deleteExpenses,
@@ -29,6 +45,9 @@ import {
   updateProduct,
   deleteProduct,
   searchProducts,
+  guessProductUnit,
+  cleanProductSearchHint,
+  isAnimalProductName,
 } from './productService';
 import {
   createPlatform,
@@ -52,6 +71,8 @@ export interface ToolResult {
   };
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
   matchedMultiple?: Array<{ id: string; label: string }>;
+  /** App route to open (navigate intent) */
+  navigateTo?: string;
 }
 
 function scoreText(hay: string, needle: string): number {
@@ -148,14 +169,38 @@ async function ensureCustomer(name?: string): Promise<string> {
 }
 
 function findProducts(intent: ChatIntent) {
-  const hint = (intent.targetHint || intent.description || '').trim();
+  const raw = (intent.targetHint || intent.description || '').trim();
+  const hint = cleanProductSearchHint(raw) || raw;
   const all = useProductStore.getState().products;
   if (!hint) return all.slice(0, 8);
-  return searchProducts(hint, 20)
-    .map((p) => ({ p, score: scoreText(p.name, hint) }))
+
+  // Category: "thú" → all animal/plush products
+  if (/^thú$/i.test(hint) || (intent.unit && /^thú$/i.test(hint))) {
+    const animals = all.filter((p) => isAnimalProductName(p.name));
+    if (animals.length) return animals;
+  }
+
+  const scored = all
+    .map((p) => ({
+      p,
+      score: Math.max(
+        scoreText(p.name, hint),
+        scoreText(p.sku || '', hint),
+        // token overlap: any significant token of hint in name
+        hint
+          .split(/\s+/)
+          .filter((t) => t.length >= 2)
+          .some((t) => p.name.toLowerCase().includes(t.toLowerCase()))
+          ? 55
+          : 0,
+      ),
+    }))
     .filter((x) => x.score >= 40)
     .sort((a, b) => b.score - a.score)
     .map((x) => x.p);
+
+  if (scored.length) return scored;
+  return searchProducts(hint, 20);
 }
 
 function findCustomers(intent: ChatIntent) {
@@ -181,6 +226,12 @@ function findPlatforms(intent: ChatIntent) {
     .filter((x) => x.score >= 40)
     .sort((a, b) => b.score - a.score)
     .map((x) => x.p);
+}
+
+function extractPhoneFromText(text?: string): string | undefined {
+  if (!text) return undefined;
+  const m = text.match(/(?:\+84|0)\d{8,10}/);
+  return m?.[0];
 }
 
 export async function executeChatIntent(
@@ -305,13 +356,14 @@ export async function executeChatIntent(
       if (name.length < 2 || !(price > 0)) {
         return { ok: false, message: 'Thiếu tên hoặc đơn giá sản phẩm.' };
       }
+      const unit = (intent.unit?.trim() || guessProductUnit(name)).trim();
       const record = await createProduct(
-        { name, defaultUnitPrice: price, unit: 'cái' },
+        { name, defaultUnitPrice: price, unit },
         { silent: true },
       );
       return {
         ok: true,
-        message: `Đã thêm sản phẩm: **${record.name}** — ${formatCurrency(record.defaultUnitPrice)}`,
+        message: `Đã thêm sản phẩm: **${record.name}** — ${formatCurrency(record.defaultUnitPrice)}/${record.unit}`,
         createdRecord: { kind: 'product', id: record.id },
       };
     }
@@ -319,10 +371,17 @@ export async function executeChatIntent(
     case 'create_customer': {
       const name = (intent.customerName || intent.description || '').trim();
       if (name.length < 2) return { ok: false, message: 'Thiếu tên khách hàng.' };
-      const record = await createCustomer({ name, phone: '' }, { silent: true });
+      const phone =
+        intent.phone?.trim() ||
+        extractPhoneFromText(intent.customerName) ||
+        extractPhoneFromText(intent.description) ||
+        extractPhoneFromText(intent.query) ||
+        '';
+      const cleanName = name.replace(/(?:\+84|0)\d{8,10}/g, '').replace(/\s+/g, ' ').trim() || name;
+      const record = await createCustomer({ name: cleanName, phone }, { silent: true });
       return {
         ok: true,
-        message: `Đã thêm khách: **${record.name}**`,
+        message: `✅ Đã thêm khách: **${record.name}**${phone ? ` · ${phone}` : ''}`,
       };
     }
 
@@ -353,10 +412,11 @@ export async function executeChatIntent(
         amount: intent.amount ?? e.amount,
         description: intent.description ?? e.description,
         category: intent.category ?? e.category,
+        paymentMethod: intent.paymentMethod ?? e.paymentMethod,
       });
       return {
         ok: true,
-        message: `Đã cập nhật chi phí **${intent.description ?? e.description}**.`,
+        message: `✅ Đã cập nhật chi phí **${intent.description ?? e.description}**.`,
         createdRecord: { kind: 'expense', id: e.id },
       };
     }
@@ -375,10 +435,16 @@ export async function executeChatIntent(
       }
       const r = hits[0]!;
       const patch: Parameters<typeof updateRevenue>[1] = {};
-      if (intent.orderStatus) patch.orderStatus = intent.orderStatus;
+      const notes: string[] = [];
+
+      if (intent.orderStatus) {
+        patch.orderStatus = intent.orderStatus;
+        notes.push(`trạng thái → ${ORDER_STATUS_LABELS[intent.orderStatus]}`);
+      }
       if (intent.customerName) {
         patch.customerId = await ensureCustomer(intent.customerName);
         patch.notes = `Khách: ${intent.customerName}`;
+        notes.push(`khách → ${intent.customerName}`);
       }
       if (intent.amount && intent.amount > 0) {
         const qty = r.items[0]?.quantity ?? 1;
@@ -394,16 +460,85 @@ export async function executeChatIntent(
             : it,
         );
         patch.totalAmount = intent.amount;
-        patch.finalAmount = intent.amount - (r.discount || 0);
+        const ship =
+          intent.shippingFee != null
+            ? intent.shippingFee
+            : (r.shippingFee ?? 0);
+        const payer = intent.shippingPayer ?? r.shippingPayer ?? 'customer';
+        const goods = intent.amount - (r.discount || 0);
+        patch.finalAmount = payer === 'customer' ? goods + ship : goods;
+        notes.push(`tiền hàng → ${formatCurrency(intent.amount)}`);
       } else if (intent.description && r.items[0]) {
         patch.items = r.items.map((it, idx) =>
           idx === 0 ? { ...it, name: intent.description! } : it,
         );
+        notes.push(`SP → ${intent.description}`);
       }
+
+      if (intent.depositAmount != null && intent.depositAmount >= 0) {
+        patch.depositAmount = intent.depositAmount;
+        if (intent.depositAmount > 0) patch.depositedAt = todayISO();
+        notes.push(`cọc → ${formatCurrency(intent.depositAmount)}`);
+      }
+      if (intent.shippingFee != null && intent.shippingFee >= 0) {
+        patch.shippingFee = intent.shippingFee;
+        notes.push(`ship → ${formatCurrency(intent.shippingFee)}`);
+      }
+      if (intent.shippingPayer) {
+        patch.shippingPayer = intent.shippingPayer;
+        notes.push(`ship do ${intent.shippingPayer === 'shop' ? 'shop' : 'khách'}`);
+      }
+      if (intent.paymentMethod) {
+        patch.paymentMethod = intent.paymentMethod;
+        notes.push(`PTTT → ${intent.paymentMethod}`);
+      }
+      if (intent.paymentStatus === 'paid') {
+        patch.paymentStatus = 'paid';
+        patch.paidAt = todayISO();
+        const nextShip = intent.shippingFee ?? r.shippingFee ?? 0;
+        const nextPayer = intent.shippingPayer ?? r.shippingPayer ?? 'customer';
+        const goodsBase =
+          intent.amount && intent.amount > 0
+            ? intent.amount - (r.discount || 0)
+            : r.finalAmount -
+              (r.shippingPayer === 'customer' ? r.shippingFee ?? 0 : 0);
+        const provisional = {
+          ...r,
+          ...patch,
+          shippingFee: nextShip,
+          shippingPayer: nextPayer,
+          finalAmount:
+            patch.finalAmount ??
+            (nextPayer === 'customer' ? goodsBase + nextShip : goodsBase),
+          depositAmount: patch.depositAmount ?? r.depositAmount,
+          paymentStatus: 'unpaid' as const,
+        };
+        patch.paidAmount = getRemainingBalance(provisional as typeof r);
+        notes.push('đã thanh toán');
+      } else if (intent.paymentStatus === 'unpaid') {
+        patch.paymentStatus = 'unpaid';
+        patch.paidAt = undefined;
+        patch.paidAmount = undefined;
+        notes.push('chưa thanh toán');
+      }
+
+      if (Object.keys(patch).length === 0) {
+        return {
+          ok: false,
+          message:
+            'Chưa có thay đổi. Có thể: đánh dấu đã TT, đổi tiền/cọc/ship, đổi trạng thái, đổi khách.',
+        };
+      }
+
       await updateRevenue(r.id, patch);
       return {
         ok: true,
-        message: `Đã cập nhật đơn **${r.orderCode}**.`,
+        message: [
+          `✅ Đã cập nhật đơn **${r.orderCode}**`,
+          notes.length ? notes.map((n) => `• ${n}`).join('\n') : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
         createdRecord: { kind: 'revenue', id: r.id },
       };
     }
@@ -460,31 +595,77 @@ export async function executeChatIntent(
 
     case 'update_product': {
       const hits = findProducts(intent);
-      if (hits.length === 0) return { ok: false, message: 'Không tìm thấy sản phẩm phù hợp.' };
+      if (hits.length === 0) {
+        return {
+          ok: false,
+          message:
+            '😕 Không tìm thấy sản phẩm phù hợp.\n\nThử nêu rõ tên (vd: **Hello Kitty**) hoặc nhóm (**thú**).',
+        };
+      }
+
+      const price = intent.unitPrice ?? intent.amount;
+      const nextUnit = intent.unit?.trim();
+      const wantsUnitOnly = Boolean(nextUnit) && !(price && price > 0);
+      const categoryBulk =
+        wantsUnitOnly &&
+        (hits.length > 1 ||
+          /^thú$/i.test(cleanProductSearchHint(intent.targetHint || intent.description || '')));
+
+      // Bulk unit change for matching set (e.g. all "thú")
+      if (categoryBulk && nextUnit && hits.length >= 1) {
+        const updatedNames: string[] = [];
+        for (const p of hits) {
+          if (p.unit === nextUnit) continue;
+          const updated = await updateProduct(p.id, { unit: nextUnit }, { silent: true });
+          if (updated) updatedNames.push(updated.name);
+        }
+        if (!updatedNames.length) {
+          return {
+            ok: true,
+            message: `ℹ️ ${hits.length} sản phẩm đã dùng đơn vị **${nextUnit}** rồi.`,
+          };
+        }
+        return {
+          ok: true,
+          message: [
+            `✅ Đã đổi đơn vị → **${nextUnit}** cho **${updatedNames.length}** sản phẩm:`,
+            '',
+            ...updatedNames.map((n, i) => `${i + 1}. 🏷️ ${n}`),
+          ].join('\n'),
+          createdRecord: { kind: 'product', id: hits[0]!.id },
+        };
+      }
+
       if (hits.length > 1) {
         return multiMatchMessage(
           'product',
           hits.map((p) => ({
             id: p.id,
-            label: `${p.name} · ${formatCurrency(p.defaultUnitPrice)}`,
+            label: `${p.name} · ${formatCurrency(p.defaultUnitPrice)}/${p.unit}`,
           })),
         );
       }
       const p = hits[0]!;
-      const price = intent.unitPrice ?? intent.amount;
-      const patch: { name?: string; defaultUnitPrice?: number } = {};
-      if (intent.description && intent.description.trim().length >= 2 && intent.description !== p.name) {
-        patch.name = intent.description.trim();
+      const patch: { name?: string; defaultUnitPrice?: number; unit?: string } = {};
+      if (
+        intent.description &&
+        intent.description.trim().length >= 2 &&
+        intent.description !== p.name &&
+        !nextUnit // don't treat unit-change description as rename
+      ) {
+        const desc = intent.description.trim();
+        if (!/^(?:thú|con|cái)$/i.test(desc)) patch.name = desc;
       }
       if (price && price > 0) patch.defaultUnitPrice = price;
-      if (!patch.name && patch.defaultUnitPrice === undefined) {
-        return { ok: false, message: 'Chưa có thay đổi (tên/giá) để cập nhật.' };
+      if (nextUnit) patch.unit = nextUnit;
+      if (!patch.name && patch.defaultUnitPrice === undefined && !patch.unit) {
+        return { ok: false, message: 'Chưa có thay đổi (tên/giá/đơn vị) để cập nhật.' };
       }
       const updated = await updateProduct(p.id, patch, { silent: true });
       if (!updated) return { ok: false, message: 'Không cập nhật được sản phẩm.' };
       return {
         ok: true,
-        message: `Đã cập nhật SP **${updated.name}** — ${formatCurrency(updated.defaultUnitPrice)}`,
+        message: `✅ Đã cập nhật SP **${updated.name}** — ${formatCurrency(updated.defaultUnitPrice)}/**${updated.unit}**`,
         createdRecord: { kind: 'product', id: updated.id },
       };
     }
@@ -499,14 +680,23 @@ export async function executeChatIntent(
         );
       }
       const c = hits[0]!;
-      const newName = intent.customerName || intent.description;
-      const updated = await updateCustomer(
-        c.id,
-        { name: newName && newName !== c.name ? newName : undefined },
-        { silent: true },
-      );
+      const phone = intent.phone?.trim() || extractPhoneFromText(intent.description);
+      const newNameRaw = intent.customerName || intent.description;
+      const newName = newNameRaw
+        ? newNameRaw.replace(/(?:\+84|0)\d{8,10}/g, '').replace(/\s+/g, ' ').trim()
+        : undefined;
+      const patch: { name?: string; phone?: string } = {};
+      if (newName && newName.length >= 2 && newName !== c.name) patch.name = newName;
+      if (phone && phone !== c.phone) patch.phone = phone;
+      if (!patch.name && !patch.phone) {
+        return { ok: false, message: 'Chưa có thay đổi (tên/SĐT) để cập nhật.' };
+      }
+      const updated = await updateCustomer(c.id, patch, { silent: true });
       if (!updated) return { ok: false, message: 'Không cập nhật được khách.' };
-      return { ok: true, message: `Đã cập nhật khách **${updated.name}**.` };
+      return {
+        ok: true,
+        message: `✅ Đã cập nhật khách **${updated.name}**${updated.phone ? ` · ${updated.phone}` : ''}.`,
+      };
     }
 
     case 'update_platform': {
@@ -515,18 +705,30 @@ export async function executeChatIntent(
       if (hits.length > 1) {
         return multiMatchMessage(
           'platform',
-          hits.map((p) => ({ id: p.id, label: p.name })),
+          hits.map((p) => ({ id: p.id, label: `${p.name}${p.active ? '' : ' (tắt)'}` })),
         );
       }
       const p = hits[0]!;
       const newName = intent.platformName || intent.description;
-      const updated = await updatePlatform(
-        p.id,
-        { name: newName && newName !== p.name ? newName : undefined },
-        { silent: true },
-      );
+      const patch: { name?: string; active?: boolean } = {};
+      if (newName && newName !== p.name && !/^(bật|tắt|active|inactive)$/i.test(newName)) {
+        patch.name = newName;
+      }
+      if (typeof intent.platformActive === 'boolean') patch.active = intent.platformActive;
+      else if (/\btắt|ngưng|inactive|disable/i.test(intent.summaryVi || intent.query || '')) {
+        patch.active = false;
+      } else if (/\bbật|kích\s*hoạt|active|enable/i.test(intent.summaryVi || intent.query || '')) {
+        patch.active = true;
+      }
+      if (!patch.name && patch.active === undefined) {
+        return { ok: false, message: 'Chưa có thay đổi (tên / bật-tắt) để cập nhật.' };
+      }
+      const updated = await updatePlatform(p.id, patch, { silent: true });
       if (!updated) return { ok: false, message: 'Không cập nhật được kênh.' };
-      return { ok: true, message: `Đã cập nhật kênh **${updated.name}**.` };
+      return {
+        ok: true,
+        message: `✅ Đã cập nhật kênh **${updated.name}**${updated.active ? '' : ' (đã tắt)'}.`,
+      };
     }
 
     case 'delete_product': {
@@ -628,6 +830,22 @@ export async function executeChatIntent(
       return { ok: true, message: buildLookupAnswer(intent) };
     }
 
+    case 'navigate': {
+      const target = resolveNavigateTarget(intent);
+      if (!target) {
+        return {
+          ok: false,
+          message:
+            '😕 Chưa rõ màn hình. Thử: **mở chi phí** · **mở doanh thu** · **mở sản phẩm** · **mở cài đặt** · **mở báo cáo**.',
+        };
+      }
+      return {
+        ok: true,
+        message: `➡️ Đang mở **${target.label}**…`,
+        navigateTo: target.path,
+      };
+    }
+
     case 'chat':
     default:
       return { ok: false, message: '' };
@@ -642,10 +860,84 @@ function buildLookupAnswer(intent: ChatIntent): string {
   const totalR = sumPaidRevenue(revenues);
   const unpaid = sumUnpaidReceivable(revenues);
 
-  if (/tổng quan|tổng hợp|lợi nhuận|tổng thu|tổng chi|công nợ/.test(q) || !q) {
+  if (/công\s*nợ|chưa\s*thanh\s*toán|unpaid|đơn\s*nợ/.test(q)) {
+    const unpaidOrders = revenues.filter(isUnpaidReceivable).slice(0, 12);
+    if (!unpaidOrders.length) {
+      return `✅ Không có đơn công nợ.\n\n💰 Tổng công nợ: **${formatCurrency(0)}**`;
+    }
+    return [
+      '🧾 **Đơn công nợ**',
+      '',
+      `💰 Tổng còn lại: **${formatCurrency(unpaid)}**`,
+      '',
+      ...unpaidOrders.map(
+        (r) =>
+          `• **${r.orderCode}** · ${r.date} · còn ${formatCurrency(getRemainingBalance(r))} · ${ORDER_STATUS_LABELS[r.orderStatus]}`,
+      ),
+    ].join('\n');
+  }
+
+  if (/top\s*khách|khách\s*mua\s*nhiều|khách\s*chi\s*nhiều/.test(q)) {
+    const customers = useCustomerStore.getState().customers;
+    const rows = getTopCustomersByRevenue(revenues, customers, 8);
+    if (!rows.length) return '😕 Chưa có dữ liệu khách.';
+    return [
+      '👤 **Top khách theo doanh thu**',
+      '',
+      ...rows.map(
+        (r, i) =>
+          `${i + 1}. **${r.customerName}** — ${formatCurrency(r.totalRevenue)} · ${r.orderCount} đơn`,
+      ),
+    ].join('\n');
+  }
+
+  if (/top\s*(sp|sản\s*phẩm)|sp\s*bán\s*chạy|sản\s*phẩm\s*bán\s*chạy/.test(q)) {
+    const products = useProductStore.getState().products;
+    const rows = getTopProductsByRevenue(revenues, products, 8);
+    if (!rows.length) return '😕 Chưa có dữ liệu sản phẩm.';
+    return [
+      '🏷️ **Top sản phẩm theo doanh thu**',
+      '',
+      ...rows.map(
+        (r, i) =>
+          `${i + 1}. **${r.productName}** — ${formatCurrency(r.totalRevenue)} · SL ${r.totalQuantity}`,
+      ),
+    ].join('\n');
+  }
+
+  if (/theo\s*kênh|doanh\s*thu\s*kênh|revenue\s*by\s*platform/.test(q)) {
+    const platforms = usePlatformStore.getState().platforms;
+    const rows = getRevenueByPlatform(revenues, platforms);
+    if (!rows.length) return '😕 Chưa có doanh thu theo kênh.';
+    return [
+      '📣 **Doanh thu theo kênh**',
+      '',
+      ...rows.slice(0, 10).map((r) => `• **${r.platformName}** — ${formatCurrency(r.totalRevenue)}`),
+    ].join('\n');
+  }
+
+  if (/theo\s*tháng|chi\s*theo\s*tháng|thu\s*theo\s*tháng/.test(q)) {
+    const expM = getExpenseByMonth(expenses).slice(-6);
+    const revM = getRevenueByMonth(revenues).slice(-6);
+    const profit = getProfitSummary(expenses, revenues);
+    return [
+      '📅 **Theo tháng**',
+      '',
+      `📈 LN gần nhất: **${formatCurrency(profit.profit)}**`,
+      '',
+      '💸 Chi:',
+      ...expM.map((m) => `• ${m.month}: ${formatCurrency(m.total)} (${m.count})`),
+      '',
+      '💰 Thu:',
+      ...revM.map((m) => `• ${m.month}: ${formatCurrency(m.total)} (${m.count})`),
+    ].join('\n');
+  }
+
+  if (/tổng quan|tổng hợp|lợi nhuận|tổng thu|tổng chi|dashboard|báo cáo|thống kê/.test(q) || !q) {
     const pending = revenues.filter(
       (r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled',
     ).length;
+    const byCat = getExpenseByCategory(expenses).slice(0, 4);
     return [
       '📊 **Tổng quan**',
       '',
@@ -654,7 +946,30 @@ function buildLookupAnswer(intent: ChatIntent): string {
       `💸 Tổng chi: **${formatCurrency(totalE)}** (${expenses.length} khoản)`,
       `📈 Lợi nhuận: **${formatCurrency(totalR - totalE)}**`,
       `⏳ Đơn đang xử lý: **${pending}**`,
-    ].join('\n');
+      byCat.length ? '' : '',
+      byCat.length ? '📁 Chi nhiều nhất:' : '',
+      ...byCat.map(
+        (c) =>
+          `• ${EXPENSE_CATEGORY_LABELS[c.category as keyof typeof EXPENSE_CATEGORY_LABELS] || c.category}: ${formatCurrency(c.total)}`,
+      ),
+    ]
+      .filter((line) => line !== '')
+      .join('\n');
+  }
+
+  if (/giá\s+|bao nhiêu/.test(q) && !/chi|thu|đơn\b/.test(q)) {
+    const hint = q
+      .replace(/giá|bao nhiêu|của|sp|sản\s*phẩm|là|hiện\s*tại/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const hits = hint ? searchProducts(hint, 8) : [];
+    if (hits.length) {
+      return [
+        '🏷️ **Giá sản phẩm:**',
+        '',
+        ...hits.map((p) => `• **${p.name}** — ${formatCurrency(p.defaultUnitPrice)}/${p.unit}`),
+      ].join('\n');
+    }
   }
 
   if (/đơn|doanh thu|bán|order/.test(q)) {

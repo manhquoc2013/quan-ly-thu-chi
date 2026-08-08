@@ -11,6 +11,7 @@ import { immer } from 'zustand/middleware/immer';
 import { geminiService } from '@/services/geminiService';
 import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
+import { openRouterService } from '@/services/openRouterService';
 import { webLLM } from '@/services/webLLM';
 import { type LlmSource, AI_PRIORITY_DEFAULT } from '@/services/llmTypes';
 import type { UserProfile } from '@/services/authService';
@@ -34,6 +35,9 @@ interface AuthState {
   groqApiKey: string | null;
   groqConfigured: boolean;
   enableGroq: boolean;
+  openRouterApiKey: string | null;
+  openRouterConfigured: boolean;
+  enableOpenRouter: boolean;
   aiPriority: LlmSource[];
   householdId: string | null;
   householdName: string | null;
@@ -48,6 +52,8 @@ export interface AuthActions {
   setKiloApiKey: (key: string | null) => void;
   setGroqApiKey: (key: string | null) => void;
   setEnableGroq: (v: boolean) => void;
+  setOpenRouterApiKey: (key: string | null) => void;
+  setEnableOpenRouter: (v: boolean) => void;
   setAiPriority: (order: LlmSource[]) => void;
   setHousehold: (
     info: {
@@ -77,6 +83,11 @@ function syncGroqService(apiKey: string | null): void {
   else groqService.disconnect();
 }
 
+function syncOpenRouterService(apiKey: string | null): void {
+  if (apiKey) openRouterService.configure(apiKey);
+  else openRouterService.disconnect();
+}
+
 function syncKiloService(opts: { enabled: boolean; apiKey: string | null }): void {
   kiloService.setEnabled(opts.enabled);
   kiloService.configure(opts.apiKey);
@@ -93,6 +104,9 @@ export const useAuthStore = create<AuthStore>()(
       groqApiKey: null,
       groqConfigured: false,
       enableGroq: true,
+      openRouterApiKey: null,
+      openRouterConfigured: false,
+      enableOpenRouter: true,
       aiPriority: AI_PRIORITY_DEFAULT,
       householdId: null,
       householdName: null,
@@ -149,6 +163,21 @@ export const useAuthStore = create<AuthStore>()(
           state.enableGroq = enableGroq;
         });
         groqService.setEnabled(enableGroq);
+      },
+
+      setOpenRouterApiKey: (openRouterApiKey) => {
+        set((state) => {
+          state.openRouterApiKey = openRouterApiKey;
+          state.openRouterConfigured = !!openRouterApiKey;
+        });
+        syncOpenRouterService(openRouterApiKey);
+      },
+
+      setEnableOpenRouter: (enableOpenRouter) => {
+        set((state) => {
+          state.enableOpenRouter = enableOpenRouter;
+        });
+        openRouterService.setEnabled(enableOpenRouter);
       },
 
       setAiPriority: (aiPriority) =>
@@ -248,6 +277,8 @@ export const useAuthStore = create<AuthStore>()(
         kiloApiKey: state.kiloApiKey,
         groqApiKey: state.groqApiKey,
         enableGroq: state.enableGroq,
+        openRouterApiKey: state.openRouterApiKey,
+        enableOpenRouter: state.enableOpenRouter,
         aiPriority: state.aiPriority,
         // Do not persist isAuthenticated — AuthGuard restores from Supabase session
         userProfile: state.userProfile,
@@ -268,6 +299,11 @@ export const useAuthStore = create<AuthStore>()(
           syncGroqService(state.groqApiKey);
           state.groqConfigured = true;
         }
+        if (state.openRouterApiKey) {
+          syncOpenRouterService(state.openRouterApiKey);
+          state.openRouterConfigured = true;
+        }
+        openRouterService.setEnabled(state.enableOpenRouter !== false);
         syncKiloService({
           enabled: state.enableKiloFree !== false,
           apiKey: state.kiloApiKey ?? null,

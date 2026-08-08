@@ -12,6 +12,7 @@ import {
 import { useRevenueStore } from "@/store/revenueStore";
 import { useProductStore } from "@/store/productStore";
 import { useReportStore } from "@/store/reportStore";
+import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
@@ -31,6 +32,7 @@ const COLORS = [
 ];
 
 export function ProductReport() {
+  const { isDark } = useTheme();
   const revenues = useRevenueStore((s) => s.records);
   const products = useProductStore((s) => s.products);
   const { from, to } = useReportStore((s) => s.dateRange);
@@ -136,28 +138,28 @@ export function ProductReport() {
                 <ResponsiveContainer>
                   <BarChart data={byQuantityData} barCategoryGap="30%">
                     <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#E0E3E8"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 10 }}
-                      angle={-30}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v: number) => formatAxisVnd(v)}
-                    />
-                    <Tooltip
-                      formatter={(v: number) => formatCurrency(v)}
-                      labelFormatter={(l) => `SP: ${l}`}
-                    />
-                    <Bar
-                      dataKey="quantity"
-                      fill="#7C3AED"
+                     strokeDasharray="3 3"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
+                     vertical={false}
+                   />
+                   <XAxis
+                     dataKey="name"
+                     tick={{ fontSize: 10 }}
+                     angle={-30}
+                     textAnchor="end"
+                     height={60}
+                   />
+                   <YAxis
+                     tick={{ fontSize: 11 }}
+                     tickFormatter={(v: number) => formatAxisVnd(v)}
+                   />
+                   <Tooltip
+                     formatter={(v: number) => formatCurrency(v)}
+                     labelFormatter={(l) => `SP: ${l}`}
+                   />
+                   <Bar
+                     dataKey="quantity"
+                      fill={isDark ? '#A78BFA' : '#7C3AED'}
                       radius={[4, 4, 0, 0]}
                       name="Số lượng"
                       maxBarSize={36}
@@ -184,7 +186,7 @@ export function ProductReport() {
                   <BarChart data={byRevenueData} barCategoryGap="30%">
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#E0E3E8"
+                      stroke={isDark ? '#334155' : '#CBD5E1'}
                       vertical={false}
                     />
                     <XAxis
@@ -205,7 +207,7 @@ export function ProductReport() {
                     />
                     <Bar
                       dataKey="revenue"
-                      fill="#D97706"
+                      fill={isDark ? '#FBBF24' : '#D97706'}
                       radius={[4, 4, 0, 0]}
                       name="Doanh thu"
                       maxBarSize={36}

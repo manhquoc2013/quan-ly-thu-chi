@@ -1,0 +1,50 @@
+{
+  "triage_id": "TRI-1786206019074-34f2",
+  "created_at": 1786206019074,
+  "request_summary": "Fix: (1) AuthGuard hard reload bug — retry Supabase getSession thay vì logout ngay, (2) Bỏ border-l chat panel, (3) Sidebar light mode đã sửa màu sáng.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/index.css",
+      "src/ui/components/AuthGuard.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "impact_files": [
+      "src/index.css",
+      "src/ui/components/AuthGuard.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Người dùng hard reload / mở chat panel",
+  "blast_radius": 3,
+  "done_oracle": "(1) Hard reload không hiện login screen — retry getSession. (2) Chat panel không còn border-l. (3) Sidebar đổi màu light/dark. Build+typecheck pass.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/index.css",
+    "src/ui/components/AuthGuard.tsx",
+    "src/ui/Layout.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786205557820-d0d3",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786206019108
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

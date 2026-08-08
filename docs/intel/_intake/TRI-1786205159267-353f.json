@@ -1,0 +1,106 @@
+{
+  "triage_id": "TRI-1786205159267-353f",
+  "created_at": 1786205159267,
+  "request_summary": "Thêm OpenRouter AI provider: service mới dùng OpenAI-compatible API, auto-fallback model free, tích hợp vào cascade + auth store + settings UI.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmCall.ts",
+      "src/services/llmTypes.ts",
+      "src/services/openRouterService.ts",
+      "src/services/syncEngine.ts",
+      "src/services/userSettingsService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "impact_files": [
+      "src/services/aiRouter.ts",
+      "src/services/llmCall.ts",
+      "src/services/llmTypes.ts",
+      "src/services/openRouterService.ts",
+      "src/services/syncEngine.ts",
+      "src/services/userSettingsService.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "request-text:credential+authz"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:request-text:credential+authz — floors at C3 regardless of size (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Người dùng cấu hình OpenRouter API key trong Settings → AI chat tự động dùng OpenRouter model free trong cascade (Kilo → OpenRouter → Groq → Gemini → WebLLM)",
+  "blast_radius": 8,
+  "done_oracle": "Trong Settings có section OpenRouter: nhập API key, toggle bật/tắt, test connection. AI chat dùng OpenRouter khi được chọn trong priority và key hợp lệ. Auto-fallback qua các model free khi model chính bị rate-limit. Build + typecheck pass.",
+  "change_type": "architecture",
+  "seam_claims": [
+    {
+      "file": "src/services/llmTypes.ts",
+      "line": 9,
+      "quote": "export type LlmSource = 'kilo' | 'groq' | 'gemini' | 'local';",
+      "source_hash": "df888a3e3e8faed2378529b215d66964726c3166d0dfac21dfcde540e56b6f1f",
+      "quote_hash": "18bc74604e98a1695b0377ebf908fda7f0320721dcb0cbf2efbaf2997d9e5322",
+      "note": "Extend with 'openrouter'"
+    },
+    {
+      "file": "src/services/llmCall.ts",
+      "line": 14,
+      "quote": "  source: LlmSource,",
+      "source_hash": "61b9e1871683d931c76a4e11db97e455a50874f3ddb953945e176e8f69e0e122",
+      "quote_hash": "afbccd85fc5779ec2e7ba9616de104b7f30796415cd60ec801f82732c98b7830",
+      "note": "Provider switch parameter"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 24,
+      "quote": "interface AuthState {",
+      "source_hash": "0244be461d82fa4637d2751b4926f8aa5c0f40fe631cce2f75c80be04e52be42",
+      "quote_hash": "655bb0295298a3e194ecb2dfdeb98756d61687031c176bc01d502f7c28264060",
+      "note": "Add openRouterApiKey, openRouterConfigured, enableOpenRouter"
+    },
+    {
+      "file": "src/services/aiRouter.ts",
+      "line": 59,
+      "quote": "export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';",
+      "source_hash": "3fb5d476465a18cfe409941fe2036e6c6df382fb91a3f069880e8dd7e9f13317",
+      "quote_hash": "0e2085b782b64f7b124ed8aa731119d27eab49db442ee0f0c2c4b39946233072",
+      "note": "Add 'openrouter'"
+    },
+    {
+      "file": "src/ui/screens/settings/SettingsScreen.tsx",
+      "line": 616,
+      "quote": "                <CardTitle>Groq AI</CardTitle>",
+      "source_hash": "c999714bcb13d68ca4edfc9dd592a42fd336af745ca8ffcf39c24dba29a7f6d3",
+      "quote_hash": "d19ea05d2bda13defc3b168e30929d8a27b1398427271244bf8263f0b0c40ed5",
+      "note": "Template for OpenRouter section"
+    },
+    {
+      "file": "src/services/groqService.ts",
+      "line": 14,
+      "quote": "const GROQ_BASE = 'https://api.groq.com/openai/v1';",
+      "source_hash": "dd71a5230ca5246d301fae9ec69dab04b8bd671668639fa80c5448662270033c",
+      "quote_hash": "d20a3b74607cebb3f42dc5475377abb3a23a5e7a8575a6ed9de2aec72a36b814",
+      "note": "Base URL pattern — openRouterService uses 'https://openrouter.ai/api/v1'"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786205159299
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

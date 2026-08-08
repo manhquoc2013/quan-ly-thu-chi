@@ -1,0 +1,46 @@
+{
+  "triage_id": "TRI-1786207825769-4f74",
+  "created_at": 1786207825769,
+  "request_summary": "Mobile menu closing animation + OrderDialog dropdown overflow fix.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/index.css",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/index.css",
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Mobile menu / tạo đơn hàng",
+  "blast_radius": 3,
+  "done_oracle": "(1) Mobile menu có animation đóng (slide-out-left). (2) OrderDialog dropdown không bị clip. Build pass.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/index.css",
+    "src/ui/Layout.tsx",
+    "src/ui/screens/revenue/OrderDialog.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786207825813
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

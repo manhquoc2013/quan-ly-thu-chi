@@ -1,0 +1,39 @@
+{
+  "triage_id": "TRI-1786207922341-ec1f",
+  "created_at": 1786207922341,
+  "request_summary": "Mobile: drawer close animation + user info. OrderDialog: overflow fix.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Mobile menu / tạo đơn",
+  "blast_radius": 2,
+  "done_oracle": "Mobile drawer close animation mượt + user info. OrderDialog dropdown không clip. Build pass.",
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786207922371
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

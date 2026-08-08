@@ -1,6 +1,6 @@
 /**
  * OnboardingScreen — collect store info after first registration.
- * Redirects to dashboard on completion.
+ * Modern glass-morphism design matching AuthScreen.
  */
 
 import { useState, type FormEvent } from 'react';
@@ -11,9 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Store, Loader2 } from 'lucide-react';
+import { Store, Loader2, ArrowRight } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
 export function OnboardingScreen() {
+  const { isDark } = useTheme();
   const { userProfile, updateUserProfile } = useAuthStore();
   const [storeName, setStoreName] = useState(userProfile?.storeName || '');
   const [address, setAddress] = useState(userProfile?.address || '');
@@ -24,12 +26,10 @@ export function OnboardingScreen() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmedName = storeName.trim();
-
     if (!trimmedName) {
       toast.error('Vui lòng nhập tên cửa hàng.');
       return;
     }
-
     setLoading(true);
     try {
       updateUserProfile({
@@ -45,70 +45,69 @@ export function OnboardingScreen() {
       });
       toast.success('Thiết lập cửa hàng thành công!');
       setDone(true);
-    } catch (err) {
+    } catch {
       toast.error('Không thể lưu thông tin. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   }
 
-  if (done) {
-    return null; // AuthGuard will re-render with updated profile → dashboard
-  }
+  if (done) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-3 flex items-center justify-center size-12 rounded-full bg-accent-fg/10">
-            <Store className="size-6 text-accent-fg" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: isDark
+            ? 'linear-gradient(135deg, #0F172A 0%, #134E4A 40%, #0F172A 100%)'
+            : 'linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 30%, #E0F2FE 70%, #F8FAFC 100%)',
+        }}
+      />
+      <div className="relative z-10 w-full max-w-md px-4 animate-[dialog-in_0.5s_ease_forwards]">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-gradient-to-br from-[#0D9488] to-[#14B8A6] shadow-lg shadow-[#0D9488]/25 mb-4">
+            <Store size={32} className="text-white" />
           </div>
-          <CardTitle className="text-xl">Chào mừng đến với Lucky!</CardTitle>
-          <CardDescription>
+          <h1 className="text-2xl font-bold text-text-primary">Chào mừng!</h1>
+          <p className="text-sm text-text-muted mt-1.5">
             Thiết lập thông tin cửa hàng của bạn để bắt đầu
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="store-name">Tên cửa hàng *</Label>
-              <Input
-                id="store-name"
-                placeholder="VD: Tiệm tạp hóa Nhà Bo"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                disabled={loading}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store-address">Địa chỉ</Label>
-              <Input
-                id="store-address"
-                placeholder="Số nhà, đường, phường..."
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store-phone">Số điện thoại</Label>
-              <Input
-                id="store-phone"
-                type="tel"
-                placeholder="0912345678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Bắt đầu sử dụng
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+
+        <Card className="backdrop-blur-xl bg-surface/70 border-border/50 shadow-xl shadow-black/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Thông tin cửa hàng</CardTitle>
+            <CardDescription className="text-xs">Có thể thay đổi sau trong Cài đặt</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="store-name" className="text-xs">Tên cửa hàng *</Label>
+                <Input id="store-name" placeholder="VD: Tiệm tạp hóa Nhà Bo" value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)} disabled={loading} autoFocus className="h-10" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="store-address" className="text-xs">Địa chỉ</Label>
+                <Input id="store-address" placeholder="Số nhà, đường, phường..." value={address}
+                  onChange={(e) => setAddress(e.target.value)} disabled={loading} className="h-10" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="store-phone" className="text-xs">Số điện thoại</Label>
+                <Input id="store-phone" type="tel" placeholder="0912345678" value={phone}
+                  onChange={(e) => setPhone(e.target.value)} disabled={loading} className="h-10" />
+              </div>
+              <Button type="submit" className="w-full h-10 gap-2" disabled={loading}>
+                {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                Bắt đầu sử dụng
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+        <p className="text-center text-[10px] text-text-muted mt-6">
+          © 2026 Quản Lý Tài Chính · v2.0
+        </p>
+      </div>
     </div>
   );
 }

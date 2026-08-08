@@ -1,0 +1,43 @@
+{
+  "triage_id": "TRI-1786207058688-f07c",
+  "created_at": 1786207058688,
+  "request_summary": "Fix: OrderDialog product dropdown hiện ngay cả khi catalog trống + chat backdrop blur đẹp hơn.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "impact_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Tạo đơn hàng gõ tên SP / mở chat panel",
+  "blast_radius": 2,
+  "done_oracle": "(1) OrderDialog luôn hiện dropdown khi gõ tên SP (kể cả catalog trống). (2) Chat backdrop thêm blur effect. Build + typecheck pass.",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786206920587-072f",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786207058719
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

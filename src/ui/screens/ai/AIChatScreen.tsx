@@ -25,7 +25,7 @@ interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: Date;
-  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract';
+  source?: 'local' | 'cloud' | 'kilo' | 'groq' | 'gemini' | 'tesseract' | 'openrouter';
   drafts?: DraftRecord[];
   confirmed?: boolean;
   createdRecord?: { kind: 'expense' | 'revenue' | 'product'; id: string };
@@ -98,7 +98,8 @@ export function AIChatScreen() {
           createdRecord: result.createdRecord,
         },
       ]);
-      if (result.text.startsWith('✅')) {
+      if (result.navigateTo) navigate(result.navigateTo);
+      if (result.text.startsWith('✅') || result.text.includes('✅')) {
         void getAllExpenses();
         void getAllRevenues();
       }

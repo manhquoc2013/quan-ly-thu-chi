@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1786204557920-261c",
+  "created_at": 1786204557920,
+  "request_summary": "CommandPalette search: thay vì chỉ navigate tới trang danh sách, khi click vào kết quả tìm kiếm (expense/revenue/customer/product) thì mở dialog chi tiết/chỉnh sửa trực tiếp.",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/store/uiStore.ts",
+      "src/ui/components/CommandPalette.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx"
+    ],
+    "impact_files": [
+      "src/store/uiStore.ts",
+      "src/ui/components/CommandPalette.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "CommandPalette (⌘K) - người dùng tìm kiếm sản phẩm/khách hàng/chi phí/đơn hàng và click vào kết quả",
+  "blast_radius": 4,
+  "done_oracle": "Tìm kiếm sản phẩm \"Hello Kitty\" → click → mở ProductDialog chỉnh sửa. Tìm kiếm khách \"Hoa\" → click → mở CustomerDialog. Tìm kiếm đơn hàng → click → mở detail revenue. Tìm kiếm chi phí → click → mở dialog sửa chi phí. Build và typecheck pass.",
+  "change_type": "scope_expansion",
+  "declared_write_scope": [
+    "src/store/uiStore.ts",
+    "src/ui/components/CommandPalette.tsx",
+    "src/ui/screens/customer/CustomerScreen.tsx",
+    "src/ui/screens/product/ProductScreen.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "85cef3d003c20169007b5cf261f49ef68d8bb39a",
+    "dirty": true,
+    "captured_at": 1786204557956
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}
