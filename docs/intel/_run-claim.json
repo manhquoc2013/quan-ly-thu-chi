@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-08-02T07:26:42.710Z",
-  "last_modified_at": "2026-08-02T09:09:42.222Z",
+  "last_modified_at": "2026-08-05T08:20:44.460Z",
   "modules": {
     "M-000": {
       "depends_on": [],
@@ -22,21 +22,23 @@
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "done",
-      "claimed_by": "tab-b10d2f03b1b36ac5",
-      "claimed_at": "2026-08-02T08:25:38.978Z",
-      "heartbeat_at": "2026-08-02T09:09:42.222Z",
+      "status": "failed",
+      "claimed_by": "tab-e55affe5673db0e6",
+      "claimed_at": "2026-08-05T07:49:15.071Z",
+      "heartbeat_at": "2026-08-05T08:20:44.460Z",
       "current_stage": null,
       "started_at": "2026-08-02T07:26:46.045Z",
-      "completed_at": "2026-08-02T09:09:42.222Z",
+      "completed_at": "2026-08-05T08:20:44.460Z",
       "auto_pass_count": 0,
-      "attempt": 3,
+      "attempt": 4,
       "name": "Quản Lý Tài Chính",
       "slug": "quan-ly-thu-chi",
       "risk_path": "M",
       "claimed_pid": null,
       "claimed_host": null,
-      "previous_claimed_by": "tab-b10d2f03b1b36ac5"
+      "previous_claimed_by": "tab-b10d2f03b1b36ac5",
+      "reopened_at": "2026-08-05T07:34:02.638Z",
+      "reopened_reason": "Scope expansion: add Groq AI provider + user-configurable AI priority ordering"
     },
     "M-003": {
       "depends_on": [],
@@ -88,6 +90,17 @@
       "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [
+        "M-001"
+      ],
+      "skipped_modules": []
+    },
+    "tab-e55affe5673db0e6": {
+      "started_at": "2026-08-05T07:34:08.335Z",
+      "last_seen": "2026-08-05T08:20:44.460Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-001",
         "M-001"
       ],
       "skipped_modules": []

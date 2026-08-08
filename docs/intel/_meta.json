@@ -7,10 +7,10 @@
       "version": 1
     },
     "docs/modules/M-001-quan-ly-thu-chi/_state.md": {
-      "content_hash": "sha256:a5623f3dbf5968acee625268403479d10e386659931af7f9551d0c853b15ee1d",
-      "last_modified": "2026-08-02T08:29:15Z",
+      "content_hash": "sha256:7815be79db0a4d809b16345f8c802d87300bff32c3e45219963a644938e849ac",
+      "last_modified": "2026-08-05T08:08:18Z",
       "last_producer": "ai-kit/update_state(stage_rollback)",
-      "version": 2
+      "version": 4
     },
     "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md": {
       "content_hash": "sha256:82881b175cf7e86d297b7164b7bcd36c95aa7a80eb384941bb6fe1b926cc6095",

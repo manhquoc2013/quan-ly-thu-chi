@@ -1,0 +1,94 @@
+{
+  "triage_id": "TRI-1785915049449-58fd",
+  "created_at": 1785915049449,
+  "request_summary": "Thêm Groq AI provider (OpenAI-compatible) vào app quản lý thu chi, cho phép sắp xếp thứ tự ưu tiên giữa các AI (Kilo Free, Gemini, Groq, WebLLM)",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      ".env",
+      "src/services/groqService.ts",
+      "src/services/index.ts",
+      "src/services/llmCall.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "impact_files": [
+      ".env",
+      "src/services/groqService.ts",
+      "src/services/index.ts",
+      "src/services/llmCall.ts",
+      "src/store/authStore.ts",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": ".env"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:.env — floors at C3 regardless of size (6 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "SettingsScreen → AI settings section: user configures Groq API key, toggles providers, and sets priority order",
+  "blast_radius": 6,
+  "done_oracle": "Groq section hiển thị trong Settings, nhập API key và test connection thành công; cascade AI trong llmCall.ts gọi Groq theo đúng thứ tự ưu tiên; UI priority ordering hoạt động",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/services/llmCall.ts",
+      "line": 17,
+      "quote": "  const { geminiConfigured, enableKiloFree } = useAuthStore.getState();",
+      "source_hash": "ec9c7df3fd636d9302a87220b1f6ffadee36ecab7346db8d12d697b5d4ebd7b0",
+      "quote_hash": "0c83c825b336fdaff5e154161dff3b1d54b7225e1b3dc2115baa0e32acedb62b",
+      "note": "AI cascade entry point — reads config to decide call order"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 32,
+      "quote": "  geminiApiKey: string | null;",
+      "source_hash": "fef789b37c21dc2859036257f445363b0bc90e5e03cb135fb5a514592c22e382",
+      "quote_hash": "7983cfd8fd04422a1857b92ea0880ec17563f38387aa74c79b535c506c5f34f2",
+      "note": "Existing AI provider state pattern to replicate for Groq"
+    },
+    {
+      "file": "src/store/authStore.ts",
+      "line": 57,
+      "quote": "  setGeminiApiKey: (key: string | null) => void;",
+      "source_hash": "fef789b37c21dc2859036257f445363b0bc90e5e03cb135fb5a514592c22e382",
+      "quote_hash": "a79d9d3227076d199c8de952dd3c5479b96ffc96666b158a6da68d3de7207962",
+      "note": "Existing setter pattern for AI key"
+    },
+    {
+      "file": "src/ui/screens/settings/SettingsScreen.tsx",
+      "line": 53,
+      "quote": "    geminiApiKey,",
+      "source_hash": "87ecb950e8f7778b3bfd24e587f7dac8fc0bbe6a47bb8ff204a7e4fdcf11bf0a",
+      "quote_hash": "c84648814cd7e548bded83e01cbe9c9e11e14ffba0f4b670a38443545bfa9cd5",
+      "note": "Settings reads AI config from store"
+    },
+    {
+      "file": "src/ui/screens/settings/SettingsScreen.tsx",
+      "line": 438,
+      "quote": "      <section aria-label=\"Kilo Free AI settings\">",
+      "source_hash": "87ecb950e8f7778b3bfd24e587f7dac8fc0bbe6a47bb8ff204a7e4fdcf11bf0a",
+      "quote_hash": "85aea4673a24aefe41562a500a3f3473567c6ee1538a542d8f58f33a2040795f",
+      "note": "AI section insertion point — Groq section goes before or after Kilo Free"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "5b596b2f939e1cc87f606ed6e776574d11e63c7d",
+    "dirty": true,
+    "captured_at": 1785915049486
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}
