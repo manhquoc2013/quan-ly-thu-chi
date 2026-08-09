@@ -6,11 +6,15 @@
 1. Dev trên nhánh feature/
 2. Merge vào main qua Pull Request
 3. Build & test: npm run build && npm run test
-4. Cập nhật version trong package.json
+4. Cập nhật version trong package.json (+ CHANGELOG.md, RELEASE.md)
 5. Commit: "Release vX.Y.Z"
-6. Tag: git tag vX.Y.Z && git push origin vX.Y.Z
-7. GitHub Actions tự deploy lên GitHub Pages
+6. Tag: git tag -a vX.Y.Z -m "…" && git push origin main && git push origin vX.Y.Z
+7. GitHub Release (bắt buộc — tag ≠ release trên tab Releases):
+   gh release create vX.Y.Z --title "vX.Y.Z — …" --notes-file - --latest
+8. GitHub Actions tự deploy lên GitHub Pages
 ```
+
+> **Lưu ý:** `git tag` chỉ tạo tag trên git. Tab **Releases** trên GitHub chỉ hiện mục đã tạo bằng `gh release create` (hoặc nút “Draft a new release”).
 
 ## Phiên bản hiện tại: v1.4.1
 
@@ -32,3 +36,4 @@
 - [ ] Đăng nhập/đăng ký Supabase hoạt động
 - [ ] Cập nhật CHANGELOG.md
 - [ ] Cập nhật version trong package.json
+- [ ] Tạo GitHub Release (`gh release create …`) — không chỉ đẩy tag
