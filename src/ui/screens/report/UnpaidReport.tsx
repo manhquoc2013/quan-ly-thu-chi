@@ -33,19 +33,19 @@ export function UnpaidReport() {
 
   return (
     <div className="space-y-[var(--s-lg)]">
-      <div className="grid grid-cols-2 gap-[var(--s-md)]">
-        <Card className="text-center py-4">
-          <CardContent>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[var(--s-md)] min-w-0">
+        <Card className="text-center py-4 min-w-0">
+          <CardContent className="min-w-0 px-3">
             <p className="text-xs text-text-muted">Tổng công nợ</p>
-            <p className="text-lg font-bold text-warning-fg">
+            <p className="text-base sm:text-lg font-bold text-warning-fg tabular-nums break-words leading-snug">
               {formatCurrency(total)}
             </p>
           </CardContent>
         </Card>
-        <Card className="text-center py-4">
-          <CardContent>
+        <Card className="text-center py-4 min-w-0">
+          <CardContent className="min-w-0 px-3">
             <p className="text-xs text-text-muted">Số đơn chưa thu</p>
-            <p className="text-lg font-bold text-text-primary">
+            <p className="text-base sm:text-lg font-bold text-text-primary tabular-nums">
               {unpaid.length}
             </p>
           </CardContent>

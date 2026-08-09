@@ -159,6 +159,8 @@ export function DashboardScreen() {
       hint: 'Đã thanh toán' as string | undefined,
       icon: ArrowUpRight,
       tone: 'text-success-fg',
+      // mobile 2-col / md 6-col / xl 5-col
+      span: 'col-span-1 md:col-span-2 xl:col-span-1',
     },
     {
       title: 'Chi phí',
@@ -166,6 +168,7 @@ export function DashboardScreen() {
       hint: 'Tất cả khoản chi' as string | undefined,
       icon: ArrowDownRight,
       tone: 'text-danger-fg',
+      span: 'col-span-1 md:col-span-2 xl:col-span-1',
     },
     {
       title: 'Lợi nhuận',
@@ -173,6 +176,7 @@ export function DashboardScreen() {
       hint: (profit >= 0 ? 'Có lãi' : 'Lỗ') as string | undefined,
       icon: TrendingUp,
       tone: profit >= 0 ? 'text-success-fg' : 'text-danger-fg',
+      span: 'col-span-1 md:col-span-2 xl:col-span-1',
     },
     {
       title: 'Công nợ',
@@ -180,6 +184,7 @@ export function DashboardScreen() {
       hint: unpaidCount > 0 ? `${unpaidCount} đơn chưa thu` : 'Không còn nợ',
       icon: Wallet,
       tone: unpaidTotal > 0 ? 'text-warning-fg' : 'text-text-primary',
+      span: 'col-span-1 md:col-span-3 xl:col-span-1',
     },
     {
       title: 'Đơn chờ',
@@ -187,23 +192,25 @@ export function DashboardScreen() {
       hint: pendingCount > 0 ? 'Cần xử lý' : 'Đã xong',
       icon: Clock,
       tone: 'text-text-primary',
+      // Odd last card: full width on mobile, half on md, 1/5 on xl
+      span: 'col-span-2 md:col-span-3 xl:col-span-1',
     },
   ];
 
   return (
-    <div className="space-y-[var(--s-lg)]">
+    <div className="space-y-[var(--s-lg)] min-w-0 w-full max-w-full overflow-x-hidden">
       {/*
-        Responsive KPI strip — amount sits on its own row (no truncate):
-        - mobile: 2 cols
-        - md: 3 cols (3 + 2)
+        Responsive KPI:
+        - mobile: 2 cols, last card full-width
+        - md: 6-col grid → 3+2 balanced rows
         - xl: 5 equal cols
       */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-[var(--s-md)]">
+      <div className="grid grid-cols-2 md:grid-cols-6 xl:grid-cols-5 gap-[var(--s-md)] min-w-0">
         {kpiCards.map((c) => (
           <Card
             key={c.title}
             data-mascot-platform
-            className="min-w-0 bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all"
+            className={`min-w-0 bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all ${c.span}`}
           >
             <CardContent className="flex flex-col gap-2 p-3 sm:p-4">
               <div className="flex items-center gap-2 min-w-0">
@@ -226,27 +233,31 @@ export function DashboardScreen() {
         ))}
       </div>
 
-      <Card data-mascot-platform>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle>Thu chi 7 ngày gần đây</CardTitle>
-          <Badge variant="secondary">Tuần này</Badge>
+      <Card data-mascot-platform className="min-w-0 overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2 px-4 sm:px-6">
+          <CardTitle className="text-sm sm:text-base min-w-0 truncate">Thu chi 7 ngày gần đây</CardTitle>
+          <Badge variant="secondary" className="shrink-0">Tuần này</Badge>
         </CardHeader>
-        <CardContent>
-          <div className="h-[200px] -mx-2" data-mascot-platform>
+        <CardContent className="min-w-0 px-2 sm:px-6 overflow-hidden">
+          <div className="h-[200px] w-full min-w-0 max-w-full" data-mascot-platform>
             {chartData.every((d) => d.thu === 0 && d.chi === 0) ? (
               <div className="flex items-center justify-center h-full text-xs text-text-muted">
                 Chưa có dữ liệu
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} barCategoryGap="20%">
+                <BarChart
+                  data={chartData}
+                  barCategoryGap="18%"
+                  margin={{ top: 4, right: 4, left: -8, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#CBD5E1'} vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: isDark ? '#94A3B8' : '#64748B' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: isDark ? '#94A3B8' : '#64748B' }} axisLine={false} tickLine={false} />
                   <YAxis
-                    tick={{ fontSize: 11, fill: isDark ? '#94A3B8' : '#64748B' }}
+                    tick={{ fontSize: 10, fill: isDark ? '#94A3B8' : '#64748B' }}
                     axisLine={false}
                     tickLine={false}
-                    width={48}
+                    width={36}
                     tickFormatter={formatAxisVnd}
                   />
                   <Tooltip
@@ -270,9 +281,9 @@ export function DashboardScreen() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-[var(--s-lg)]">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-[var(--s-lg)] min-w-0">
         {/* ── Đơn đang chờ ─────────────────────────────────────────────── */}
-        <Card data-mascot-platform className="overflow-hidden">
+        <Card data-mascot-platform className="overflow-hidden min-w-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex h-8 w-8 items-center justify-center rounded-field bg-accent-bg text-accent-fg shrink-0">

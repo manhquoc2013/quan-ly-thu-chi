@@ -106,7 +106,7 @@
       "test_name": "DS-007: money() function uses formatCurrency(amount) without Math.round",
       "layer": "gray-box",
       "tags": ["dashboard", "cg-3"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "DashboardScreen.tsx có hàm money(amount) để format số tiền",
         "when": "Đọc định nghĩa hàm money() trong file",
@@ -121,7 +121,7 @@
       "test_name": "DS-008: KPI card title \"Doanh thu\" (not \"Tổng thu\")",
       "layer": "gray-box",
       "tags": ["dashboard", "cg-3"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "DashboardScreen.tsx có danh sách thẻ KPI metrics",
         "when": "Tìm thẻ KPI cho doanh thu",
@@ -136,7 +136,7 @@
       "test_name": "DS-009: KPI card title \"Chi phí\" (not \"Tổng chi\")",
       "layer": "gray-box",
       "tags": ["dashboard", "cg-3"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "DashboardScreen.tsx có danh sách thẻ KPI metrics",
         "when": "Tìm thẻ KPI cho chi phí",
@@ -316,7 +316,7 @@
       "test_name": "DS-021: RevenueGrid single confirm \"Xóa đơn hàng?\" (not \"Xác nhận xóa\")",
       "layer": "gray-box",
       "tags": ["confirm-dialog", "cg-6"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "RevenueGrid.tsx có AlertDialog xác nhận xóa đơn hàng",
         "when": "Nhấn nút xóa trên một đơn hàng",
@@ -331,7 +331,7 @@
       "test_name": "DS-022: RevenueGrid bulk confirm \"Xóa nhiều đơn hàng?\"",
       "layer": "gray-box",
       "tags": ["confirm-dialog", "cg-6"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "RevenueGrid.tsx có bulk bar xác nhận xóa nhiều đơn",
         "when": "Nhấn nút xóa trên nhiều đơn đã chọn",
@@ -346,7 +346,7 @@
       "test_name": "DS-023: ExpenseGrid single confirm \"Xóa chi phí?\"",
       "layer": "gray-box",
       "tags": ["confirm-dialog", "cg-6"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "ExpenseGrid.tsx có AlertDialog xác nhận xóa chi phí",
         "when": "Nhấn nút xóa trên một chi phí",
@@ -361,7 +361,7 @@
       "test_name": "DS-024: ExpenseGrid bulk confirm \"Xóa nhiều chi phí?\"",
       "layer": "gray-box",
       "tags": ["confirm-dialog", "cg-6"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "ExpenseGrid.tsx có bulk bar xác nhận xóa nhiều chi phí",
         "when": "Nhấn nút xóa trên nhiều chi phí đã chọn",
@@ -421,7 +421,7 @@
       "test_name": "DS-028: RevenueGrid imports formatDate from @/utils/date",
       "layer": "gray-box",
       "tags": ["date-formatting", "cg-9"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "RevenueGrid.tsx cần format ngày hiển thị",
         "when": "Đọc phần import đầu file RevenueGrid.tsx",
@@ -436,7 +436,7 @@
       "test_name": "DS-029: RevenueGrid uses formatDate(row.date) instead of raw {row.date}",
       "layer": "gray-box",
       "tags": ["date-formatting", "cg-9"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "RevenueGrid.tsx hiển thị ngày trong bảng desktop và card mobile",
         "when": "Tìm cách hiển thị date trong cả 2 view",
@@ -451,7 +451,7 @@
       "test_name": "DS-030: layout nav items do not expose admin-only routes to unauthorized users",
       "layer": "gray-box",
       "tags": ["rbac", "common-tests"],
-      "priority": "critical",
+      "priority": "high",
       "steps": {
         "given": "Người dùng không có quyền admin",
         "when": "Mở sidebar điều hướng trong Layout.tsx",

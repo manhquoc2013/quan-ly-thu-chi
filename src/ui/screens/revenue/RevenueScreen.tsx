@@ -245,7 +245,7 @@ export function RevenueScreen() {
         </span>
 
         <Button variant="default" size="sm" className="md:ml-auto" onClick={handleCreateClick}>
-          <Plus size={14} /> Tạo đơn hàng
+          <Plus size={14} /> Thêm đơn hàng
         </Button>
       </div>
 

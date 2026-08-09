@@ -164,7 +164,7 @@ export function ProductScreen() {
             setDialogOpen(true);
           }}
         >
-          <Plus /> Thêm SP
+          <Plus /> Thêm sản phẩm
         </Button>
       </div>
 

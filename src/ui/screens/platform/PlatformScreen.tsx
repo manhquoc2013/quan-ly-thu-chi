@@ -113,7 +113,7 @@ export function PlatformScreen() {
             setDialogOpen(true);
           }}
         >
-          <Plus /> Thêm kênh
+          <Plus /> Thêm kênh bán
         </Button>
       </div>
 

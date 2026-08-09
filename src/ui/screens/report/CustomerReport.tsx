@@ -94,16 +94,18 @@ export function CustomerReport() {
   return (
     <div className="space-y-[var(--s-lg)]">
       {/* Overview Cards */}
-      <div className="grid grid-cols-3 gap-[var(--s-md)]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[var(--s-md)] min-w-0">
         {[
           { l: "Tổng số khách", v: String(uniqueCustomers) },
           { l: "Tổng doanh thu từ khách", v: formatCurrency(totalRevenue) },
           { l: "TB doanh thu/khách", v: formatCurrency(avgRevenue) },
         ].map((c) => (
-          <Card key={c.l} className="text-center py-4">
-            <CardContent>
+          <Card key={c.l} className="text-center py-4 min-w-0">
+            <CardContent className="min-w-0 px-3">
               <p className="text-xs text-text-muted">{c.l}</p>
-              <p className="text-lg font-bold text-text-primary">{c.v}</p>
+              <p className="text-base sm:text-lg font-bold text-text-primary tabular-nums break-words leading-snug">
+                {c.v}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -136,7 +138,8 @@ export function CustomerReport() {
                     <XAxis
                       type="number"
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(v: number) => formatAxisVnd(v)}
+                      allowDecimals={false}
+                      tickFormatter={(v: number) => String(v)}
                     />
                     <YAxis
                       type="category"
@@ -145,7 +148,7 @@ export function CustomerReport() {
                       width={120}
                     />
                     <Tooltip
-                      formatter={(v: number) => formatCurrency(v)}
+                      formatter={(v: number) => [`${v} đơn`, "Đơn hàng"]}
                       labelFormatter={(l) => `Khách: ${l}`}
                     />
                     <Bar

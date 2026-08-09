@@ -7,10 +7,10 @@
       "version": 1
     },
     "docs/modules/M-001-quan-ly-thu-chi/_state.md": {
-      "content_hash": "sha256:be7b9bf0973189eed764b49dff26e8a300d0fd189859f77d5871bc84efb00b92",
-      "last_modified": "2026-08-09T07:33:14Z",
+      "content_hash": "sha256:fd88d3405a56b6d25ca89f0fc2777d33fe6442ecc9a91ffdeda1d8c07fc6d23a",
+      "last_modified": "2026-08-09T08:19:45Z",
       "last_producer": "ai-kit/update_state(stage_rollback)",
-      "version": 7
+      "version": 9
     },
     "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w1.md": {
       "content_hash": "sha256:93b39c75afcc4093373bab6387a204a45b53bbfd85f7cd18e8bf76954194e2cf",
@@ -22,13 +22,13 @@
       "version": 5
     },
     "docs/modules/M-001-quan-ly-thu-chi/qa/07-qa-report-w2.md": {
-      "content_hash": "sha256:f800793a03325f83db91b535680ef97c81746b6384dec41155009797803ed5ea",
-      "last_modified": "2026-08-09T07:13:11Z",
+      "content_hash": "sha256:04c40a6b9daeec09f4ad2ed01c485421a8ac06122e07263f7118be471c5346bd",
+      "last_modified": "2026-08-09T08:17:48Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 3
+      "version": 4
     }
   },
   "created_at": "2026-08-01T08:39:43Z",

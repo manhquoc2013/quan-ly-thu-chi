@@ -77,7 +77,7 @@ export function RevenueReport() {
 
   return (
     <div className="space-y-[var(--s-lg)]">
-      <div className="grid grid-cols-3 gap-[var(--s-md)]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-[var(--s-md)] min-w-0">
         {[
           { l: "Tổng thu (cọc + TT)", v: formatCurrency(total) },
           { l: "Số đơn có thu", v: String(orderIds.size) },
@@ -88,10 +88,12 @@ export function RevenueReport() {
             ),
           },
         ].map((c) => (
-          <Card key={c.l} className="text-center py-4">
-            <CardContent>
+          <Card key={c.l} className="text-center py-4 min-w-0">
+            <CardContent className="min-w-0 px-3">
               <p className="text-xs text-text-muted">{c.l}</p>
-              <p className="text-lg font-bold text-text-primary">{c.v}</p>
+              <p className="text-base sm:text-lg font-bold text-text-primary tabular-nums break-words leading-snug">
+                {c.v}
+              </p>
             </CardContent>
           </Card>
         ))}

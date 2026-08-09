@@ -108,18 +108,18 @@ export function ReportScreen() {
   };
 
   return (
-    <div className="flex flex-col gap-[var(--s-md)] p-[var(--s-md)]">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <div className="flex flex-col gap-[var(--s-md)] min-w-0 w-full">
+      <div className="flex flex-col gap-2 min-w-0">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
           <p className="text-xs text-text-muted">Phân tích thu chi theo thời gian thực</p>
         </div>
-        <div className="flex items-center gap-0.5 bg-surface-hover rounded-lg p-0.5">
+        <div className="flex flex-wrap items-center gap-0.5 bg-surface-hover rounded-lg p-0.5 w-full sm:w-fit max-w-full">
           {PRESETS.map((p) => (
             <button
               key={p.id}
               type="button"
-              className={`h-7 px-2.5 text-[11px] rounded-md font-medium transition-all ${
+              className={`h-7 px-2.5 text-[11px] rounded-md font-medium transition-all shrink-0 ${
                 activePreset === p.id
                   ? 'bg-white dark:bg-surface text-text-primary shadow-sm'
                   : 'text-text-muted hover:text-text-secondary'
@@ -132,7 +132,7 @@ export function ReportScreen() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <DatePicker
           value={dateRange.from}
           onChange={(from) => {
@@ -143,10 +143,10 @@ export function ReportScreen() {
             });
           }}
           placeholder="Từ ngày"
-          className="w-[140px] h-8"
+          className="w-[min(140px,100%)] h-8"
           aria-label="Từ ngày"
         />
-        <span className="text-xs text-text-muted">→</span>
+        <span className="text-xs text-text-muted shrink-0">→</span>
         <DatePicker
           value={dateRange.to}
           onChange={(to) => {
@@ -157,10 +157,10 @@ export function ReportScreen() {
             });
           }}
           placeholder="Đến ngày"
-          className="w-[140px] h-8"
+          className="w-[min(140px,100%)] h-8"
           aria-label="Đến ngày"
         />
-        <span className="text-[11px] text-text-muted">
+        <span className="hidden sm:inline text-[11px] text-text-muted truncate min-w-0">
           {dateRange.from} → {dateRange.to}
         </span>
       </div>
@@ -168,28 +168,33 @@ export function ReportScreen() {
       <Tabs
         value={reportType}
         onValueChange={(v) => setReportTab(v as ReportTab)}
+        className="min-w-0 w-full"
       >
-        <TabsList>
-          {SEGMENTS.map((s) => (
-            <TabsTrigger
-              key={s.value}
-              value={s.value}
-              className="flex items-center gap-1.5"
-            >
-              <s.icon size={14} />
-              {s.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain pb-0.5 -mx-0.5 px-0.5">
+          <TabsList className="inline-flex w-max min-w-full h-auto flex-nowrap justify-start gap-0.5">
+            {SEGMENTS.map((s) => (
+              <TabsTrigger
+                key={s.value}
+                value={s.value}
+                className="flex flex-none shrink-0 items-center gap-1.5 px-2.5"
+              >
+                <s.icon size={14} className="shrink-0" />
+                <span className="whitespace-nowrap">{s.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </Tabs>
-      {reportType === "expense" && <ExpenseReport />}
-      {reportType === "revenue" && <RevenueReport />}
-      {reportType === "profit" && <ProfitReport />}
-      {reportType === "inventory" && <InventoryReport />}
-      {reportType === "unpaid" && <UnpaidReport />}
-      {reportType === "customer" && <CustomerReport />}
-      {reportType === "product" && <ProductReport />}
-      {reportType === "platform" && <PlatformReport />}
+      <div className="min-w-0 w-full">
+        {reportType === "expense" && <ExpenseReport />}
+        {reportType === "revenue" && <RevenueReport />}
+        {reportType === "profit" && <ProfitReport />}
+        {reportType === "inventory" && <InventoryReport />}
+        {reportType === "unpaid" && <UnpaidReport />}
+        {reportType === "customer" && <CustomerReport />}
+        {reportType === "product" && <ProductReport />}
+        {reportType === "platform" && <PlatformReport />}
+      </div>
     </div>
   );
 }

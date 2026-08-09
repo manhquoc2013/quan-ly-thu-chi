@@ -35,7 +35,7 @@ export function InventoryReport() {
         TT), dòng chưa gắn sản phẩm bị bỏ qua.
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[var(--s-md)] min-w-0">
         {[
           {
             l: "Tiền nhập",
@@ -78,10 +78,12 @@ export function InventoryReport() {
             c: "text-text-primary",
           },
         ].map((c) => (
-          <Card key={c.l} className="text-center py-4">
-            <CardContent>
+          <Card key={c.l} className="text-center py-4 min-w-0">
+            <CardContent className="min-w-0 px-3">
               <p className="text-xs text-text-muted">{c.l}</p>
-              <p className={`text-lg font-bold ${c.c}`}>{c.v}</p>
+              <p className={`text-base sm:text-lg font-bold tabular-nums break-words leading-snug ${c.c}`}>
+                {c.v}
+              </p>
             </CardContent>
           </Card>
         ))}
