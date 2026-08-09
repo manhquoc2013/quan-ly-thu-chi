@@ -17,7 +17,9 @@
 
 > **Lưu ý:** `git tag` chỉ tạo tag trên git. Tab **Releases** trên GitHub chỉ hiện mục đã tạo bằng `gh release create` (hoặc nút “Draft a new release”).
 >
-> **Deploy:** Workflow `deploy.yml` chặn tag không nằm trên `main` (`git merge-base --is-ancestor`). Tag trên feature branch sẽ fail, không publish Pages.
+> **Deploy:** Workflow `deploy.yml` dùng **GitHub Actions → Pages** (`upload-pages-artifact` + `deploy-pages`). Tag ngoài `main` bị chặn.
+>
+> **Cấu hình repo (một lần):** Settings → Pages → Build and deployment → **Source = GitHub Actions** (không còn “Deploy from a branch / gh-pages”).
 
 ## Phiên bản hiện tại: v1.4.1
 

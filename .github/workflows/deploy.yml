@@ -1,12 +1,14 @@
 name: Deploy to GitHub Pages
 
-# Chỉ deploy khi push tag v* — và tag đó phải trỏ tới commit nằm trên main.
+# Deploy qua GitHub Actions (Pages Source = GitHub Actions).
+# Chỉ chạy khi push tag v* và tag đó trỏ tới commit trên main.
 on:
   push:
     tags: ['v*']
 
+# Cho phép Actions deploy Pages (không cần push nhánh gh-pages)
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -15,17 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Cần lịch sử đủ để kiểm tra tag ⊆ main
           fetch-depth: 0
 
       - name: Ensure tag is on main
@@ -56,11 +53,14 @@ jobs:
       - name: Run tests
         run: npm run test
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          # Kilo on Pages goes through Supabase Edge Function (CORS proxy) — no separate secret needed
+          # Kilo on Pages goes through Supabase Edge Function (CORS proxy)
           VITE_KILO_GATEWAY_BASE: ${{ format('{0}/functions/v1/kilo-proxy', secrets.VITE_SUPABASE_URL) }}
           VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
           VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
@@ -70,9 +70,18 @@ jobs:
       - name: SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          force_orphan: true
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
