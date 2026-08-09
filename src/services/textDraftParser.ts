@@ -674,10 +674,14 @@ export function parseTaoDonOrder(
 
   if (orderItems.length === 1) {
     const it = orderItems[0]!;
+    // Single line: bare "giá X" = package total (same as parseCustomerSale);
+    // only "đơn giá" / "giá mỗi cái" multiply. Multi-item lists keep unit semantics above.
+    const unitPrice = isExplicitUnitPrice(body) ? it.unitPrice : Math.round(it.unitPrice / it.quantity);
+    const amount = isExplicitUnitPrice(body) ? it.quantity * it.unitPrice : it.unitPrice;
     return makeDraft({
       kind: 'revenue',
-      amount: it.quantity * it.unitPrice,
-      unitPrice: it.unitPrice,
+      amount,
+      unitPrice,
       quantity: it.quantity,
       description: it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name,
       customerName,
