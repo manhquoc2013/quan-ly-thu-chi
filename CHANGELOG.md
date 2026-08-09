@@ -6,6 +6,21 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [1.4.2] — 2026-08-09
+
+🔗 [So sánh với v1.4.1](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.1...v1.4.2)
+
+### Thay đổi
+- Deploy GitHub Pages qua Actions thuần (`upload-pages-artifact` + `deploy-pages`) — bỏ push nhánh `gh-pages`
+- Chỉ deploy tag `v*` khi commit nằm trên `main`
+
+### Tài liệu
+- SECURITY.md
+- Wiki (Home, FAQ, Cài đặt, Supabase, Dashboard, Chi phí, Doanh thu, Báo cáo, Trợ lý AI)
+- RELEASE.md cập nhật cấu hình Pages Source = GitHub Actions
+
+---
+
 ## [1.4.1] — 2026-08-09
 
 🔗 [So sánh với v1.4.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.0...v1.4.1)
