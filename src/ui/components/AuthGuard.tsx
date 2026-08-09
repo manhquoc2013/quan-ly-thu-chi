@@ -7,7 +7,6 @@ import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { AuthScreen } from '@/ui/screens/auth/AuthScreen';
 import { OnboardingScreen } from '@/ui/screens/onboarding/OnboardingScreen';
-import { useWebLLMLoad } from '@/ui/components/WebLLMLoader';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabaseClient';
 import { bootstrapSessionAfterAuth } from '@/services/sessionBootstrap';
 
@@ -22,12 +21,13 @@ function AuthGuardSpinner() {
   const stepRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Phase 1: intro — cat walks in from left
+  // Phase 1: intro — cat walks in; letters start popping immediately (no wait)
   useEffect(() => {
     setPhase('intro');
     setCatAction('walk');
-    const t = setTimeout(() => setCatX(0), 100);
-    const t2 = setTimeout(() => { setPhase('reveal'); stepRef.current = 0; }, 800);
+    const t = setTimeout(() => setCatX(0), 40);
+    // Hop along title as soon as first letters are visible
+    const t2 = setTimeout(() => { setPhase('reveal'); stepRef.current = 0; }, 80);
     return () => { clearTimeout(t); clearTimeout(t2); };
   }, []);
 
@@ -47,7 +47,7 @@ function AuthGuardSpinner() {
       const wrap = wrapRef.current;
       if (!el || !wrap) {
         stepRef.current = 0;
-        timerRef.current = setTimeout(hopToNext, 60);
+        timerRef.current = setTimeout(hopToNext, 40);
         return;
       }
 
@@ -59,10 +59,11 @@ function AuthGuardSpinner() {
       setCatX(targetX);
 
       stepRef.current = idx + 1;
-      timerRef.current = setTimeout(hopToNext, idx === 0 ? 180 : 80);
+      // Keep pace with char stagger (0.06s) so cat lands as each letter pops
+      timerRef.current = setTimeout(hopToNext, idx === 0 ? 90 : 70);
     }
 
-    timerRef.current = setTimeout(hopToNext, 200);
+    timerRef.current = setTimeout(hopToNext, 40);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [phase, titleChars.length]);
 
@@ -107,114 +108,122 @@ function AuthGuardSpinner() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [phase]);
 
+  const bgUrl = `${import.meta.env.BASE_URL}auth-bg.png`;
+
   return (
     <div className="auth-loading-screen">
-      <div className="auth-loading-bg" />
+      <div className="auth-loading-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
+      <div className="auth-loading-scrim" />
       <div className="auth-loading-content">
-        <img
-          src={`${import.meta.env.BASE_URL}logo.svg`}
-          alt="Quản Lý Tài Chính"
-          className="auth-loading-logo"
-        />
-        <div ref={wrapRef} className="auth-loading-title-wrap">
-          <h1 className="auth-loading-title">
-            {titleChars.map((ch, i) => (
-              <span
-                key={i}
-                ref={(el) => { charRefs.current[i] = el; }}
-                className="auth-char"
-                style={{ animationDelay: phase === 'intro' ? '99s' : `${i * 0.06}s` }}
-              >
-                {ch === ' ' ? '\u00A0' : ch}
-              </span>
-            ))}
-          </h1>
-          <span
-            className="auth-cat"
-            style={{
-              width: 56, height: 58, display: 'inline-block',
-              left: catX, top: catOnTitle ? -58 : -28,
-              transition: 'left 0.3s ease-out, top 0.4s ease-out',
-            }}
-          >
-            <CatBody emotion="happy" action={catAction} />
-          </span>
+        <div className="auth-loading-stage">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt="Quản Lý Tài Chính"
+            className="auth-loading-logo"
+          />
+          <div ref={wrapRef} className="auth-loading-title-wrap">
+            <h1 className="auth-loading-title">
+              {titleChars.map((ch, i) => (
+                <span
+                  key={i}
+                  ref={(el) => { charRefs.current[i] = el; }}
+                  className="auth-char"
+                  style={{ animationDelay: `${i * 0.055}s` }}
+                >
+                  {ch === ' ' ? '\u00A0' : ch}
+                </span>
+              ))}
+            </h1>
+            <span
+              className="auth-cat"
+              style={{
+                width: 56, height: 58, display: 'inline-block',
+                left: catX, top: catOnTitle ? -58 : -28,
+                transition: 'left 0.3s ease-out, top 0.4s ease-out',
+              }}
+            >
+              <CatBody emotion="happy" action={catAction} />
+            </span>
+          </div>
         </div>
       </div>
       <style>{`
         .auth-loading-screen {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100vh;
-          overflow: hidden;
+          position: relative; display: flex; align-items: center; justify-content: center;
+          min-height: 100vh; overflow: hidden; background: #0a1628;
         }
         .auth-loading-bg {
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(ellipse 80% 60% at 30% 20%, rgba(13,148,136,0.18) 0%, transparent 55%),
-            radial-gradient(ellipse 60% 50% at 75% 75%, rgba(20,184,166,0.12) 0%, transparent 55%),
-            radial-gradient(ellipse 50% 40% at 50% 50%, rgba(15,118,110,0.08) 0%, transparent 60%),
-            linear-gradient(160deg, #0a1628 0%, #0f1f3a 40%, #132840 70%, #0d1a2d 100%);
+          position: absolute; inset: -4%; background-size: cover; background-position: center;
+          image-rendering: auto; opacity: 0.65;
+          animation: auth-bg-drift 22s ease-in-out infinite alternate;
         }
-        .auth-loading-bg::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background-image:
-            radial-gradient(circle at 15% 25%, rgba(255,255,255,0.03) 0%, transparent 50%),
-            radial-gradient(circle at 85% 60%, rgba(255,255,255,0.02) 0%, transparent 40%),
-            radial-gradient(circle at 50% 85%, rgba(13,148,136,0.06) 0%, transparent 45%);
+        .auth-loading-scrim {
+          position: absolute; inset: 0;
+          background: radial-gradient(ellipse 60% 50% at 50% 40%, transparent 0%, rgba(10,22,40,0.55) 60%, rgba(6,14,28,0.85) 100%);
         }
         .auth-loading-content {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
+          position: relative; z-index: 1; display: flex; flex-direction: column;
+          align-items: center; padding: 32px;
+        }
+        .auth-loading-stage {
+          display: flex; flex-direction: column; align-items: center; gap: 24px;
+          padding: 40px 48px 36px; border-radius: 28px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.15);
+          box-shadow: 0 24px 64px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          animation: auth-stage-in 0.6s ease-out both;
         }
         .auth-loading-logo {
-          width: 64px;
-          height: 64px;
-          border-radius: 16px;
-          box-shadow: 0 8px 32px rgba(13,148,136,0.25);
-          animation: auth-logo-breathe 2.5s ease-in-out infinite;
+          width: 80px; height: 80px;
+          border-radius: 50%;
+          border: none;
+          box-shadow: none;
+          display: block;
+          animation: auth-logo-breathe 3s ease-in-out infinite;
         }
         .auth-loading-title-wrap {
-          position: relative;
-          display: inline-block;
-          padding-top: 36px;
+          position: relative; display: flex; flex-direction: column;
+          align-items: center; gap: 8px; padding-top: 32px; min-width: 240px;
         }
         .auth-loading-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #e2e8f0;
-          display: flex;
-          gap: 1px;
+          font-size: 1.5rem; font-weight: 700; color: #f1f5f9;
+          letter-spacing: 0.02em; display: flex; gap: 2px;
+          text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+        }
+        .auth-loading-subtitle {
+          font-size: 0.8rem; color: rgba(203,213,225,0.7); font-weight: 400;
+          letter-spacing: 0.04em; text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+          animation: auth-fade-in 0.5s 0.8s ease-out both;
         }
         .auth-char {
-          display: inline-block;
-          opacity: 0;
+          display: inline-block; opacity: 0;
           animation: auth-char-pop 0.35s ease-out forwards;
         }
         .auth-cat {
-          position: absolute;
-          left: -40px;
-          top: -28px;
-          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
-          pointer-events: none;
-          z-index: 2;
+          position: absolute; left: -40px; top: -28px;
+          filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
+          pointer-events: none; z-index: 2;
+        }
+        @keyframes auth-bg-drift {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(-1.5%, 1%); }
+        }
+        @keyframes auth-stage-in {
+          from { opacity: 0; transform: translateY(16px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes auth-logo-breathe {
-          0%, 100% { transform: scale(1); opacity: 0.85; }
-          50% { transform: scale(1.06); opacity: 1; }
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
         }
         @keyframes auth-char-pop {
-          0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+          0% { opacity: 0; transform: translateY(8px) scale(0.85); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes auth-fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
@@ -223,26 +232,9 @@ function AuthGuardSpinner() {
 
 /* ═══ Rest of AuthGuard ═══ */
 
-function WebLLMFab({ progress }: { progress: number }) {
-  return (
-    <div className="fixed bottom-16 right-4 z-50 flex items-center gap-2 bg-card/90 backdrop-blur border rounded-full shadow-lg px-3 py-1.5">
-      <span className="text-sm" style={{ width: 36, height: 38, display: 'inline-block' }}>
-        <CatBody emotion="thinking" action="walk" />
-      </span>
-      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-accent-fg rounded-full transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function AuthGuard({ children }: { children?: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => s.userId);
-  const { progress } = useWebLLMLoad();
   const [checking, setChecking] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [fullyReady, setFullyReady] = useState(false);
@@ -271,12 +263,8 @@ export function AuthGuard({ children }: { children?: ReactNode }) {
   if (checking) return <AuthGuardSpinner />;
 
   if (fullyReady && !isAuthenticated && supabaseReady) {
-    return (
-      <>
-        <AuthScreen />
-        {progress < 100 && <WebLLMFab progress={progress} />}
-      </>
-    );
+    // Login: no WebLLM chip, no interactive mascot — only AuthScreen branding
+    return <AuthScreen />;
   }
 
   if (fullyReady && isAuthenticated && userId) {

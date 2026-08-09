@@ -208,6 +208,7 @@ export function DashboardScreen() {
         {kpiCards.map((c) => (
           <Card
             key={c.title}
+            data-mascot-platform
             className={`bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all ${c.className}`}
           >
             <CardContent className="flex items-center gap-3 p-3 sm:p-4">
@@ -228,13 +229,13 @@ export function DashboardScreen() {
         ))}
       </div>
 
-      <Card>
+      <Card data-mascot-platform>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>Thu chi 7 ngày gần đây</CardTitle>
           <Badge variant="secondary">Tuần này</Badge>
         </CardHeader>
         <CardContent>
-          <div className="h-[200px] -mx-2">
+          <div className="h-[200px] -mx-2" data-mascot-platform>
             {chartData.every((d) => d.thu === 0 && d.chi === 0) ? (
               <div className="flex items-center justify-center h-full text-xs text-text-muted">
                 Chưa có dữ liệu
@@ -274,7 +275,7 @@ export function DashboardScreen() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-[var(--s-lg)]">
         {/* ── Đơn đang chờ ─────────────────────────────────────────────── */}
-        <Card className="overflow-hidden">
+        <Card data-mascot-platform className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex h-8 w-8 items-center justify-center rounded-field bg-accent-bg text-accent-fg shrink-0">
@@ -296,6 +297,7 @@ export function DashboardScreen() {
                   <li key={o.id}>
                     <button
                       type="button"
+                      data-mascot-platform
                       className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:bg-accent-bg/40"
                       onClick={() => setSelectedId({ type: 'revenue', id: o.id, readOnly: false })}
                     >
@@ -331,7 +333,7 @@ export function DashboardScreen() {
         </Card>
 
         {/* ── Giao dịch gần đây ────────────────────────────────────────── */}
-        <Card className="overflow-hidden">
+        <Card data-mascot-platform className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex h-8 w-8 items-center justify-center rounded-field bg-surface-hover text-text-secondary shrink-0">
@@ -355,6 +357,7 @@ export function DashboardScreen() {
                     <li key={`${tx.type}-${tx.id}`}>
                       <button
                         type="button"
+                        data-mascot-platform
                         className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:bg-accent-bg/40"
                         onClick={() => {
                           if (tx.type === 'expense') {

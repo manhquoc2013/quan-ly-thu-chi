@@ -18,6 +18,7 @@ import { formatRelativeTime } from '@/utils/date';
 import { ChatPanel } from '@screens/ai/ChatPanel';
 import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { CommandPalette } from '@/ui/components/CommandPalette';
+import { useWebLLMLoad } from '@/ui/components/WebLLMLoader';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { webLLM } from '@/services/webLLM';
 import { kiloService } from '@/services/kiloService';
@@ -51,7 +52,10 @@ export function Layout() {
   const setFabOpen = useUIStore((s) => s.setFabOpen);
   const userId = useAuthStore((s) => s.userId);
   const userProfile = useAuthStore((s) => s.userProfile);
+  const enableWebLLM = useAuthStore((s) => s.enableWebLLM);
   const logout = useAuthStore((s) => s.logout);
+  // Eager-load only inside the app when Settings → AI cục bộ is on (never on login)
+  const { progress: webLLMProgress, done: webLLMDone } = useWebLLMLoad({ enabled: enableWebLLM });
   const [clock, setClock] = useState('');
   const [syncState, setSyncState] = useState<'synced' | 'syncing' | 'offline' | 'pending'>('synced');
   const [pending, setPending] = useState(0);
@@ -158,8 +162,8 @@ export function Layout() {
           className="hidden md:flex flex-col shrink-0 bg-sidebar-bg text-sidebar-fg border-r border-sidebar-border overflow-hidden"
           style={{ width: sidebarCollapsed ? 64 : 240, transition: 'width 0.3s ease' }}
         >
-          <div className="flex items-center h-12 px-3 shrink-0 border-b border-sidebar-border overflow-hidden">
-            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={28} height={28} className="size-7 rounded-field shrink-0 object-cover" />
+          <div className={`flex items-center h-12 shrink-0 border-b border-sidebar-border overflow-hidden ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}>
+            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={28} height={28} className="size-7 rounded-full shrink-0 object-contain" />
             <span style={{
               opacity: sidebarCollapsed ? 0 : 1,
               maxWidth: sidebarCollapsed ? 0 : 200,
@@ -336,6 +340,18 @@ export function Layout() {
       <button type="button" onClick={toggleFab}
         className="fixed z-50 flex items-center justify-center size-12 rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-150 hover:scale-110 right-4 md:right-6 bottom-[var(--dimens-statusBarHeight)]"
         aria-label="Toggle AI chat"><Bot size={20} /></button>
+      {enableWebLLM && !webLLMDone && (
+        <div
+          className="fixed z-50 flex items-center gap-2 rounded-full border border-border bg-surface/95 px-3 py-1.5 shadow-md backdrop-blur right-4 md:right-6 bottom-[calc(var(--dimens-statusBarHeight)+3.5rem)]"
+          title={`Đang tải AI cục bộ… ${Math.round(webLLMProgress)}%`}
+        >
+          <Bot size={14} className="text-accent-fg shrink-0" />
+          <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-accent-fg transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, webLLMProgress))}%` }} />
+          </div>
+          <span className="text-[10px] text-text-muted tabular-nums">{Math.round(webLLMProgress)}%</span>
+        </div>
+      )}
       <MascotOverlay />
       {(fabOpen || chatClosing) && (
         <>

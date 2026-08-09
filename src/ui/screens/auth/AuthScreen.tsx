@@ -8,11 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff, Wallet, ArrowRight } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { signInSupabase, signUpSupabase } from '@/services/householdService';
 import { bootstrapSessionAfterAuth } from '@/services/sessionBootstrap';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
-import { useTheme } from '@/hooks/useTheme';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,12 +31,12 @@ function mapAuthError(err: unknown): string {
 }
 
 export function AuthScreen() {
-  const { isDark } = useTheme();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const bgUrl = `${import.meta.env.BASE_URL}auth-bg.jpg`;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -76,54 +75,40 @@ export function AuthScreen() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      {/* ── Background gradient ── */}
+      <div
+        className="absolute inset-[-4%] z-0 bg-cover bg-center animate-[auth-bg-drift_18s_ease-in-out_infinite_alternate]"
+        style={{ backgroundImage: `url(${bgUrl})` }}
+        aria-hidden
+      />
       <div
         className="absolute inset-0 z-0"
         style={{
-          background: isDark
-            ? 'linear-gradient(135deg, #0F172A 0%, #134E4A 40%, #0F172A 100%)'
-            : 'linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 30%, #E0F2FE 70%, #F8FAFC 100%)',
+          background:
+            'radial-gradient(ellipse 70% 55% at 50% 42%, rgba(8,20,40,0.28) 0%, rgba(8,20,40,0.68) 72%, rgba(6,14,28,0.86) 100%)',
         }}
-      />
-      {/* ── Decorative circles ── */}
-      <div
-        className="absolute z-0 rounded-full opacity-20"
-        style={{
-          width: 400, height: 400,
-          background: isDark ? '#14B8A6' : '#0D9488',
-          top: -100, right: -100,
-          filter: 'blur(60px)',
-        }}
-      />
-      <div
-        className="absolute z-0 rounded-full opacity-15"
-        style={{
-          width: 300, height: 300,
-          background: isDark ? '#3B82F6' : '#0EA5E9',
-          bottom: -80, left: -80,
-          filter: 'blur(50px)',
-        }}
+        aria-hidden
       />
 
-      {/* ── Content ── */}
       <div className="relative z-10 w-full max-w-md px-4 animate-[dialog-in_0.5s_ease_forwards]">
-        {/* Logo + branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-gradient-to-br from-[#0D9488] to-[#14B8A6] shadow-lg shadow-[#0D9488]/25 mb-4">
-            <Wallet size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-text-primary">
+        <div className="text-center mb-7">
+          <img
+            src={`${import.meta.env.BASE_URL}logo.svg`}
+            alt=""
+            width={64}
+            height={64}
+            className="mx-auto size-16 rounded-full mb-4"
+          />
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">
             {mode === 'in' ? 'Quản Lý Tài Chính' : 'Tạo tài khoản'}
           </h1>
-          <p className="text-sm text-text-muted mt-1.5">
+          <p className="text-sm text-slate-200/85 mt-1.5 drop-shadow">
             {mode === 'in'
               ? 'Đăng nhập để quản lý thu chi của bạn'
               : 'Bắt đầu theo dõi tài chính ngay hôm nay'}
           </p>
         </div>
 
-        {/* Card glass morphism */}
-        <Card className="backdrop-blur-xl bg-surface/70 border-border/50 shadow-xl shadow-black/5">
+        <Card className="backdrop-blur-xl bg-white/85 dark:bg-slate-900/80 border-white/30 shadow-2xl shadow-black/25">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
               {mode === 'in' ? 'Đăng nhập' : 'Đăng ký'}
@@ -193,11 +178,17 @@ export function AuthScreen() {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <p className="text-center text-[10px] text-text-muted mt-6">
+        <p className="text-center text-[10px] text-slate-300/80 mt-6 drop-shadow">
           © 2026 Quản Lý Tài Chính · v2.0
         </p>
       </div>
+
+      <style>{`
+        @keyframes auth-bg-drift {
+          0% { transform: scale(1.02) translate(0, 0); }
+          100% { transform: scale(1.08) translate(-1.2%, 0.8%); }
+        }
+      `}</style>
     </div>
   );
 }
