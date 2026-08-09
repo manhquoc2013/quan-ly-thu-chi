@@ -12,11 +12,11 @@
 7. GitHub Actions tự deploy lên GitHub Pages
 ```
 
-## Phiên bản hiện tại: v1.4.0
+## Phiên bản hiện tại: v1.4.1
 
 | Thành phần | Phiên bản |
 |:---|:---|
-| App | 1.4.0 |
+| App | 1.4.1 |
 | React | 19 |
 | Vite | 6 |
 | Tailwind CSS | 4 |

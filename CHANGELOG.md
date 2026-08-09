@@ -6,9 +6,21 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [1.4.1] — 2026-08-09
+
+🔗 [So sánh với v1.4.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.0...v1.4.1)
+
+### Thay đổi
+- Version UI lấy từ `package.json` qua Vite `__APP_VERSION__` (Layout, Auth, Onboarding, Settings) — hết hardcode lệch nhau
+
+### Tài liệu
+- CHANGELOG.md, RELEASE.md, README.md
+
+---
+
 ## [1.4.0] — 2026-08-09
 
-🔗 [So sánh với v1.3.0](https://github.com/tranquoc/quan-ly-thu-chi/compare/v1.3.0...v1.4.0)
+🔗 [So sánh với v1.3.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.3.0...v1.4.0)
 
 ### Thêm mới
 - AuthGuard loading screen: logo 80px, subtitle "Đang tải dữ liệu..." với chấm nhảy
