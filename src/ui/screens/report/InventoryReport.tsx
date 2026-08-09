@@ -107,7 +107,7 @@ export function InventoryReport() {
             </p>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">
                     <th className="py-2 pr-3 font-medium">Sản phẩm</th>
@@ -148,7 +148,7 @@ export function InventoryReport() {
             </p>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">
                     <th className="py-2 pr-3 font-medium">Sản phẩm</th>
@@ -210,7 +210,7 @@ export function InventoryReport() {
             </p>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">
                     <th className="py-2 pr-3 font-medium">Sản phẩm</th>

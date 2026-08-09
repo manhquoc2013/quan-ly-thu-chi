@@ -159,7 +159,7 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
       <div>
         <h4 className="text-xs font-semibold text-text-secondary mb-2">Sản phẩm / Dịch vụ</h4>
         <div className="overflow-x-auto overflow-y-hidden rounded-field border border-border-subtle">
-          <table className="w-full text-xs">
+          <table className="min-w-full text-xs">
             <thead>
               <tr className="bg-surface-hover border-b border-border-subtle">
                 <th className="text-left py-2 px-3 font-medium text-text-muted">Tên</th>

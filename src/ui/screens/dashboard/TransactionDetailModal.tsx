@@ -417,7 +417,7 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
                   <div className="space-y-2">
                     <p className="text-[10px] uppercase tracking-wide text-text-muted">Sản phẩm</p>
                     <div className="overflow-x-auto overflow-y-hidden rounded-field border border-border-subtle">
-                      <table className="w-full text-xs">
+                      <table className="min-w-full text-xs">
                         <thead>
                           <tr className="border-b border-border-subtle text-text-muted bg-surface">
                             <th className="text-left py-1.5 px-2 font-medium">Sản phẩm</th>

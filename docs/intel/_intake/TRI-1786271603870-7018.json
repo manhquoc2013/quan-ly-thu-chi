@@ -1,0 +1,137 @@
+{
+  "triage_id": "TRI-1786271603870-7018",
+  "created_at": 1786271603870,
+  "request_summary": "Sửa lỗi dư khoảng trắng khi scroll ngang: đổi className table từ w-full sang min-w-full để bảng mở rộng theo nội dung thay vì bị giới hạn ở 100% container overflow-x-auto",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/ai/DataEntryHelper.tsx",
+      "src/ui/screens/dashboard/TransactionDetailModal.tsx",
+      "src/ui/screens/report/CustomerReport.tsx",
+      "src/ui/screens/report/InventoryReport.tsx",
+      "src/ui/screens/report/PlatformReport.tsx",
+      "src/ui/screens/report/ProductReport.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/OrderRowCard.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/ai/DataEntryHelper.tsx",
+      "src/ui/screens/dashboard/TransactionDetailModal.tsx",
+      "src/ui/screens/report/CustomerReport.tsx",
+      "src/ui/screens/report/InventoryReport.tsx",
+      "src/ui/screens/report/PlatformReport.tsx",
+      "src/ui/screens/report/ProductReport.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/OrderRowCard.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 8 edit-target files exceed the inline gate (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Các màn hình Report, Dashboard, Revenue, AI — người dùng xem bảng dữ liệu và scroll ngang",
+  "blast_radius": 8,
+  "done_oracle": "Không còn khoảng trắng dư bên phải khi scroll ngang các bảng; kiểm tra trực quan trên giao diện",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/report/InventoryReport.tsx",
+      "line": 110,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "ccd3aa3b54b2ca59fe7d6eee75d5daa941a3e3f39a579c4dcf4726bc25aeb682",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/InventoryReport.tsx",
+      "line": 151,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "ccd3aa3b54b2ca59fe7d6eee75d5daa941a3e3f39a579c4dcf4726bc25aeb682",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/InventoryReport.tsx",
+      "line": 213,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "ccd3aa3b54b2ca59fe7d6eee75d5daa941a3e3f39a579c4dcf4726bc25aeb682",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/CustomerReport.tsx",
+      "line": 232,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "687da8a4e4f52816d68ff03843127c844ee1f7e3824d27baa81046b109cfa980",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/CustomerReport.tsx",
+      "line": 286,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "687da8a4e4f52816d68ff03843127c844ee1f7e3824d27baa81046b109cfa980",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/PlatformReport.tsx",
+      "line": 146,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "4cce98c84b41c49031b46cd856e7161732b2c5caca5d52beccba7be4dce8f6c9",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/ProductReport.tsx",
+      "line": 239,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "47c4d183cb4bc4ab7a7d0e5be840224cc57aabe0a734265973635e6b3f9737c9",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/report/ProductReport.tsx",
+      "line": 293,
+      "quote": "              <table className=\"w-full text-sm\">",
+      "source_hash": "47c4d183cb4bc4ab7a7d0e5be840224cc57aabe0a734265973635e6b3f9737c9",
+      "quote_hash": "3a86b3ba14aa7bb1c4828111af4e765a7c7cab441881f931e1ca01be5a70ec2b"
+    },
+    {
+      "file": "src/ui/screens/dashboard/TransactionDetailModal.tsx",
+      "line": 420,
+      "quote": "                      <table className=\"w-full text-xs\">",
+      "source_hash": "a92cf215231a4f750869881dfc215d58aec74ad282007b3f816e6b06901afd89",
+      "quote_hash": "8c3127371ab48090c2394b2f46ecbd856387c79d97cbb1b8956a55563db83a83"
+    },
+    {
+      "file": "src/ui/screens/revenue/OrderRowCard.tsx",
+      "line": 162,
+      "quote": "          <table className=\"w-full text-xs\">",
+      "source_hash": "9074280a210247f1b18bcf56157bffa99d8242fe14fc153d4608f3247bbada22",
+      "quote_hash": "8c3127371ab48090c2394b2f46ecbd856387c79d97cbb1b8956a55563db83a83"
+    },
+    {
+      "file": "src/ui/screens/revenue/OrderDialog.tsx",
+      "line": 583,
+      "quote": "              <table className=\"w-full text-xs border-collapse\">",
+      "source_hash": "529eb0bf9e9f77b04885f54fc8692e1434a356a16a6279b8184671862522f511",
+      "quote_hash": "4b4c6f8b260cd2ada4b1635e334240fd5b3cd351e4f22d4361b26cfb8ef291df"
+    },
+    {
+      "file": "src/ui/screens/ai/DataEntryHelper.tsx",
+      "line": 181,
+      "quote": "          <table className=\"w-full text-[11px]\">",
+      "source_hash": "2ecc3fa8d7d7d6360a365c29ee21d5590090e1f99bf120dc39e96593a2865e15",
+      "quote_hash": "152d4ee4c1155c146740bea326609309c56347354d733a75cc1b9fd2054f2693"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "4af3bcc3043c8d3a4266502018f08d306ecda009",
+    "dirty": false,
+    "captured_at": 1786271603922
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

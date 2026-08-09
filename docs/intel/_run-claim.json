@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-08-02T07:26:42.710Z",
-  "last_modified_at": "2026-08-09T08:18:50.632Z",
+  "last_modified_at": "2026-08-09T11:05:34.103Z",
   "modules": {
     "M-000": {
       "depends_on": [],
@@ -22,21 +22,21 @@
     "M-001": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-146af7a2fa61a1db",
-      "claimed_at": "2026-08-09T07:51:35.686Z",
-      "heartbeat_at": "2026-08-09T08:18:50.632Z",
+      "status": "done",
+      "claimed_by": "tab-08f95ef872ddebb6",
+      "claimed_at": "2026-08-09T10:41:38.613Z",
+      "heartbeat_at": "2026-08-09T11:05:34.103Z",
       "current_stage": null,
       "started_at": "2026-08-02T07:26:46.045Z",
-      "completed_at": null,
+      "completed_at": "2026-08-09T11:05:34.103Z",
       "auto_pass_count": 0,
-      "attempt": 13,
+      "attempt": 14,
       "name": "Quản Lý Tài Chính",
       "slug": "quan-ly-thu-chi",
       "risk_path": "M",
-      "claimed_pid": 98078,
-      "claimed_host": "Qs-MacBook-Pro.local",
-      "previous_claimed_by": "tab-09ac24dcf0bd9616",
+      "claimed_pid": null,
+      "claimed_host": null,
+      "previous_claimed_by": "tab-146af7a2fa61a1db",
       "reopened_at": "2026-08-09T06:16:05.997Z",
       "reopened_reason": "Implementation change: Standardize display content - fix nav labels, unify empty states/button labels/currency format/confirm dialogs, add input placeholders, create VND suffix for currency inputs, fix AuthScreen background scale animation (TRI-1786256042159-849c)"
     },
@@ -147,9 +147,7 @@
     "tab-146af7a2fa61a1db": {
       "started_at": "2026-08-09T06:16:08.117Z",
       "last_seen": "2026-08-09T08:18:50.632Z",
-      "claimed_modules": [
-        "M-001"
-      ],
+      "claimed_modules": [],
       "completed_modules": [],
       "failed_modules": [
         "M-001"
@@ -172,6 +170,16 @@
       "failed_modules": [
         "M-001"
       ],
+      "skipped_modules": []
+    },
+    "tab-08f95ef872ddebb6": {
+      "started_at": "2026-08-09T10:41:38.613Z",
+      "last_seen": "2026-08-09T11:05:34.103Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-001"
+      ],
+      "failed_modules": [],
       "skipped_modules": []
     }
   }

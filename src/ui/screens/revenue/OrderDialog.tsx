@@ -580,7 +580,7 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
             </div>
 
             <div>
-              <table className="w-full text-xs border-collapse">
+              <table className="min-w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border-subtle">
                     <th className="text-left py-1 px-2 font-medium text-text-muted">Tên</th>

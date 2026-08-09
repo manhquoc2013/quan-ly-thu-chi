@@ -229,7 +229,7 @@ export function CustomerReport() {
                 Chưa có dữ liệu
               </p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle bg-muted/40">
                     <th className="text-left px-3 py-2 text-xs font-medium text-text-muted">
@@ -283,7 +283,7 @@ export function CustomerReport() {
                 Chưa có dữ liệu
               </p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle bg-muted/40">
                     <th className="text-left px-3 py-2 text-xs font-medium text-text-muted">

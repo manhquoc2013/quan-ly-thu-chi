@@ -178,7 +178,7 @@ export function DataEntryHelper({
 
       {multi && (
         <div className="max-h-48 overflow-auto border border-border-subtle rounded-field">
-          <table className="w-full text-[11px]">
+          <table className="min-w-full text-[11px]">
             <thead className="bg-surface-hover sticky top-0">
               <tr>
                 <th className="text-left p-1.5 font-medium">Ngày</th>
