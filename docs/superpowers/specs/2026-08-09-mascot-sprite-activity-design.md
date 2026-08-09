@@ -112,8 +112,53 @@ Store `emotion` still drives baseline; action can override face while `hurt|fall
 | Release | Sequence |
 |---------|----------|
 | Click / tiny | hurt → idle (double-click cycles activity) |
-| Soft toss | fall → land idle |
-| Hard toss | fall → dead → recover idle |
+| Soft toss | fall (parachute) → land idle |
+| Hard toss | fall (parachute) → dead → recover idle |
+
+## Motion continuity & element interaction (anti-teleport)
+
+Current pain points to fix (observed in `MascotOverlay` today):
+
+1. **Teleport / snap** — React `left`/`top` jumps while a parallel WAAPI/CSS transition still runs; walk sets `x` instantly with a short `transition` that fights the scheduler; toss sets **X immediately** then animates only Y.
+2. **Parachute fall feels instant** — fall duration ~800ms + easing that accelerates down; `catJump` transform on `tossed` adds extra vertical motion so landing looks like a blink.
+3. **Parachute hard to see** — canopy path uses negative Y in a tight viewBox (clipped); overlay is small; opens only 0.3s while body already falling.
+4. **Strings too long** — lines from canopy to ~y=32 relative to a short canopy.
+
+### Rules (required in implementation)
+
+**Single motion authority**
+
+- One driver per move: prefer **RAF position integration** (`x,y,vx,vy` each frame) for walk/run/climb/fall/toss. Avoid stacking CSS `transition` on `left`/`top` **and** WAAPI **and** transform jump keyframes on the same axis.
+- Never `setPos` to the destination in the same frame as starting a fall/walk animation. Destination is integrated over time; React state tracks the live position (or write `transform: translate3d` from RAF and sync state on settle only).
+
+**Walk / run / climb on UI elements**
+
+- Horizontal move: accelerate toward target X; stop with friction (no hard cut to idle mid-transition).
+- Climb/grapple: animate Y (and small X toward platform center) over **≥900–1400ms** depending on distance (`duration ∝ |Δy|`, clamp min/max). Arm-over-arm limb cycle while moving.
+- Landing on a scanned platform: snap only within **≤2px** correction after motion ends; if platform moved mid-flight, retarget smoothly over 100–150ms — no full-screen jump.
+- While `busy` / falling / climbing, scheduler must not start another relocate.
+
+**Toss + parachute**
+
+| Phase | Duration / feel | Visual |
+|-------|-----------------|--------|
+| Release | 0–120ms | hurt → fall; optional slight upward arc if toss upward |
+| Chute deploy | 200–350ms | canopy scales 0→1 **above** head; fall speed still high briefly |
+| Glide | remaining fall | **constant slower vy** (parachute drag); sway ±8–12°; X and Y both interpolate to land point |
+| Land | 150–250ms | squash; chute collapses/fades; then idle or dead |
+
+- Fall total time: **scale with distance** — e.g. `t = clamp(550 + distY * 4.5, 1200, 2800)` ms so short drops are readable and long drops are not instant.
+- Animate **both** X and Y along a curve (quadratic or two-segment); no instant `x = tossX`.
+- Disable body `catJump` translateY while parachuting (limb/face `fall` only); rotation sway on wrapper, not a second vertical bob.
+
+**Parachute graphic**
+
+- Larger canopy: ~**96×48** display (or viewBox with padding so curves are not clipped).
+- Keep canopy fully inside viewBox (no `Q … -28` without viewBox min-y padding).
+- **Shorter cords**: attach near bottom of canopy to **shoulders / top of head** (cord length ~10–16px in SVG space), 3 lines, slightly thicker (`strokeWidth` ~1.2).
+- Gap between chute bottom and head: **small** (4–8px), not a long hang.
+- Z-order above cat; `pointer-events: none`; stay visible for **entire glide**, fade only on land.
+- Optional: tint / stripe so it reads on both light and dark UI.
 
 ## Activity profiles
 
@@ -146,6 +191,9 @@ Optional: keep a short comment in code pointing at pixel pack as motion referenc
 5. Walk/run do not ice-skate; stop uses short deceleration; facing flips.
 6. Soft vs hard toss paths work; platforms + bubble OK; activity persists.
 7. No pixel PNGs required at runtime.
+8. **No teleport:** no visible snap of X/Y when starting/ending walk, climb, or toss; one motion driver only.
+9. **Parachute readable:** canopy clearly visible for the whole glide; cords short; fall duration scales with distance (not a sub-second blink).
+10. Landing on UI platforms is continuous; at most a ≤2px settle correction.
 
 ## Risks & mitigations
 
@@ -154,7 +202,9 @@ Optional: keep a short comment in code pointing at pixel pack as motion referenc
 | Too many keyframes in one file | Group `PART_STYLES` by action; keep naming `part-action` |
 | Climb with −90° looks broken on biped | Prefer upright arm-over-arm climb; mild tilt only |
 | Face + action fight | Action face wins while one-shot states active |
-| Performance | One overlay; CSS animations; avoid per-frame React style churn |
+| Performance | One overlay; CSS limb anims; RAF only for position |
+| CSS transition vs WAAPI fight (today’s teleport) | Remove dual drivers; RAF owns `left`/`top` or `translate3d` |
+| Parachute clipped / invisible | Padded viewBox, larger canopy, shorter cords, longer glide |
 
 ## Non-goals
 
