@@ -13,6 +13,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import { FieldErrorTip, useAutoErrorTipKey } from "@/ui/components/FieldErrorTip"
 
 const Form = FormProvider
 
@@ -135,10 +136,17 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
 
 function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : props.children
+  const fromError = error ? String(error?.message ?? "") : ""
+  const fromChildren = typeof props.children === "string" ? props.children : ""
+  const text = fromError || fromChildren || undefined
+  const tipKey = useAutoErrorTipKey(text)
 
-  if (!body) {
+  if (!text && !props.children) {
     return null
+  }
+
+  if (text) {
+    return <FieldErrorTip id={formMessageId} message={text} showKey={tipKey} />
   }
 
   return (
@@ -148,7 +156,7 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
       className={cn("text-sm text-destructive", className)}
       {...props}
     >
-      {body}
+      {props.children}
     </p>
   )
 }

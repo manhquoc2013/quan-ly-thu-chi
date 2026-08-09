@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 interface FormState {
   name: string;
@@ -47,6 +48,8 @@ export interface ProductDialogProps {
 export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<'name'>();
 
   useEffect(() => {
     if (!open) return;
@@ -64,11 +67,14 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
     } else {
       setForm(EMPTY);
     }
+    setNameError('');
+    resetTips();
     setSaving(false);
-  }, [open, editProduct]);
+  }, [open, editProduct, resetTips]);
 
   const setField = useCallback((field: keyof FormState, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
+    if (field === 'name') setNameError('');
   }, []);
 
   const handleSubmit = useCallback(
@@ -76,9 +82,11 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
       e.preventDefault();
       const name = form.name.trim();
       if (name.length < 2) {
-        notify.error('Tên sản phẩm phải từ 2 ký tự');
+        setNameError('Tên sản phẩm phải từ 2 ký tự');
+        bumpTips(['name']);
         return;
       }
+      setNameError('');
       setSaving(true);
       try {
         const stockParsed = Number.parseInt(form.stockQty.trim(), 10);
@@ -102,7 +110,7 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
         setSaving(false);
       }
     },
-    [form, editProduct, onClose],
+    [form, editProduct, onClose, bumpTips],
   );
 
   return (
@@ -122,7 +130,9 @@ export function ProductDialog({ open, onClose, editProduct }: ProductDialogProps
               autoFocus
               required
               minLength={2}
+              aria-invalid={!!nameError}
             />
+            <FieldErrorTip message={nameError} showKey={tipKeys.name ?? 0} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

@@ -1,0 +1,64 @@
+{
+  "triage_id": "TRI-1786258239979-e0fe",
+  "created_at": 1786258239979,
+  "request_summary": "Fix AuthScreen: LogIn icon for login, UserPlus for register; replace hint text with Info icon tooltip",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/auth/AuthScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/auth/AuthScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "src/ui/screens/auth/AuthScreen.tsx"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:src/ui/screens/auth/AuthScreen.tsx — floors at C3 regardless of size (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "AuthScreen submit buttons and card header",
+  "blast_radius": 1,
+  "done_oracle": "npx tsc --noEmit passes; login button uses LogIn icon; register button uses UserPlus icon; CardDescription replaced with Info icon + tooltip showing auth hint",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 356,
+      "quote": "                  <ArrowRight size={16} />",
+      "source_hash": "1086b752a17b84cb0f207304f7f7fffa9b6f64fa0a4d38e444fef7d0eb878f4c",
+      "quote_hash": "2fa6a03e976eb9d1b5398c39ae02ed4b127d8af70bddbdae1fc4c4713e3c0791",
+      "note": "submit icon wrong context"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 204,
+      "quote": "              Dùng Supabase Auth. Cần mạng cho lần đầu; sau đó có thể dùng offline.",
+      "source_hash": "1086b752a17b84cb0f207304f7f7fffa9b6f64fa0a4d38e444fef7d0eb878f4c",
+      "quote_hash": "8dae79b9da061d1688fcadec8b3d7548abe45904db7965fde74f887f24ce4e0d",
+      "note": "hint text too much padding → replace with tooltip icon"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786258065652-7d91",
+    "breach_kind": "one_way_door"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786258240016
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

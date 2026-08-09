@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Store, Loader2, ArrowRight } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 export function OnboardingScreen() {
   const { isDark } = useTheme();
@@ -21,15 +22,18 @@ export function OnboardingScreen() {
   const [address, setAddress] = useState(userProfile?.address || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const { tipKeys, bumpTips } = useFieldErrorTips<'storeName'>();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmedName = storeName.trim();
     if (!trimmedName) {
-      toast.error('Vui lòng nhập tên cửa hàng.');
+      setNameError('Vui lòng nhập tên cửa hàng.');
+      bumpTips(['storeName']);
       return;
     }
+    setNameError('');
     setLoading(true);
     try {
       updateUserProfile({
@@ -44,15 +48,13 @@ export function OnboardingScreen() {
         email: userProfile?.email ?? null,
       });
       toast.success('Thiết lập cửa hàng thành công!');
-      setDone(true);
+      // AuthGuard watches storeName and will leave this screen
     } catch {
       toast.error('Không thể lưu thông tin. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   }
-
-  if (done) return null;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
@@ -85,7 +87,12 @@ export function OnboardingScreen() {
               <div className="space-y-2">
                 <Label htmlFor="store-name" className="text-xs">Tên cửa hàng *</Label>
                 <Input id="store-name" placeholder="VD: Tiệm tạp hóa Nhà Bo" value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)} disabled={loading} autoFocus className="h-10" />
+                  onChange={(e) => {
+                    setStoreName(e.target.value);
+                    if (nameError) setNameError('');
+                  }} disabled={loading} autoFocus className="h-10"
+                  aria-invalid={!!nameError} />
+                <FieldErrorTip message={nameError} showKey={tipKeys.storeName ?? 0} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="store-address" className="text-xs">Địa chỉ</Label>

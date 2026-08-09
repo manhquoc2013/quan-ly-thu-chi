@@ -9,16 +9,29 @@
 
 import { Label } from '@/components/ui/label';
 import type { ReactNode } from 'react';
+import { FieldErrorTip, useAutoErrorTipKey } from './FieldErrorTip';
 
 export interface FormFieldProps {
   label: string;
   required?: boolean;
   error?: string;
+  /** Optional tip re-show key (e.g. from useFieldErrorTips). */
+  errorTipKey?: number;
   children: ReactNode;
   className?: string;
 }
 
-export function FormField({ label, required, error, children, className }: FormFieldProps) {
+export function FormField({
+  label,
+  required,
+  error,
+  errorTipKey,
+  children,
+  className,
+}: FormFieldProps) {
+  const autoKey = useAutoErrorTipKey(error);
+  const tipKey = errorTipKey ?? autoKey;
+
   return (
     <div className={className}>
       <Label className="block text-xs font-medium text-text-secondary mb-1.5">
@@ -26,9 +39,7 @@ export function FormField({ label, required, error, children, className }: FormF
         {required && <span className="text-danger-fg">{' '}*</span>}
       </Label>
       {children}
-      {error && (
-        <p className="mt-1 text-xs text-danger-fg">{error}</p>
-      )}
+      <FieldErrorTip message={error} showKey={tipKey} />
     </div>
   );
 }

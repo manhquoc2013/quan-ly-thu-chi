@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 interface FormState {
   name: string;
@@ -37,6 +38,8 @@ export interface CustomerDialogProps {
 export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<'name'>();
 
   useEffect(() => {
     if (!open) return;
@@ -50,11 +53,14 @@ export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogPr
     } else {
       setForm(EMPTY);
     }
+    setNameError('');
+    resetTips();
     setSaving(false);
-  }, [open, editCustomer]);
+  }, [open, editCustomer, resetTips]);
 
   const setField = useCallback((field: keyof FormState, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
+    if (field === 'name') setNameError('');
   }, []);
 
   const handleSubmit = useCallback(
@@ -62,9 +68,11 @@ export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogPr
       e.preventDefault();
       const name = form.name.trim();
       if (name.length < 2) {
-        notify.error('Họ tên phải từ 2 ký tự');
+        setNameError('Họ tên phải từ 2 ký tự');
+        bumpTips(['name']);
         return;
       }
+      setNameError('');
       setSaving(true);
       try {
         const payload = {
@@ -85,7 +93,7 @@ export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogPr
         setSaving(false);
       }
     },
-    [form, editCustomer, onClose],
+    [form, editCustomer, onClose, bumpTips],
   );
 
   return (
@@ -106,7 +114,9 @@ export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogPr
               required
               minLength={2}
               maxLength={100}
+              aria-invalid={!!nameError}
             />
+            <FieldErrorTip message={nameError} showKey={tipKeys.name ?? 0} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cust-phone">Số điện thoại</Label>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import {
   Receipt,
   TrendingUp,
@@ -110,20 +109,25 @@ export function ReportScreen() {
 
   return (
     <div className="flex flex-col gap-[var(--s-md)] p-[var(--s-md)]">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
+          <p className="text-xs text-text-muted">Phân tích thu chi theo thời gian thực</p>
+        </div>
+        <div className="flex items-center gap-0.5 bg-surface-hover rounded-lg p-0.5">
           {PRESETS.map((p) => (
-            <Button
+            <button
               key={p.id}
               type="button"
-              size="sm"
-              variant={activePreset === p.id ? "default" : "outline"}
-              className="h-7 text-[11px] px-2"
+              className={`h-7 px-2.5 text-[11px] rounded-md font-medium transition-all ${
+                activePreset === p.id
+                  ? 'bg-white dark:bg-surface text-text-primary shadow-sm'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
               onClick={() => applyPreset(p.id)}
             >
               {p.label}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

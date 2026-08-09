@@ -1,0 +1,105 @@
+{
+  "triage_id": "TRI-1786260595699-48be",
+  "created_at": 1786260595699,
+  "request_summary": "Standardize Dashboard and Reports: modern glass-morphism, consistent KPI labels, unified empty states, proper currency display, clean chart styling",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/report/CustomerReport.tsx",
+      "src/ui/screens/report/ExpenseReport.tsx",
+      "src/ui/screens/report/InventoryReport.tsx",
+      "src/ui/screens/report/PlatformReport.tsx",
+      "src/ui/screens/report/ProductReport.tsx",
+      "src/ui/screens/report/ProfitReport.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/report/RevenueReport.tsx",
+      "src/ui/screens/report/UnpaidReport.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/report/CustomerReport.tsx",
+      "src/ui/screens/report/ExpenseReport.tsx",
+      "src/ui/screens/report/InventoryReport.tsx",
+      "src/ui/screens/report/PlatformReport.tsx",
+      "src/ui/screens/report/ProductReport.tsx",
+      "src/ui/screens/report/ProfitReport.tsx",
+      "src/ui/screens/report/ReportScreen.tsx",
+      "src/ui/screens/report/RevenueReport.tsx",
+      "src/ui/screens/report/UnpaidReport.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 10 edit-target files exceed the inline gate (10 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "DashboardScreen and ReportScreen with sub-reports",
+  "blast_radius": 10,
+  "done_oracle": "npx tsc --noEmit passes; Dashboard: KPI labels unified, money() no rounding, empty states with icons; Reports: modern cards, consistent typography, clean charts",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 42,
+      "quote": "  return formatCurrency(Math.round(amount));",
+      "source_hash": "4daa53c0fcf6b46576931b5d8baa7155e6e2a00358258f06bfacb0a319a9e9d1",
+      "quote_hash": "aa617ac690d8fc84e9fe157c1f63eb7cc1071b665e4a3a7d624be9211771f798",
+      "note": "money() rounds — needs no rounding"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 157,
+      "quote": "      title: 'Tổng thu',",
+      "source_hash": "4daa53c0fcf6b46576931b5d8baa7155e6e2a00358258f06bfacb0a319a9e9d1",
+      "quote_hash": "ba9c59b6917bb31b4ec9dc6bc027a4f1bb2c0e4a19d3303111114c46b2917f02",
+      "note": "KPI label inconsistent"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 165,
+      "quote": "      title: 'Tổng chi',",
+      "source_hash": "4daa53c0fcf6b46576931b5d8baa7155e6e2a00358258f06bfacb0a319a9e9d1",
+      "quote_hash": "6ad3f6af77c8513cd397e0242531bd843350c2f2aacddaf0a8c32904c3f26042",
+      "note": "KPI label inconsistent"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 293,
+      "quote": "              <p className=\"text-xs text-text-muted py-10 text-center\">Không có đơn chờ xử lý</p>",
+      "source_hash": "4daa53c0fcf6b46576931b5d8baa7155e6e2a00358258f06bfacb0a319a9e9d1",
+      "quote_hash": "acc9d34d02f3ad4ca695c78ee6f91616923e01d9d0b1925117901960173686bd",
+      "note": "empty state text"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 351,
+      "quote": "              <p className=\"text-xs text-text-muted py-10 text-center\">Chưa có giao dịch</p>",
+      "source_hash": "4daa53c0fcf6b46576931b5d8baa7155e6e2a00358258f06bfacb0a319a9e9d1",
+      "quote_hash": "2a0900c14476b82b28e6dbb84cf0d63a1d9fd82ddccea229ed3171afca9b4b2c",
+      "note": "empty state text"
+    },
+    {
+      "file": "src/ui/screens/report/ReportScreen.tsx",
+      "line": 44,
+      "quote": "  { value: \"expense\", label: \"Chi phí\", icon: Receipt },",
+      "source_hash": "b1925813d1a0f1121476692308439ff56328dfe61b564d1bef14a693c757694a",
+      "quote_hash": "3c7391870f0e182724ef1f630a1f64ceb740ba73613380824ff5cf981837c29a",
+      "note": "report tab labels"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786260595732
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

@@ -21,6 +21,7 @@ import {
   getTopProductsByRevenue,
 } from "@/services/reportService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LIST_ROW_ANIM, listRowStyle } from "@/ui/components/listRowAnim";
 
 const COLORS = [
   "#2563EB",
@@ -253,7 +254,8 @@ export function ProductReport() {
                   {topByQuantity.map((p, i) => (
                     <tr
                       key={p.productId}
-                      className="border-b border-border-subtle last:border-b-0"
+                      className={`border-b border-border-subtle last:border-b-0 ${LIST_ROW_ANIM}`}
+                      style={listRowStyle(i)}
                     >
                       <td className="px-3 py-2 text-xs text-text-muted">
                         {i + 1}
@@ -306,7 +308,8 @@ export function ProductReport() {
                   {topByRevenue.map((p, i) => (
                     <tr
                       key={p.productId}
-                      className="border-b border-border-subtle last:border-b-0"
+                      className={`border-b border-border-subtle last:border-b-0 ${LIST_ROW_ANIM}`}
+                      style={listRowStyle(i)}
                     >
                       <td className="px-3 py-2 text-xs text-text-muted">
                         {i + 1}

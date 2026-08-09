@@ -145,6 +145,10 @@ function AuthGuardSpinner() {
               <CatBody emotion="happy" action={catAction} />
             </span>
           </div>
+          <p className="auth-loading-subtitle">
+            Đang tải dữ liệu
+            <span className="auth-dots"><span>.</span><span>.</span><span>.</span></span>
+          </p>
         </div>
       </div>
       <style>{`
@@ -175,11 +179,8 @@ function AuthGuardSpinner() {
           animation: auth-stage-in 0.6s ease-out both;
         }
         .auth-loading-logo {
-          width: 80px; height: 80px;
-          border-radius: 50%;
-          border: none;
-          box-shadow: none;
-          display: block;
+          width: 80px; height: 80px; border-radius: 20px;
+          box-shadow: 0 12px 36px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.1);
           animation: auth-logo-breathe 3s ease-in-out infinite;
         }
         .auth-loading-title-wrap {
@@ -225,6 +226,13 @@ function AuthGuardSpinner() {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        .auth-dots span { animation: auth-dot-bounce 1.4s ease-in-out infinite; }
+        .auth-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .auth-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes auth-dot-bounce {
+          0%, 80%, 100% { opacity: 0; transform: translateY(0); }
+          40% { opacity: 1; transform: translateY(-3px); }
+        }
       `}</style>
     </div>
   );
@@ -235,6 +243,7 @@ function AuthGuardSpinner() {
 export function AuthGuard({ children }: { children?: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => s.userId);
+  const storeName = useAuthStore((s) => s.userProfile?.storeName?.trim() ?? '');
   const [checking, setChecking] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [fullyReady, setFullyReady] = useState(false);
@@ -263,13 +272,13 @@ export function AuthGuard({ children }: { children?: ReactNode }) {
   if (checking) return <AuthGuardSpinner />;
 
   if (fullyReady && !isAuthenticated && supabaseReady) {
-    // Login: no WebLLM chip, no interactive mascot — only AuthScreen branding
+    // AuthScreen mounts interactive MascotOverlay on the login form
     return <AuthScreen />;
   }
 
   if (fullyReady && isAuthenticated && userId) {
-    const needsOnboarding = !useAuthStore.getState().householdId;
-    if (needsOnboarding) return <OnboardingScreen />;
+    // Only first-time users without store info — household is optional (Settings).
+    if (!storeName) return <OnboardingScreen />;
     return <>{children ?? <Outlet />}</>;
   }
 

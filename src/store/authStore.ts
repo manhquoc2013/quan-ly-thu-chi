@@ -285,9 +285,9 @@ export const useAuthStore = create<AuthStore>()(
 
       updateUserProfile: (profile) =>
         set((state) => {
-          if (state.userProfile) {
-            state.userProfile = { ...state.userProfile, ...profile };
-          }
+          state.userProfile = state.userProfile
+            ? { ...state.userProfile, ...profile }
+            : { storeName: '', email: '', ...profile };
         }),
 
       setSession: (userId, token, expiresAt) => {

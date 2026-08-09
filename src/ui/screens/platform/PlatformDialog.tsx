@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 interface FormState {
   name: string;
@@ -37,6 +38,8 @@ export function PlatformDialog({
 }) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<'name'>();
 
   useEffect(() => {
     if (!open) return;
@@ -49,16 +52,20 @@ export function PlatformDialog({
     } else {
       setForm(EMPTY);
     }
+    setNameError('');
+    resetTips();
     setSaving(false);
-  }, [open, editPlatform]);
+  }, [open, editPlatform, resetTips]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (form.name.trim().length < 2) {
-        notify.error('Tên kênh phải từ 2 ký tự');
+        setNameError('Tên kênh phải từ 2 ký tự');
+        bumpTips(['name']);
         return;
       }
+      setNameError('');
       setSaving(true);
       try {
         const payload = {
@@ -78,7 +85,7 @@ export function PlatformDialog({
         setSaving(false);
       }
     },
-    [form, editPlatform, onClose],
+    [form, editPlatform, onClose, bumpTips],
   );
 
   return (
@@ -93,11 +100,16 @@ export function PlatformDialog({
             <Input
               id="plat-name"
               value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, name: e.target.value }));
+                if (nameError) setNameError('');
+              }}
               placeholder="Shopee"
               autoFocus
               required
+              aria-invalid={!!nameError}
             />
+            <FieldErrorTip message={nameError} showKey={tipKeys.name ?? 0} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="plat-code">Mã (tuỳ chọn)</Label>

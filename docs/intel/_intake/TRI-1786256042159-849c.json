@@ -1,0 +1,134 @@
+{
+  "triage_id": "TRI-1786256042159-849c",
+  "created_at": 1786256042159,
+  "request_summary": "Standardize display content: fix nav labels, unify empty states/button labels/currency format/confirm dialogs, add input placeholders, create VND suffix for currency inputs, fix AuthScreen background scale animation",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/auth/AuthScreen.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/platform/PlatformScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/Layout.tsx",
+      "src/ui/screens/auth/AuthScreen.tsx",
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/platform/PlatformScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "src/ui/screens/auth/AuthScreen.tsx"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:src/ui/screens/auth/AuthScreen.tsx — floors at C3 regardless of size (12 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Multiple screens across the app",
+  "blast_radius": 12,
+  "done_oracle": "npx tsc --noEmit passes; nav labels match page titles; empty states uniform; currency format consistent (no rounding on dashboard); AuthScreen background fixed; confirm dialogs consistent; inputs have placeholders; currency inputs have VND suffix",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 35,
+      "quote": "  { label: 'Khách', route: '/customers', tab: 'customers', icon: <Users size={18} /> },",
+      "source_hash": "5ad367b4bacfaa0f6780a5497b1b6df97e906600483a1214d550f770ad2fa087",
+      "quote_hash": "efc2dd3d260d2800bdbe1b8efe0c020e7050102f0fd82a57c91d9a0ff5e93624",
+      "note": "nav label needs 'Khách hàng'"
+    },
+    {
+      "file": "src/ui/Layout.tsx",
+      "line": 44,
+      "quote": "  '/customers': 'Khách hàng', '/products': 'Sản phẩm', '/platforms': 'Kênh bán',",
+      "source_hash": "5ad367b4bacfaa0f6780a5497b1b6df97e906600483a1214d550f770ad2fa087",
+      "quote_hash": "f7605cf06c6208f36c393b7b31722fcf7d4bb6670fa1936150a4afd286df2928",
+      "note": "page titles ok, nav needs match"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 207,
+      "quote": "          0% { transform: scale(1.02) translate(0, 0); }",
+      "source_hash": "15c2ae6d63b56311968c2fa55672ab05599afcdfd532d87c796b6d1f04cec380",
+      "quote_hash": "d58e95750777801a46a199c05f299e4ad19bce9e89bfc841daf25c73430f3edc",
+      "note": "scale causes blur, remove scale"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 208,
+      "quote": "          100% { transform: scale(1.08) translate(-1.2%, 0.8%); }",
+      "source_hash": "15c2ae6d63b56311968c2fa55672ab05599afcdfd532d87c796b6d1f04cec380",
+      "quote_hash": "a898f627173291c4da7d46bde85288893facbf9da33819ca7afbdadd277a224a",
+      "note": "scale causes blur"
+    },
+    {
+      "file": "src/ui/screens/expense/ExpenseScreen.tsx",
+      "line": 192,
+      "quote": "          <Plus /> Thêm chi phí",
+      "source_hash": "26d64b76046ff57078e87c85ff8a0af1b8acb27c2beac12b807eb3642c0793c4",
+      "quote_hash": "990433e61d8e8d0865b80c5ec5e22c32d8e5a7d8cdb0e3d1d2ee993ab6648a63",
+      "note": "button label"
+    },
+    {
+      "file": "src/ui/screens/product/ProductScreen.tsx",
+      "line": 166,
+      "quote": "          <Plus /> Thêm SP",
+      "source_hash": "619e735ab25271053093ff28d697af0407222f0c0d15c8bf7a9f5601699c65c3",
+      "quote_hash": "ef5f95701e67fcc9310638e670f9db29192180cceaa218f4a67711c5c11cf05d",
+      "note": "inconsistent abbreviation"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 157,
+      "quote": "      title: 'Tổng thu',",
+      "source_hash": "f348d8e3696cd5b0dcaccfad6b8fe2bea375c287b9301791b577b443b02b6fd9",
+      "quote_hash": "ba9c59b6917bb31b4ec9dc6bc027a4f1bb2c0e4a19d3303111114c46b2917f02",
+      "note": "inconsistent with 'Doanh thu' elsewhere"
+    },
+    {
+      "file": "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "line": 165,
+      "quote": "      title: 'Tổng chi',",
+      "source_hash": "f348d8e3696cd5b0dcaccfad6b8fe2bea375c287b9301791b577b443b02b6fd9",
+      "quote_hash": "6ad3f6af77c8513cd397e0242531bd843350c2f2aacddaf0a8c32904c3f26042",
+      "note": "inconsistent with 'Chi phí' elsewhere"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786255252090-2d9d",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786256042195
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

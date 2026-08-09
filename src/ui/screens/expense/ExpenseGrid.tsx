@@ -22,6 +22,7 @@ import { Pencil, Trash2, Square, CheckSquare } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
 import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
+import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 import { useProductStore } from '@/store/productStore';
 
 /* ─── Props ─── */
@@ -216,10 +217,12 @@ export function ExpenseGrid({
               }}
               className={cn(
                 'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[800px]',
+                LIST_ROW_ANIM,
                 index % 2 === 0 ? 'bg-grid-row-even' : 'bg-grid-row-odd',
                 'hover:bg-grid-row-hover',
                 selectedIds.has(expense.id) ? 'bg-grid-row-selected' : '',
               )}
+              style={listRowStyle(index)}
               data-expense-id={expense.id}
             >
               <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>

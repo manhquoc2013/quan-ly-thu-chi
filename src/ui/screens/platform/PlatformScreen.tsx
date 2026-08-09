@@ -29,6 +29,7 @@ import { PlatformDialog } from './PlatformDialog';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
 import { ListLoadingOverlay } from '@/ui/components/ListLoadingOverlay';
 import { PaginationBar } from '@/ui/components/PaginationBar';
+import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 import { formatDate } from '@/utils/date';
 
 export function PlatformScreen() {
@@ -131,12 +132,13 @@ export function PlatformScreen() {
             <div className="flex-1 min-h-0 relative">
             <ListLoadingOverlay show={loading} />
             <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
-              {items.map((p) => {
+              {items.map((p, index) => {
                 const n = usage.get(p.id) ?? 0;
                 return (
                   <li
                     key={p.id}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-hover cursor-pointer"
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-surface-hover cursor-pointer ${LIST_ROW_ANIM}`}
+                    style={listRowStyle(index)}
                     onClick={() => setDetailPlatform(p)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

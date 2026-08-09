@@ -23,7 +23,7 @@ actor-slugs: [user]
 ## 1. Summary
 
 M-001 already ships a 3-tier AI cascade **Kilo Free → Gemini → WebLLM** implemented as a hardcoded
-if-else chain in `src/services/llmCall.ts:103` (`const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } =
+if-else chain in `src/services/llmCall.ts` (`const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } =
 useAuthStore.getState();` — `canUseCloudLlm()`), with per-provider toggles/keys in the Zustand store
 (`src/store/authStore.ts`) and AI config sections in `src/ui/screens/settings/SettingsScreen.tsx`.
 
@@ -40,7 +40,7 @@ This scope expansion adds:
    (move-up/move-down reorder list).
 
 The change is **additive and backward-compatible**: `callLlmCascade`'s signature is unchanged, so its
-three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:1044`) and the
+three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts`) and the
 label consumers (`AIChatScreen.tsx:255`, `ChatPanel.tsx:415`) keep working unmodified.
 
 Complexity: **Medium** — additive change on an implemented module; 1 actor; ~11 new business rules;
@@ -56,7 +56,7 @@ no schema migration, no new bounded context.
 | `.env` / `.env.example` | `VITE_GROQ_API_KEY` env var documented and read by the service | TRI-1785915049449-58fd requirement 1; evidence.edit_target_files |
 | `LlmSource` extension | Add `'groq'` to `LlmSource` union (`src/services/llmCall.ts:11`) | requirement 2 |
 | `callLlmCascade()` priority-driven | Replace hardcoded if-else with iteration over `aiPriority: LlmSource[]` read from store at call time; default `['kilo','groq','gemini','local']` | requirement 2 |
-| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts:91`) | requirement 3 |
+| Store fields + actions | `groqApiKey`, `groqConfigured`, `enableGroq`, `aiPriority` (+ setters) in `src/store/authStore.ts`, persisted via existing `persist('ql-tc-auth')` partialize, service sync on set/rehydrate (mirroring `syncKiloService` at `authStore.ts`) | requirement 3 |
 | Settings UI | Groq section card (key input, save/test/delete, enable toggle) + AI Priority section (ordered list with move-up/move-down) in `SettingsScreen.tsx` | requirement 4 |
 | `src/services/index.ts` | Barrel export of `groqService` (triage edit target) | TRI evidence.edit_target_files |
 | Label + cloud-eligibility helpers | `llmSourceLabel()` gains a `'groq'` case (`llmCall.ts:111`); `canUseCloudLlm()` includes Groq eligibility (`llmCall.ts:102`) | derived — consumers pass `source` strings through unmodified, so helpers must know `'groq'` |
@@ -79,7 +79,7 @@ no schema migration, no new bounded context.
 
 ### 3.1 AS-IS cascade (current: `src/services/llmCall.ts:13-61`)
 
-> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts:103` —
+> Seam anchor (triage seam_claims[0], byte-verified at intake): `src/services/llmCall.ts` —
 > `const { geminiConfigured, groqConfigured, openRouterConfigured, enableKiloFree, enableGroq, enableOpenRouter } = useAuthStore.getState();` (in `canUseCloudLlm()`)
 > Verified this session: `LlmSource` re-export at `llmCall.ts:16`; `callLlmCascade` at `:86`;
 > `canUseCloudLlm` at `:102`; `llmSourceLabel` at `:111`.
@@ -100,7 +100,7 @@ flowchart TD
 ```
 
 Order is **hardcoded** (Kilo → Gemini → WebLLM) and reads six store flags
-(`geminiConfigured`, `groqConfigured`, `openRouterConfigured`, `enableKiloFree`, `enableGroq`, `enableOpenRouter`) from `llmCall.ts:103` (`canUseCloudLlm()`).
+(`geminiConfigured`, `groqConfigured`, `openRouterConfigured`, `enableKiloFree`, `enableGroq`, `enableOpenRouter`) from `llmCall.ts` (`canUseCloudLlm`).
 
 ### 3.2 TO-BE cascade (priority-driven)
 
@@ -556,7 +556,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | **Source** | TRI requirement 3 ("fields with persistence") |
 | **Given** | The user reordered `aiPriority` to `['groq', 'gemini', 'kilo', 'local']` and reloaded the app |
 | **When** | The store rehydrates |
-| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts:272`) and the Settings list renders in that order. |
+| **Then** | `aiPriority` is restored to `['groq', 'gemini', 'kilo', 'local']` (persisted under the existing `ql-tc-auth` key via `partialize` at `authStore.ts`) and the Settings list renders in that order. |
 
 ### AC-PRI-07 — Priority Changes Take Effect Real-Time
 
@@ -595,7 +595,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | | |
 |---|---|
 | **AC-ID** | AC-STORE-02 |
-| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:113-127` and `syncKiloService` at `authStore.ts:91`) |
+| **Source** | derived (mirrors `setEnableKiloFree`/`setKiloApiKey` service sync at `authStore.ts:113-127` and `syncKiloService` at `authStore.ts`) |
 | **Given** | The user saves a Groq key or toggles Groq in Settings |
 | **When** | `setGroqApiKey(key)` / `setEnableGroq(v)` run |
 | **Then** | The store field updates AND `groqService.configure(key)` / `groqService.setEnabled(v)` are called in the same action (single source of truth; the service never reads localStorage itself). Rehydration (`onRehydrateStorage`, mirroring `authStore.ts:289-291`) re-syncs the service from persisted state. |
@@ -606,9 +606,9 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|
 | **AC-ID** | AC-STORE-03 |
 | **Source** | TRI requirement 3 |
-| **Given** | The `partialize` selector at `authStore.ts:272` |
+| **Given** | The `partialize` selector at `authStore.ts` |
 | **When** | The store persists |
-| **Then** | `groqApiKey`, `enableGroq`, and `aiPriority` are included in the persisted slice (same key `ql-tc-auth`; `groqConfigured` is derived from `groqApiKey` and not stored independently — matches the existing `geminiConfigured` derivation at `authStore.ts:269`). |
+| **Then** | `groqApiKey`, `enableGroq`, and `aiPriority` are included in the persisted slice (same key `ql-tc-auth`; `groqConfigured` is derived from `groqApiKey` and not stored independently — matches the existing `geminiConfigured` derivation at `authStore.ts`). |
 
 ### 5.5 New — Settings UI
 
@@ -618,7 +618,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|
 | **AC-ID** | AC-UI-01 |
 | **Source** | TRI requirement 4 |
-| **Given** | The user opens Settings (existing navigation — no new route; the section is inserted adjacent to the "Kilo Free AI settings" section at `SettingsScreen.tsx:438`) |
+| **Given** | The user opens Settings (existing navigation — no new route; the section is inserted adjacent to the "Kilo Free AI settings" section at `SettingsScreen.tsx`) |
 | **When** | The Settings screen renders |
 | **Then** | A Groq section card is visible with: a status badge ("Đã cấu hình" / "Chưa cấu hình"), a password-type API key input (`aria-label="Groq API key"`), "Lưu API key" / "Kiểm tra" / "Xóa API key" buttons, and a "Bật Groq" switch (`role="switch"`, `aria-checked`), reusing the Gemini section's structure at `SettingsScreen.tsx:520-592`. |
 
@@ -762,7 +762,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 | Reliability | NFR-AI-R01 | Any Groq failure (network/HTTP/timeout/parse) degrades to the next provider; cascade never throws | Verified by unit test with stubbed fetch |
 | Reliability | NFR-AI-R02 | Invalid persisted `aiPriority` (empty, duplicates, unknown members) self-heals on rehydrate | Normalized to full 4-member set (AC-PRI-08) |
 | Audit/Logging | NFR-AI-L01 | Groq failures emit `console.warn` with HTTP status + truncated body (mirrors `kiloService.ts:108-116`) | No raw stack traces in UI |
-| UX | NFR-AI-U01 | Groq test button shows spinner while testing; success/failure via Vietnamese toasts | Loader2 pattern at `SettingsScreen.tsx:509` |
+| UX | NFR-AI-U01 | Groq test button shows spinner while testing; success/failure via Vietnamese toasts | Loader2 pattern at `SettingsScreen.tsx` |
 | UX | NFR-AI-U02 | Priority list labels are Vietnamese and match existing provider naming (Kilo Free, Gemini, AI Cục bộ; new: Groq) | Consistent with `SettingsScreen.tsx:438-518` |
 | Maintainability | NFR-AI-M01 | `groqService` unit-tested ≥ 6 cases (ok, HTTP 4xx, HTTP 5xx, network throw, timeout abort, empty content) following `kiloService.test.ts` patterns | `bun test src/services/groqService.test.ts` exits 0 |
 | Maintainability | NFR-AI-M02 | Store changes unit-tested (default `aiPriority`, reorder, persistence round-trip, legacy rehydrate migration) | Follows existing authStore test patterns |
@@ -872,7 +872,7 @@ Offline (`navigator.onLine === false`): all cloud providers skip; only `'local'`
 |---|---|---|
 | CON-AI-01 | ONLY these files may change: `.env`, `src/services/groqService.ts` (NEW), `src/services/index.ts`, `src/services/llmCall.ts`, `src/store/authStore.ts`, `src/ui/screens/settings/SettingsScreen.tsx` | TRI evidence.edit_target_files |
 | CON-AI-02 | `aiRouter.ts`, `chatTools.ts`, `chatIntent.ts`, `llmIntentExtractor.ts`, `llmBulkDraftExtractor.ts`, `geminiService.ts`, `kiloService.ts`, `webLLM.ts`, and every other existing service/screen MUST NOT be modified | TRI requirement 5 |
-| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts:1044`) depend on it | TRI requirement 5 + verified usage |
+| CON-AI-03 | `callLlmCascade` signature `(prompt, localMode?) => Promise<{ text, source } \| null>` MUST NOT change — three callers (`llmIntentExtractor.ts:208`, `llmBulkDraftExtractor.ts:52`, `aiRouter.ts`) depend on it | TRI requirement 5 + verified usage |
 | CON-AI-04 | `groqService.generateContent` MUST return `null` on failure — never throw, never return an error-prefixed string | TRI requirement 5 |
 | CON-AI-05 | Existing test suite MUST remain green (`bun test --run` exits 0) — `kiloService.test.ts`, `authService.test.ts`, etc. are regression oracles | TRI requirement 5 ("Existing tests must pass") |
 | CON-AI-06 | Priority changes MUST take effect real-time (next request), no reload/restart required | TRI requirement 5 |

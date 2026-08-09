@@ -20,6 +20,7 @@ import { useAuthStore } from '@/store/authStore';
 import { queueProfileSync } from '@/services/userSettingsService';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 interface ProfileDialogProps {
   open: boolean;
@@ -34,6 +35,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
   const [phone, setPhone] = useState(userProfile?.phone ?? '');
   const [address, setAddress] = useState(userProfile?.address ?? '');
   const [loading, setLoading] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<'storeName'>();
 
   // Sync from store when opening
   function handleOpenChange(nextOpen: boolean) {
@@ -41,6 +44,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
       setStoreName(userProfile.storeName);
       setPhone(userProfile.phone ?? '');
       setAddress(userProfile.address ?? '');
+      setNameError('');
+      resetTips();
     }
     onOpenChange(nextOpen);
   }
@@ -49,9 +54,11 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     e.preventDefault();
     const trimmedName = storeName.trim();
     if (!trimmedName) {
-      toast.error('Vui lòng nhập tên cửa hàng.');
+      setNameError('Vui lòng nhập tên cửa hàng.');
+      bumpTips(['storeName']);
       return;
     }
+    setNameError('');
 
     setLoading(true);
     try {
@@ -94,10 +101,15 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
             <Input
               id="profile-storename"
               value={storeName}
-              onChange={(e) => setStoreName(e.target.value)}
+              onChange={(e) => {
+                setStoreName(e.target.value);
+                if (nameError) setNameError('');
+              }}
               disabled={loading}
               autoFocus
+              aria-invalid={!!nameError}
             />
+            <FieldErrorTip message={nameError} showKey={tipKeys.storeName ?? 0} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="profile-phone">Số điện thoại</Label>

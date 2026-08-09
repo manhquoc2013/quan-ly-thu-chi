@@ -9,7 +9,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   TrendingUp,
-  Briefcase,
+  Clock,
   Package,
   Wallet,
 } from 'lucide-react';
@@ -39,7 +39,7 @@ import {
 import { TransactionDetailModal } from './TransactionDetailModal';
 
 function money(amount: number): string {
-  return formatCurrency(Math.round(amount));
+  return formatCurrency(amount);
 }
 
 function statusTone(status: OrderStatus): string {
@@ -154,28 +154,25 @@ export function DashboardScreen() {
 
   const kpiCards = [
     {
-      title: 'Tổng thu',
+      title: 'Doanh thu',
       value: money(totalRevenue),
-      hint: undefined as string | undefined,
+      hint: 'Đã thanh toán' as string | undefined,
       icon: ArrowUpRight,
       tone: 'text-success-fg',
-      className: 'md:col-span-2 xl:col-span-1',
     },
     {
-      title: 'Tổng chi',
+      title: 'Chi phí',
       value: money(totalExpense),
-      hint: undefined,
+      hint: 'Tất cả khoản chi' as string | undefined,
       icon: ArrowDownRight,
       tone: 'text-danger-fg',
-      className: 'md:col-span-2 xl:col-span-1',
     },
     {
       title: 'Lợi nhuận',
       value: money(profit),
-      hint: undefined,
+      hint: (profit >= 0 ? 'Có lãi' : 'Lỗ') as string | undefined,
       icon: TrendingUp,
       tone: profit >= 0 ? 'text-success-fg' : 'text-danger-fg',
-      className: 'md:col-span-2 xl:col-span-1',
     },
     {
       title: 'Công nợ',
@@ -183,47 +180,47 @@ export function DashboardScreen() {
       hint: unpaidCount > 0 ? `${unpaidCount} đơn chưa thu` : 'Không còn nợ',
       icon: Wallet,
       tone: unpaidTotal > 0 ? 'text-warning-fg' : 'text-text-primary',
-      className: 'md:col-span-3 xl:col-span-1',
     },
     {
       title: 'Đơn chờ',
       value: String(pendingCount),
       hint: pendingCount > 0 ? 'Cần xử lý' : 'Đã xong',
-      icon: Briefcase,
+      icon: Clock,
       tone: 'text-text-primary',
-      // Mobile 2-col: span full row so the 5th card is not a lonely half-cell
-      className: 'col-span-2 md:col-span-3 xl:col-span-1',
     },
   ];
 
   return (
     <div className="space-y-[var(--s-lg)]">
       {/*
-        Responsive KPI strip:
-        - mobile: 2 cols (last card full-width)
-        - md: 3 + 2 balanced (6-col grid)
-        - xl: 5 equal columns in one row
+        Responsive KPI strip — amount sits on its own row (no truncate):
+        - mobile: 2 cols
+        - md: 3 cols (3 + 2)
+        - xl: 5 equal cols
       */}
-      <div className="grid grid-cols-2 md:grid-cols-6 xl:grid-cols-5 gap-[var(--s-md)]">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-[var(--s-md)]">
         {kpiCards.map((c) => (
           <Card
             key={c.title}
             data-mascot-platform
-            className={`bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all ${c.className}`}
+            className="min-w-0 bg-surface/80 backdrop-blur-sm border-border-subtle hover:shadow-md hover:-translate-y-px transition-all"
           >
-            <CardContent className="flex items-center gap-3 p-3 sm:p-4">
-              <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-field bg-surface-hover">
-                <c.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${c.tone}`} />
+            <CardContent className="flex flex-col gap-2 p-3 sm:p-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-field bg-surface-hover">
+                  <c.icon className={`w-4 h-4 sm:w-[18px] sm:h-[18px] ${c.tone}`} />
+                </div>
+                <p className="text-[11px] sm:text-xs text-text-muted leading-tight">{c.title}</p>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] sm:text-[12px] text-text-muted leading-tight">{c.title}</p>
-                <p className={`text-base sm:text-lg font-bold tabular-nums leading-tight truncate ${c.tone}`}>
-                  {c.value}
-                </p>
-                {c.hint ? (
-                  <p className="text-[10px] sm:text-[11px] text-text-muted mt-0.5 truncate">{c.hint}</p>
-                ) : null}
-              </div>
+              <p
+                className={`text-base sm:text-lg font-bold tabular-nums leading-snug break-words ${c.tone}`}
+                title={c.value}
+              >
+                {c.value}
+              </p>
+              {c.hint ? (
+                <p className="text-[10px] sm:text-[11px] text-text-muted leading-snug">{c.hint}</p>
+              ) : null}
             </CardContent>
           </Card>
         ))}

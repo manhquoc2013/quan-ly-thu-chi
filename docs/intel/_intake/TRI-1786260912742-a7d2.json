@@ -1,0 +1,41 @@
+{
+  "triage_id": "TRI-1786260912742-a7d2",
+  "created_at": 1786260912742,
+  "request_summary": "Dashboard standardization: KPI labels fix, remove Math.round, empty states with icons",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "DashboardScreen",
+  "blast_radius": 1,
+  "done_oracle": "npx tsc --noEmit passes; KPI labels \"Doanh thu\"/\"Chi phí\"; money() uses formatCurrency; empty states have centered icon",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786260726043-f433",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786260912773
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

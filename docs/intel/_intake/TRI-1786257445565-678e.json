@@ -1,0 +1,76 @@
+{
+  "triage_id": "TRI-1786257445565-678e",
+  "created_at": 1786257445565,
+  "request_summary": "Redesign AuthScreen: add storeName+confirmPassword for signup, inline field validation, fix background scale, modern card, upsertProfile after signup",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/auth/AuthScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/auth/AuthScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "security",
+        "path": "src/ui/screens/auth/AuthScreen.tsx"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: security:src/ui/screens/auth/AuthScreen.tsx — floors at C3 regardless of size (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "AuthScreen — login/register form",
+  "blast_radius": 1,
+  "done_oracle": "npx tsc --noEmit passes; login shows email+password; register shows storeName+email+password+confirmPassword; inline errors per field; background has no scale; signup saves storeName via upsertProfile",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 79,
+      "quote": "      if (mode === 'up') await signUpSupabase(trimmed, password);",
+      "source_hash": "3eb056993280d5d5cee8071b4cc1f0f6006684a809999d5042094046b7eec95e",
+      "quote_hash": "3c4b39ee961bea8a104eea4b5e04e29265e28da0b09d78437755e6fd09460d68",
+      "note": "signup path — need to add storeName save after"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 80,
+      "quote": "      else await signInSupabase(trimmed, password);",
+      "source_hash": "3eb056993280d5d5cee8071b4cc1f0f6006684a809999d5042094046b7eec95e",
+      "quote_hash": "64a386c493835c5f69ec1fb29cd06f750e54fb0baa6db382178cb1ab61274716",
+      "note": "login path"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 207,
+      "quote": "          0% { transform: scale(1.02) translate(0, 0); }",
+      "source_hash": "3eb056993280d5d5cee8071b4cc1f0f6006684a809999d5042094046b7eec95e",
+      "quote_hash": "d58e95750777801a46a199c05f299e4ad19bce9e89bfc841daf25c73430f3edc",
+      "note": "scale causes blur on bg"
+    },
+    {
+      "file": "src/ui/screens/auth/AuthScreen.tsx",
+      "line": 208,
+      "quote": "          100% { transform: scale(1.08) translate(-1.2%, 0.8%); }",
+      "source_hash": "3eb056993280d5d5cee8071b4cc1f0f6006684a809999d5042094046b7eec95e",
+      "quote_hash": "a898f627173291c4da7d46bde85288893facbf9da33819ca7afbdadd277a224a",
+      "note": "scale causes blur"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786257445598
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

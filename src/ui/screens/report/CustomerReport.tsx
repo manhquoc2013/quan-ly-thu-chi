@@ -16,6 +16,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { formatCurrency } from "@/utils/currency";
 import { formatAxisVnd } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
+import { LIST_ROW_ANIM, listRowStyle } from "@/ui/components/listRowAnim";
 import {
   getTopCustomersByOrderCount,
   getTopCustomersByRevenue,
@@ -246,7 +247,8 @@ export function CustomerReport() {
                   {topByOrders.map((c, i) => (
                     <tr
                       key={c.customerId}
-                      className="border-b border-border-subtle last:border-b-0"
+                      className={`border-b border-border-subtle last:border-b-0 ${LIST_ROW_ANIM}`}
+                      style={listRowStyle(i)}
                     >
                       <td className="px-3 py-2 text-xs text-text-muted">
                         {i + 1}
@@ -299,7 +301,8 @@ export function CustomerReport() {
                   {topByRevenue.map((c, i) => (
                     <tr
                       key={c.customerId}
-                      className="border-b border-border-subtle last:border-b-0"
+                      className={`border-b border-border-subtle last:border-b-0 ${LIST_ROW_ANIM}`}
+                      style={listRowStyle(i)}
                     >
                       <td className="px-3 py-2 text-xs text-text-muted">
                         {i + 1}

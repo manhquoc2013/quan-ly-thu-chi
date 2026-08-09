@@ -60,35 +60,19 @@ export function PaginationBar({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t border-border bg-surface text-xs text-text-muted',
+        'flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-surface text-xs text-text-muted',
         className,
       )}
       role="navigation"
       aria-label="Phân trang"
     >
-      <div className="flex items-center gap-2">
-        <span>
-          Hiển thị {from}-{to} / {total}
-        </span>
-        <label className="flex items-center gap-1">
-          <span className="sr-only">Số dòng mỗi trang</span>
-          <select
-            className="h-7 rounded-field border border-input-border bg-input-bg px-1.5 text-xs"
-            value={pageSize}
-            disabled={disabled}
-            onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
-            aria-label="Số dòng mỗi trang"
-          >
-            {PAGE_SIZE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n}/trang
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {/* Range info — hidden on mobile */}
+      <span className="hidden sm:inline whitespace-nowrap">
+        {from}–{to} / {total}
+      </span>
 
-      <div className="flex items-center gap-0.5">
+      {/* Page controls */}
+      <div className="flex items-center gap-1">
         <Button
           type="button"
           variant="ghost"
@@ -99,27 +83,35 @@ export function PaginationBar({
         >
           <ChevronLeft size={14} />
         </Button>
-        {pages.map((p, idx) =>
-          p === 'ellipsis' ? (
-            <span key={`e-${idx}`} className="px-1.5 text-text-disabled">
-              …
-            </span>
-          ) : (
-            <Button
-              key={p}
-              type="button"
-              variant={p === safePage ? 'default' : 'ghost'}
-              size="xs"
-              disabled={disabled}
-              className="min-w-7 px-1.5"
-              onClick={() => onPageChange(p)}
-              aria-label={`Trang ${p}`}
-              aria-current={p === safePage ? 'page' : undefined}
-            >
-              {p}
-            </Button>
-          ),
-        )}
+
+        {/* Mobile: page indicator only */}
+        <span className="sm:hidden px-2 font-medium text-text-primary tabular-nums">
+          {safePage}/{totalPages}
+        </span>
+
+        {/* Desktop: full page numbers */}
+        <span className="hidden sm:flex items-center gap-0.5">
+          {pages.map((p, idx) =>
+            p === 'ellipsis' ? (
+              <span key={`e-${idx}`} className="px-1 text-text-disabled">…</span>
+            ) : (
+              <Button
+                key={p}
+                type="button"
+                variant={p === safePage ? 'default' : 'ghost'}
+                size="xs"
+                disabled={disabled}
+                className="min-w-7 px-1.5"
+                onClick={() => onPageChange(p)}
+                aria-label={`Trang ${p}`}
+                aria-current={p === safePage ? 'page' : undefined}
+              >
+                {p}
+              </Button>
+            ),
+          )}
+        </span>
+
         <Button
           type="button"
           variant="ghost"
@@ -131,6 +123,19 @@ export function PaginationBar({
           <ChevronRight size={14} />
         </Button>
       </div>
+
+      {/* Page size selector */}
+      <select
+        className="h-7 rounded-field border border-input-border bg-input-bg px-1.5 text-xs"
+        value={pageSize}
+        disabled={disabled}
+        onChange={(e) => onPageSizeChange(Number(e.target.value) as PageSize)}
+        aria-label="Số dòng mỗi trang"
+      >
+        {PAGE_SIZE_OPTIONS.map((n) => (
+          <option key={n} value={n}>{n}/trang</option>
+        ))}
+      </select>
     </div>
   );
 }

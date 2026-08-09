@@ -1,0 +1,46 @@
+{
+  "triage_id": "TRI-1786258065652-7d91",
+  "created_at": 1786258065652,
+  "request_summary": "Fix incorrect button icons: Briefcase→Clock for pending orders KPI, SettingsIcon→FlaskConical for test buttons, remove unused Play/X imports from RevenueGrid",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/dashboard/DashboardScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 3 edit-target files in one package, no one-way door — pre-declared write scope required (3 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Dashboard KPI cards, Settings AI provider test buttons, RevenueGrid imports",
+  "blast_radius": 3,
+  "done_oracle": "npx tsc --noEmit passes; Dashboard \"Đơn chờ\" uses Clock icon; Settings \"Kiểm tra\" uses FlaskConical; RevenueGrid has no unused icon imports",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/ui/screens/dashboard/DashboardScreen.tsx",
+    "src/ui/screens/revenue/RevenueGrid.tsx",
+    "src/ui/screens/settings/SettingsScreen.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "b477d41cab64215574a623f6673005ac07577b66",
+    "dirty": true,
+    "captured_at": 1786258065683
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

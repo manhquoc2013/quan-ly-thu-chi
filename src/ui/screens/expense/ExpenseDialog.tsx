@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DatePicker } from '@/ui/components/DatePicker';
 import { Dropdown, optionsFromLabels } from '@/ui/components/Dropdown';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 /* ─── Form state ─── */
 
@@ -73,6 +74,7 @@ export interface ExpenseDialogProps {
 export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: ExpenseDialogProps) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<keyof FormState>();
   const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -99,9 +101,10 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
         setForm(EMPTY_FORM);
       }
       setErrors({});
+      resetTips();
       setSaving(false);
     }
-  }, [open, editExpense]);
+  }, [open, editExpense, resetTips]);
 
   const handleChange = useCallback(
     (field: keyof FormState) => (value: string) => {
@@ -130,11 +133,12 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
     }
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
+      bumpTips(Object.keys(errs) as (keyof FormState)[]);
       notify.error(Object.values(errs).filter(Boolean).join('. '));
       return false;
     }
     return true;
-  }, [form.description, form.amount]);
+  }, [form.description, form.amount, bumpTips]);
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
@@ -231,7 +235,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 onChange={handleChange('date')}
                 aria-label="Ngày chi phí"
               />
-              {errors.date && <p className="text-[10px] text-danger-fg">{errors.date}</p>}
+              {errors.date && <FieldErrorTip message={errors.date} showKey={tipKeys.date ?? 0} />}
             </div>
 
             {/* Category */}
@@ -244,7 +248,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 placeholder="Chọn danh mục"
                 aria-label="Danh mục"
               />
-              {errors.category && <p className="text-[10px] text-danger-fg">{errors.category}</p>}
+              {errors.category && <FieldErrorTip message={errors.category} showKey={tipKeys.category ?? 0} />}
             </div>
 
             {/* Amount */}
@@ -263,7 +267,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 aria-invalid={!!errors.amount}
                 className={errors.amount ? 'border-danger-fg font-mono' : 'font-mono'}
               />
-              {errors.amount && <p className="text-[10px] text-danger-fg">{errors.amount}</p>}
+              <FieldErrorTip message={errors.amount} showKey={tipKeys.amount ?? 0} />
             </div>
 
             {/* Payment Method */}
@@ -276,7 +280,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 placeholder="Chọn phương thức"
                 aria-label="Phương thức thanh toán"
               />
-              {errors.paymentMethod && <p className="text-[10px] text-danger-fg">{errors.paymentMethod}</p>}
+              {errors.paymentMethod && <FieldErrorTip message={errors.paymentMethod} showKey={tipKeys.paymentMethod ?? 0} />}
             </div>
 
             {/* Description (full width) */}
@@ -290,7 +294,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 aria-invalid={!!errors.description}
                 className={errors.description ? 'border-danger-fg' : ''}
               />
-              {errors.description && <p className="text-[10px] text-danger-fg">{errors.description}</p>}
+              <FieldErrorTip message={errors.description} showKey={tipKeys.description ?? 0} />
             </div>
 
             {/* Stock-in (nhập hàng) — only on create; edit does not change tồn */}
@@ -342,7 +346,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 placeholder="Tên nhà cung cấp"
                 aria-label="Nhà cung cấp"
               />
-              {errors.supplier && <p className="text-[10px] text-danger-fg">{errors.supplier}</p>}
+              {errors.supplier && <FieldErrorTip message={errors.supplier} showKey={tipKeys.supplier ?? 0} />}
             </div>
 
             {/* Tags */}
@@ -355,7 +359,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 placeholder="tag1, tag2, tag3 (tối đa 10)"
                 aria-label="Tags"
               />
-              {errors.tags && <p className="text-[10px] text-danger-fg">{errors.tags}</p>}
+              {errors.tags && <FieldErrorTip message={errors.tags} showKey={tipKeys.tags ?? 0} />}
             </div>
 
             {/* Notes (full width) */}
@@ -367,7 +371,7 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
                 placeholder="Ghi chú thêm..."
                 aria-label="Ghi chú"
               />
-              {errors.notes && <p className="text-[10px] text-danger-fg">{errors.notes}</p>}
+              {errors.notes && <FieldErrorTip message={errors.notes} showKey={tipKeys.notes ?? 0} />}
             </div>
           </div>
         </form>

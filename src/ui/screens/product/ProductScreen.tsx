@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ProductDialog } from './ProductDialog';
+import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
 import { ListLoadingOverlay } from '@/ui/components/ListLoadingOverlay';
 import { PaginationBar } from '@/ui/components/PaginationBar';
@@ -186,12 +187,13 @@ export function ProductScreen() {
               <div className="flex-1 min-h-0 relative">
               <ListLoadingOverlay show={loading} />
               <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
-              {items.map((p) => {
+              {items.map((p, index) => {
                 const used = usageCount.get(p.id) ?? 0;
                 return (
                   <li
                     key={p.id}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors cursor-pointer"
+                    className={`flex items-start gap-3 px-4 py-3 hover:bg-surface-hover transition-colors cursor-pointer ${LIST_ROW_ANIM}`}
+                    style={listRowStyle(index)}
                     onClick={() => setDetailProduct(p)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

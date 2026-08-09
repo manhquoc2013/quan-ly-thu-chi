@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabaseClient';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -28,11 +29,15 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [errors, setErrors] = useState<{ newPassword?: string; confirm?: string }>({});
+  const { tipKeys, bumpTips, resetTips } = useFieldErrorTips<'newPassword' | 'confirm'>();
 
   function resetForm() {
     setNewPassword('');
     setConfirmNewPassword('');
     setShowNew(false);
+    setErrors({});
+    resetTips();
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -50,14 +55,19 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       toast.error('Cần mạng để đổi mật khẩu.');
       return;
     }
+    const nextErr: { newPassword?: string; confirm?: string } = {};
     if (!newPassword || newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự.');
-      return;
+      nextErr.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
     }
     if (newPassword !== confirmNewPassword) {
-      toast.error('Mật khẩu xác nhận không khớp.');
+      nextErr.confirm = 'Mật khẩu xác nhận không khớp.';
+    }
+    if (Object.keys(nextErr).length) {
+      setErrors(nextErr);
+      bumpTips(Object.keys(nextErr) as Array<'newPassword' | 'confirm'>);
       return;
     }
+    setErrors({});
 
     setLoading(true);
     try {
@@ -87,8 +97,12 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 id="new-password"
                 type={showNew ? 'text' : 'password'}
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (errors.newPassword) setErrors((p) => ({ ...p, newPassword: undefined }));
+                }}
                 disabled={loading}
+                aria-invalid={!!errors.newPassword}
               />
               <button
                 type="button"
@@ -99,6 +113,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
                 {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
+            <FieldErrorTip message={errors.newPassword} showKey={tipKeys.newPassword ?? 0} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Xác nhận mật khẩu</Label>
@@ -106,9 +121,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
               id="confirm-password"
               type="password"
               value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmNewPassword(e.target.value);
+                if (errors.confirm) setErrors((p) => ({ ...p, confirm: undefined }));
+              }}
               disabled={loading}
+              aria-invalid={!!errors.confirm}
             />
+            <FieldErrorTip message={errors.confirm} showKey={tipKeys.confirm ?? 0} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>

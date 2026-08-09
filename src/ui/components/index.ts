@@ -41,7 +41,9 @@ export { ScrollArea } from '@/components/ui/scroll-area';
 
 // ── Legacy shim wrappers ──
 export { FormField, type FormFieldProps } from './FormField';
+export { FieldErrorTip, useFieldErrorTips, useAutoErrorTipKey, ERROR_TIP_MS } from './FieldErrorTip';
 export { FormInput, type FormInputProps } from './FormInput';
+export { LIST_ROW_ANIM, listRowStyle } from './listRowAnim';
 export { FormTextarea, type FormTextareaProps } from './FormTextarea';
 export { Dropdown, optionsFromLabels, type DropdownProps, type DropdownOption } from './Dropdown';
 export { DatePicker, type DatePickerProps } from './DatePicker';

@@ -23,8 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Play, Package, X } from 'lucide-react';
+import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Package } from 'lucide-react';
 import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
+import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 
 /* ─── Props ─── */
 
@@ -137,12 +138,12 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
         {records.length === 0 && (
           <li className="px-3 py-8 text-center text-xs text-text-muted">Chưa có đơn hàng</li>
         )}
-        {records.map((row) => {
+        {records.map((row, index) => {
           const itemQty = row.items.reduce((s, i) => s + i.quantity, 0);
           const platformName = platformOf(row);
           const isSelected = selectedIds.has(row.id);
           return (
-            <li key={row.id}>
+            <li key={row.id} className={LIST_ROW_ANIM} style={listRowStyle(index)}>
               <article
                 role="button"
                 tabIndex={0}
@@ -278,14 +279,15 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
             </div>
           </div>
 
-          {records.map((row) => {
+          {records.map((row, index) => {
             const itemQty = row.items.reduce((s, i) => s + i.quantity, 0);
             const platformName = platformOf(row);
             const isSelected = selectedIds.has(row.id);
             return (
               <div
                 key={row.id}
-                className={`${rowClass} min-w-[1020px] ${isSelected ? 'bg-grid-row-selected' : ''}`}
+                className={`${rowClass} min-w-[1020px] ${LIST_ROW_ANIM} ${isSelected ? 'bg-grid-row-selected' : ''}`}
+                style={listRowStyle(index)}
                 role="row"
                 onClick={() => onRowClick?.(row)}
                 tabIndex={0}
