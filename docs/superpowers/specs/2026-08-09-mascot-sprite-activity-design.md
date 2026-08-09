@@ -1,209 +1,164 @@
-# Mascot Pixel Cat + Activity Levels (CSS-composed actions)
+# Mascot SVG Puppet + Pixel-Inspired Action Set
 
 Date: 2026-08-09  
 Status: approved for planning  
-Source assets: `/Users/tranquoc/Downloads/FREE_Cat 2D Pixel Art`  
-References:
-- Walk-cycle guide (`mascot.rtf`) — CSS `steps()` + JS movement + velocity matching
-- CSS composition tips — climb/crawl/fall via `transform` on existing sheets
+Visual: keep / refine existing orange SVG `CatBody` (independent head, arms, legs, tail, face)  
+Motion reference: `/Users/tranquoc/Downloads/FREE_Cat 2D Pixel Art` (action vocabulary + timing only — **not** rendered in UI)  
+Also: walk-cycle principles from `mascot.rtf` (velocity matching, inertia, state machine)
 
 ## Goal
 
-Replace the SVG puppet (`CatBody`) with the free **pixel art cat** (separate strip per action). Drive **low / medium / high** activity with distinct profiles. Where the pack lacks a dedicated strip (climb, crawl/slide, fall, dead), **compose** the effect with CSS transforms on Walk/Run/Hurt/Jump sheets — no new drawn frames.
+Keep full control of **facial expression** and **limb animation**, while upgrading behavior to match a richer action set inspired by the pixel pack: idle, walk, run, jump, run-jump, hurt, attack, climb, crawl, fall, dead. Make **low / medium / high** activity levels drive delay, speed, locomotion type, and action mix — not only idle wait.
 
 ## Decisions (locked)
 
 | Decision | Choice |
 |----------|--------|
-| Visual source | `FREE_Cat 2D Pixel Art` (orange pixel cat), not grey chibi `png/cat` |
-| Sheet layout | **One PNG strip per state** (already provided); not a single mega-grid |
-| Frame size | **80×64** source (`JUMP`/`RUNNING JUMP` force `fw=80`; height `64`) |
-| Display size | Scale up with `image-rendering: pixelated` (e.g. display ~64–80px box) |
-| Missing actions | Compose: climb / crawl / fall / dead from existing strips |
-| Dead | Reuse **hurt** strip (hold last / play once + pause) |
-| Activity levels | Delay + speed + walk/run mix + climb/crawl/attack weights |
-| Keep | Platform scan, drag/toss, speech bubble, double-click activity, `mascotStore` persist |
-| Out of scope | Grey chibi pack, dog pack, emotion-bubble redesign, Settings redesign |
+| Rendering | SVG puppet (`CatBody`), not pixel PNGs on screen |
+| Pixel pack role | Reference for states, timing, and pose intent only |
+| Face / limbs | Per-part CSS keyframes + emotion-driven face (eyes, mouth, brows/blush) |
+| Physics | RAF or timed moves with acceleration / friction; velocity matched to walk/run cycle |
+| Activity | Profiles for low / medium / high |
+| Keep | Platform scan, drag/toss, speech bubble, double-click activity, `mascotStore` |
+| Out of scope | Shipping pixel assets in `public/`, grey chibi pack, Settings redesign |
 
-## Asset pipeline
+## Why not sprites on screen
 
-### Source strips (copy into repo)
+Pixel strips bake face and limbs into each frame — cannot independently tune expression or arm/leg control. SVG already supports that; we **convert** pixel actions into puppet keyframes instead of importing PNGs.
 
-From `Sprites/`:
+## Action conversion map (pixel → SVG)
 
-| File | Frames (@80×64) | Native state |
-|------|-----------------|--------------|
-| `IDLE.png` | 8 | idle |
-| `WALK.png` | 12 | walk (+ climb composition) |
-| `RUN.png` | 8 | run (+ crawl composition) |
-| `JUMP.png` | 3 | jump |
-| `RUNNING JUMP.png` | 3 | run-jump / fall alt |
-| `HURT.png` | 4 | hurt + dead |
-| `ATTACK 1.png` | 8 | attack (high / poke flourish) |
+| Pixel strip / tip | SVG state | Body / limbs | Face |
+|-------------------|-----------|--------------|------|
+| IDLE | `idle` | Soft breath (body Y), slow tail, occasional weight shift | Blink; emotion from store (happy/sad/neutral) |
+| WALK | `walk` | Opposite-phase legs + arms; body bob; duration ↔ speed | Slight head sway; neutral/happy |
+| RUN | `run` | Larger limb arcs, faster cycle, stronger bob | Focused eyes (smaller lids), slight lean |
+| JUMP | `jump` | Squash → stretch → land squash; legs tuck/extend | Anticipation eyes wide |
+| RUNNING JUMP | `runJump` | Jump from run pose; more forward lean | Same as jump, more intense |
+| HURT | `hurt` | Recoil, arms up/in | Squint / X flash optional, open mouth |
+| ATTACK 1 | `attack` | One-arm swipe + body twist (replaces old spin) | Determined / small grit mouth |
+| Climb (walk + rotate tip) | `climb` | Alternating arms/legs; body slight tilt; move on Y | Look upward |
+| Crawl (run + scale tip) | `crawl` | Flattened body (`scaleY`), small limb amplitude, low Y | Cheek close to ground vibe (eyes half) |
+| Fall (hurt + spin tip) | `fall` | Whole-character rotate while falling | Flinch face |
+| Dead → hurt | `dead` | Brief sprawl / limp limbs | X-eyes or closed + tear optional; auto-recover |
 
-License: usable in personal/commercial projects; do not redistribute as a standalone asset pack. Credit appreciated, not required.
-
-### Repo output
-
-- Copy (optionally key black → transparent): `public/mascot/cat/{idle,walk,run,jump,running-jump,hurt,attack}.png`
-- Optional one-shot: `scripts/prepare-mascot-pixel.mjs` — rename, strip black, write `meta.json`
-- `public/mascot/cat/meta.json`:
-  - `frameWidth: 80`, `frameHeight: 64`
-  - `displayWidth` / `displayHeight`
-  - per-state `{ file, frames, duration, loop }`
-
-No mega `spritesheet.png` required.
+Climb/crawl/fall are **composed behaviors** on the puppet (transforms + part anims), same ideas as the CSS tips, without using pixel bitmaps.
 
 ## Runtime architecture
 
 ```
-mascotStore.activity ──► activityProfile
+mascotStore.activity ──► activityProfile (delay, speeds, weights)
+mascotStore.emotion  ──► face layer (eyes/mouth/blush)
                               │
 schedule / intent ──► state machine
-  idle|walk|run|jump|runJump|hurt|dead|climb|crawl|fall|attack
+  idle|walk|run|jump|runJump|hurt|attack|climb|crawl|fall|dead
                               │
               ┌───────────────┴───────────────┐
               ▼                               ▼
-     CSS state class                   RAF / physics
-     (.state-walk, .cat-climb…)        x/y, vx, facing
-     background-image + steps()        accel / friction
+     CatBody(action, emotion)          RAF / CSS position
+     part keyframes per action         accel, friction, facing
 ```
 
-### Character CSS (pattern)
+### Character
 
-```css
-:root {
-  --fw: 80px;
-  --fh: 64px;
-}
+- Keep layered SVG groups: tail, legs, body, arms, head (face inside head).
+- `partAnim(part, action)` expanded for **all** states above (no silent fallback to idle for primary locomotion).
+- Whole-body wrappers for: `fall` rotate, `crawl` scaleY/scaleX, `climb` slight tilt (not full −90° if it looks wrong on a biped chibi — prefer upright climb with arm-over-arm; optional −15° lean).
+- Facing via `scaleX(-1)` on body wrapper; bubble outside flip.
 
-.cat {
-  width: var(--fw);
-  height: var(--fh);
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  image-rendering: pixelated;
-  transition: transform 0.1s ease;
-}
+### Face controls (refine beyond current)
 
-.state-idle { background-image: url(/mascot/cat/idle.png);
-  animation: play-idle 0.8s steps(8) infinite; }
-.state-walk { background-image: url(/mascot/cat/walk.png);
-  animation: play-walk 0.7s steps(12) infinite; }
-.state-run  { background-image: url(/mascot/cat/run.png);
-  animation: play-run 0.45s steps(8) infinite; }
-/* … per-state steps(N) and to: calc(-1 * var(--fw) * N) */
+| Emotion / state | Eyes | Mouth | Extra |
+|-----------------|------|-------|-------|
+| idle / neutral | Blink loop | Flat / small smile | — |
+| happy / celebrate | Happy arcs | Smile curve | Blush |
+| sad | Droop | Frown | — |
+| hurt / fall | Squint or flinch | Open oval | Optional “!” |
+| dead | X or shut | Wail short | Auto clear after recover |
+| attack | Narrow | Grit | — |
+| climb | Look up (pupil/offset) | Neutral | — |
+| crawl | Half-lid | Neutral | — |
 
-/* Composed */
-.cat-climb {
-  background-image: url(/mascot/cat/walk.png); /* or run */
-  transform: rotate(-90deg); /* +90 for climb down */
-  animation: play-walk 0.6s steps(12) infinite;
-}
-.cat-crawl {
-  background-image: url(/mascot/cat/run.png);
-  transform: scaleY(0.6) scaleX(1.2);
-  animation: play-run 0.4s steps(8) infinite;
-}
-.cat-fall {
-  background-image: url(/mascot/cat/hurt.png); /* or running-jump */
-  animation: falling-spin 1s linear infinite, play-hurt 0.5s steps(4) infinite;
-}
-@keyframes falling-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-```
+Store `emotion` still drives baseline; action can override face while `hurt|fall|dead|attack` is active.
 
-**Facing:** nest flip on an inner wrapper so climb `rotate(-90deg)` and left/right `scaleX(-1)` compose cleanly; speech bubble stays on an unflipped outer layer.
+### Limb controls (per action)
 
-**Pixel crispness:** always `image-rendering: pixelated` (and `crisp-edges` fallback if needed).
-
-### Remove
-
-- `CatBody` SVG and per-limb keyframes from `MascotOverlay.tsx`.
+- **Walk / run:** classic opposite phase; run = larger degrees + shorter duration.
+- **Jump / runJump:** legs sync tuck; arms up.
+- **Climb:** arms alternate reach-up; legs alternate push (staggered keyframes).
+- **Crawl:** reduced rotation range; body `scaleY(0.65–0.75)`.
+- **Attack:** dominant arm large arc; other arm brace; short one-shot.
+- **Hurt / dead:** asymmetric flinch; dead holds limp ~1.2–1.8s then idle.
+- **Fall:** disable conflicting limb loops or keep subtle flail; outer rotate 360° until land.
 
 ## State machine
 
-| State | Strip | Transform / notes | Loop | Enter → Exit |
-|-------|-------|-------------------|------|--------------|
-| idle | idle | none | infinite | default |
-| walk | walk | facing flip | infinite | move (low/med) → friction stop |
-| run | run | facing flip | infinite | move (high) → stop |
-| jump | jump | none | once | hop / short air → land idle |
-| runJump | running-jump | none | once | high-energy leap |
-| hurt | hurt | none | once | grab / poke → idle or drag |
-| dead | hurt | hold / slow once + slight squash | once ~1.2–1.8s | hard toss land → idle + quip |
-| climb | walk or run | `rotate(-90deg)` + move Y | infinite while climbing | platform target → idle on top |
-| crawl | run | `scaleY(0.6) scaleX(1.2)` | infinite | replaces old slide/spin → idle |
-| fall | hurt or running-jump | continuous `rotate(360deg)` while falling | until land | soft/hard toss air → land |
-| attack | attack | none | once | high scheduler / poke flourish → idle |
+| State | Enter | Exit |
+|-------|-------|------|
+| idle | default | scheduler |
+| walk | low/med move | friction → idle |
+| run | high move | friction → idle |
+| jump | hop / short air | land → idle |
+| runJump | high leap | land → idle |
+| climb | platform above (grapple/climb intents) | arrive → idle |
+| crawl | scheduler (replaces spin) | end → idle |
+| attack | scheduler high / rare poke | one-shot → idle |
+| hurt | mousedown / poke | short → idle or drag |
+| fall | toss in air | land → idle or dead |
+| dead | hard toss land | recover → idle + quip |
 
 ### Toss severity
 
 | Release | Sequence |
 |---------|----------|
-| Click / tiny drag | hurt → idle (double-click still cycles activity) |
-| Soft toss | fall (spin) + optional parachute → land idle |
-| Hard toss | fall → land **dead** (hurt pose) → recover idle + gag line |
-
-### Climb / grapple
-
-Keep platform targeting from current overlay. While moving mostly on **Y**, use `.cat-climb` (walk cycle + −90°). Grapple pull-up can be climb or short jump + Y tween.
+| Click / tiny | hurt → idle (double-click cycles activity) |
+| Soft toss | fall → land idle |
+| Hard toss | fall → dead → recover idle |
 
 ## Activity profiles
 
-| Profile | Delay | Locomotion | Climb / crawl / attack | Max speed | Cycle duration |
-|---------|-------|------------|------------------------|-----------|----------------|
-| low | 4–9s | idle + slow walk | rare | ~2–3 px/f | walk ~0.9–1.1s |
-| medium | 2–5s | walk | moderate climb/crawl | ~4–5 | walk ~0.7–0.85s |
-| high | 0.8–2s | run + walk | frequent climb/crawl/attack/runJump | ~6–8 | run ~0.4–0.55s |
+| Profile | Delay | Locomotion | Special weights | Max speed | Cycle dur |
+|---------|-------|------------|-----------------|-----------|-----------|
+| low | 4–9s | idle + slow walk | climb/crawl/attack rare | ~2–3 px/f | walk ~0.9–1.1s |
+| medium | 2–5s | walk | moderate jump/climb/crawl | ~4–5 | walk ~0.7–0.85s |
+| high | 0.8–2s | run + walk | frequent jump/climb/crawl/attack/runJump | ~6–8 | run ~0.4–0.55s |
 
-**Velocity matching:** sync `--dur` / `steps(N)` with horizontal speed.  
-**Inertia:** accelerate into walk/run; friction to idle.
-
-## Interaction
-
-- Drag → hurt; soft release → fall; hard release → fall then dead (hurt).
-- Scheduler may pick crawl (composed) instead of old SVG spin; attack on high.
-- Double-click activity cycle unchanged.
-- Bubbles / idle chatter unchanged; face baked into pixels.
+**Velocity matching:** walk/run CSS duration ↔ horizontal speed.  
+**Inertia:** accelerate into move; friction to stop before idle.
 
 ## Files
 
 | Path | Change |
 |------|--------|
-| `public/mascot/cat/*.png` | New — prepared strips |
-| `public/mascot/cat/meta.json` | New |
-| `scripts/prepare-mascot-pixel.mjs` | Optional — key + copy + meta |
-| `src/ui/components/MascotOverlay.tsx` | Major — pixel `.cat` states + composed classes + physics |
-| `src/store/mascotStore.ts` | Keep API |
+| `src/ui/components/MascotOverlay.tsx` | Expand actions, part keyframes, face overrides, physics/profiles; remove spin or map to attack/crawl |
+| `src/store/mascotStore.ts` | Keep API; emotion/activity unchanged unless new emotion tokens needed |
+| `public/mascot/**` | **Not required** (no pixel ship) |
 | Settings / Layout | No required change |
+
+Optional: keep a short comment in code pointing at pixel pack as motion reference (no binary assets).
 
 ## Acceptance criteria
 
-1. Orange pixel cat renders (no orange SVG `CatBody`).
-2. Native strips play with discrete `steps(N)`: idle, walk, run, jump, running-jump, hurt, attack.
-3. Composed states work: climb (rotate walk/run), crawl (scale run), fall (spin hurt/running-jump), dead (hurt).
-4. Low / medium / high visibly differ.
-5. Walk/run velocity matches cycle (no ice-skate); crawl is intentionally squashed.
-6. Soft vs hard toss paths work; platforms + bubble OK.
-7. Activity persists; assets served from `public/` (few strip files, not 74 chibi PNGs).
-8. Pixel art stays sharp (`image-rendering: pixelated`).
+1. Mascot remains SVG orange cat with independently animating head/arms/legs/tail.
+2. Face reacts to emotion **and** overrides during hurt/fall/dead/attack/climb/crawl.
+3. States exist and look distinct: idle, walk, run, jump, runJump, climb, crawl, attack, hurt, fall, dead.
+4. Low / medium / high differ in frequency, walk vs run, and special actions.
+5. Walk/run do not ice-skate; stop uses short deceleration; facing flips.
+6. Soft vs hard toss paths work; platforms + bubble OK; activity persists.
+7. No pixel PNGs required at runtime.
 
 ## Risks & mitigations
 
 | Risk | Mitigation |
 |------|------------|
-| Wrong frame width (64 vs 80) | Lock `fw=80` from JUMP width; verify in browser once |
-| Black box behind sprites | Key black→transparent in prepare script |
-| Climb rotate looks odd with facing | Inner/outer transform wrappers |
-| Fall spin + steps fights transforms | Separate spin on wrapper, steps on inner `.cat` |
-| Attack too aggressive for ledger UI | Low weight; mostly high activity / rare poke |
+| Too many keyframes in one file | Group `PART_STYLES` by action; keep naming `part-action` |
+| Climb with −90° looks broken on biped | Prefer upright arm-over-arm climb; mild tilt only |
+| Face + action fight | Action face wins while one-shot states active |
+| Performance | One overlay; CSS animations; avoid per-frame React style churn |
 
 ## Non-goals
 
-- Grey chibi pack / generating new pixel frames
-- User-uploaded sprites
+- Rendering FREE_Cat pixel sheets in the app
+- Grey chibi pack integration
+- User-uploaded mascot skins
 - Keyboard platformer controls
-- Redistributing the free pack standalone
