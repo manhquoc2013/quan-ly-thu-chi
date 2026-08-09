@@ -287,24 +287,6 @@ export async function executeChatIntent(
         };
       }
 
-      const prod = await resolveProductForOrder(draft.description, {
-        productId: intent.productId,
-        forceCreate: intent.forceNewProduct,
-        suggestedPrice: suggestedUnit,
-        silent: true,
-      });
-      if (prod.status === 'ambiguous') {
-        return {
-          ok: false,
-          message: formatEntityPickMessage('product', prod.query, prod.options),
-          needEntityPick: {
-            kind: 'product',
-            query: prod.query,
-            options: prod.options,
-          },
-        };
-      }
-
       const plat = await resolvePlatformForOrder(intent.platformName, {
         platformId: intent.platformId,
         forceCreate: intent.forceNewPlatform,
@@ -324,11 +306,52 @@ export async function executeChatIntent(
 
       draft.customerId = cust.status === 'walk-in' ? 'walk-in' : cust.id;
       if (cust.status === 'resolved') draft.customerName = cust.name;
-      if (prod.status === 'resolved') {
-        draft.productId = prod.id;
-      }
       if (plat.status === 'resolved') {
         draft.platformId = plat.id;
+      }
+
+      // Multi-item order: intake resolves each line product
+      if ((draft.orderItems?.length ?? 0) > 0) {
+        const { ok, failed, created } = await persistConfirmed([draft]);
+        if (ok > 0 && created[0]) {
+          const custLabel =
+            draft.customerName && draft.customerId !== 'walk-in'
+              ? ` · khách **${draft.customerName}**`
+              : '';
+          const platLabel =
+            plat.status === 'resolved' ? ` · kênh **${plat.name}**` : '';
+          const itemsLabel = draft.orderItems!
+            .map((it) => (it.quantity > 1 ? `${it.quantity}× ${it.name}` : it.name))
+            .join(', ');
+          return {
+            ok: true,
+            message: `Đã thêm doanh thu: **${itemsLabel}** — ${formatCurrency(draft.amount)}${custLabel}${platLabel}`,
+            createdRecord: { kind: created[0].kind, id: created[0].id },
+          };
+        }
+        return { ok: false, message: failed.join('; ') || 'Không lưu được.' };
+      }
+
+      const prod = await resolveProductForOrder(draft.description, {
+        productId: intent.productId,
+        forceCreate: intent.forceNewProduct,
+        suggestedPrice: suggestedUnit,
+        silent: true,
+      });
+      if (prod.status === 'ambiguous') {
+        return {
+          ok: false,
+          message: formatEntityPickMessage('product', prod.query, prod.options),
+          needEntityPick: {
+            kind: 'product',
+            query: prod.query,
+            options: prod.options,
+          },
+        };
+      }
+
+      if (prod.status === 'resolved') {
+        draft.productId = prod.id;
       }
 
       const { ok, failed, created } = await persistConfirmed([draft]);
@@ -375,7 +398,7 @@ export async function executeChatIntent(
 
     case 'create_customer': {
       const name = (intent.customerName || intent.description || '').trim();
-      if (name.length < 2) return { ok: false, message: 'Thiếu tên khách hàng.' };
+      if (name.length < 1) return { ok: false, message: 'Thiếu tên khách hàng.' };
       const phone =
         intent.phone?.trim() ||
         extractPhoneFromText(intent.customerName) ||

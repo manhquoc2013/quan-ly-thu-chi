@@ -132,7 +132,7 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
   return (
     <div className="flex flex-col h-full min-h-0" aria-label="Danh sách đơn hàng">
       {/* ── Scrollable content ────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0">
       {/* ── Mobile cards ───────────────────────────────────────────── */}
       <ul className="md:hidden flex flex-col gap-2 p-2 pb-[var(--dimens-fabClearance)] list-none m-0">
         {records.length === 0 && (

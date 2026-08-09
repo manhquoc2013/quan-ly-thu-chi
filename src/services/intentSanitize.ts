@@ -142,28 +142,56 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
 
   if (next.customerName) {
     const cn = next.customerName.toLowerCase().trim();
-    if (cn.length < 2 || !lower.includes(cn)) {
+    const explicitKhach = new RegExp(
+      `khách\\s+${cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|,|$)`,
+      'i',
+    ).test(lower);
+    if (cn.length < 1 || (!explicitKhach && (cn.length < 2 || !lower.includes(cn)))) {
       next = { ...next, customerName: undefined };
     }
   }
 
-  const qty = extractQuantity(message);
+  // Prefer local qty for "Thu 3, SP" / "khách X N,"
+  const qtyComma = message.match(
+    /(?:khách\s+)?[A-Za-zÀ-ỹ]{1,40}(?:\s+[A-Za-zÀ-ỹ]{1,40}){0,3}\s+(\d{1,4})\s*,/i,
+  );
+  const qty = qtyComma
+    ? Math.max(1, parseInt(qtyComma[1]!, 10) || 1)
+    : extractQuantity(message);
   if (qty != null) {
     next = { ...next, quantity: qty };
-  } else if (next.quantity && next.quantity > 1) {
+  } else if (next.quantity && next.quantity > 1 && !(next.orderItems?.length)) {
     next = { ...next, quantity: 1 };
   }
 
-  const amount = extractPrimaryAmountVnd(message);
-  if (amount != null) {
-    if (next.intent === 'create_revenue' && (next.quantity ?? 1) > 1) {
-      next = {
-        ...next,
-        amount,
-        unitPrice: Math.round(amount / (next.quantity ?? 1)),
-      };
-    } else {
-      next = { ...next, amount };
+  // Keep multi-item totals from orderItems — don't overwrite with first "giá"
+  if ((next.orderItems?.length ?? 0) > 0) {
+    const items = next.orderItems!;
+    const amount = items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+    next = { ...next, amount, unitPrice: items[0]?.unitPrice };
+  } else {
+    const amount = extractPrimaryAmountVnd(message);
+    if (amount != null) {
+      // "Thu 3, … giá 70k" → 70k is unit price
+      if (
+        next.intent === 'create_revenue' &&
+        (next.quantity ?? 1) > 1 &&
+        /,\s*.+\s+giá\s+\d/i.test(message)
+      ) {
+        next = {
+          ...next,
+          unitPrice: amount,
+          amount: amount * (next.quantity ?? 1),
+        };
+      } else if (next.intent === 'create_revenue' && (next.quantity ?? 1) > 1) {
+        next = {
+          ...next,
+          amount,
+          unitPrice: Math.round(amount / (next.quantity ?? 1)),
+        };
+      } else {
+        next = { ...next, amount };
+      }
     }
   }
 
@@ -174,9 +202,11 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
       paymentStatus: pay.paymentStatus ?? next.paymentStatus,
       paymentMethod: pay.paymentMethod ?? next.paymentMethod,
     };
-    const rawDesc = next.description ?? message;
-    const cleaned = productQueryFromDescription(rawDesc);
-    if (cleaned.length >= 2) next = { ...next, description: cleaned };
+    if (!(next.orderItems?.length)) {
+      const rawDesc = next.description ?? message;
+      const cleaned = productQueryFromDescription(rawDesc);
+      if (cleaned.length >= 2) next = { ...next, description: cleaned };
+    }
   } else if (next.intent === 'create_expense') {
     const raw = next.description && next.description.length >= 2 ? next.description : message;
     let cleaned = productQueryFromDescription(raw).trim();

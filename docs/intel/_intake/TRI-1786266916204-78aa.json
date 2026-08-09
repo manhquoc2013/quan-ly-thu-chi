@@ -1,0 +1,43 @@
+{
+  "triage_id": "TRI-1786266916204-78aa",
+  "created_at": 1786266916204,
+  "request_summary": "Bổ sung 6 hiệu ứng hiện đại: Ripple (gợn sóng Material), Glow/Neon border gradient, Shimmer (vệt sáng), Glassmorphism, 3D Press (bấm lún), Morphing Icon Slide (đã vượt C0 LOC budget 50 dòng)",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/components/ui/button.tsx",
+      "src/index.css"
+    ],
+    "impact_files": [
+      "src/components/ui/button.tsx",
+      "src/index.css"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 2 edit-target files in one package, no one-way door (2 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Toàn bộ button và phần tử tương tác trong ứng dụng",
+  "blast_radius": 2,
+  "done_oracle": "Tất cả 6 hiệu ứng hoạt động: ripple khi click, 3D press translateY + shadow, shimmer vệt sáng, glassmorphism utility, icon slide. npx tsc --noEmit pass.",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786266861396-0c20",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d3f1fe26690727dbf1489f987da3b8c2df41b0fa",
+    "dirty": true,
+    "captured_at": 1786266916239
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

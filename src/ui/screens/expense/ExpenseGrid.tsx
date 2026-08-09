@@ -180,7 +180,7 @@ export function ExpenseGrid({
   return (
     <div className="flex flex-col h-full min-h-0" role="grid" aria-label="Expense list">
       {/* ── Scrollable table body ─────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0">
         <div className="inline-block min-w-full pb-[var(--dimens-fabClearance)]">
           <div
             className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[800px]"

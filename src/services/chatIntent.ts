@@ -10,7 +10,7 @@ import type {
   ShippingPayer,
 } from '@/models';
 import { EXPENSE_CATEGORY_LABELS } from '@/models';
-import { newDraftId, todayIso, type DraftRecord } from './draftTypes';
+import { newDraftId, todayIso, type DraftOrderItem, type DraftRecord } from './draftTypes';
 
 export type ChatIntentKind =
   | 'create_expense'
@@ -55,6 +55,8 @@ export interface ChatIntent {
   shippingPayer?: ShippingPayer;
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;
+  /** Multi line-items for one order (spoken "tạo đơn … A và B") */
+  orderItems?: DraftOrderItem[];
   forceNewCustomer?: boolean;
   forceNewProduct?: boolean;
   forceNewPlatform?: boolean;
@@ -243,17 +245,20 @@ export function fillMissingSlots(intent: ChatIntent): ChatIntent {
       break;
     }
     case 'create_customer':
-      if (!intent.customerName || intent.customerName.length < 2) missing.push('customerName');
+      if (!intent.customerName || intent.customerName.length < 1) missing.push('customerName');
       break;
     case 'create_platform':
       if (!intent.platformName || intent.platformName.length < 2) missing.push('platformName');
       break;
     case 'create_revenue': {
       const qty = intent.quantity ?? 1;
+      const hasItems = (intent.orderItems?.length ?? 0) > 0;
       const hasTotal = typeof intent.amount === 'number' && intent.amount >= 0;
       const hasUnit = typeof intent.unitPrice === 'number' && intent.unitPrice >= 0;
-      if (!hasTotal && !hasUnit) missing.push('amount');
-      if (!intent.description || intent.description.length < 2) missing.push('description');
+      if (!hasItems && !hasTotal && !hasUnit) missing.push('amount');
+      if (!hasItems && (!intent.description || intent.description.length < 2)) {
+        missing.push('description');
+      }
       if (hasUnit && !hasTotal) {
         intent.amount = intent.unitPrice! * qty;
       }
@@ -338,6 +343,7 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     forceNewCustomer: patch.forceNewCustomer ?? base.forceNewCustomer,
     forceNewProduct: patch.forceNewProduct ?? base.forceNewProduct,
     forceNewPlatform: patch.forceNewPlatform ?? base.forceNewPlatform,
+    orderItems: patch.orderItems ?? base.orderItems,
     orderStatus: patch.orderStatus ?? base.orderStatus,
     targetHint: patch.targetHint ?? base.targetHint,
     query: patch.query ?? base.query,
@@ -464,6 +470,40 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
     };
   }
   if (intent.intent === 'create_revenue') {
+    if ((intent.orderItems?.length ?? 0) > 0) {
+      const items = intent.orderItems!;
+      const amount =
+        typeof intent.amount === 'number'
+          ? intent.amount
+          : items.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+      return {
+        id: newDraftId(),
+        kind: 'revenue',
+        date: todayIso(),
+        amount,
+        unitPrice: items[0]?.unitPrice ?? 0,
+        quantity: 1,
+        description:
+          intent.description ||
+          items.map((it) => (it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name)).join('; '),
+        customerName: intent.customerName,
+        customerId: intent.customerId,
+        productId: intent.productId,
+        platformId: intent.platformId,
+        platformName: intent.platformName,
+        orderItems: items,
+        depositAmount: intent.depositAmount,
+        depositedAt: intent.depositAmount ? todayIso() : undefined,
+        shippingFee: intent.shippingFee,
+        shippingPayer: intent.shippingFee
+          ? intent.shippingPayer ?? 'customer'
+          : undefined,
+        paymentStatus: intent.paymentStatus ?? 'unpaid',
+        paymentMethod: intent.paymentMethod,
+        source,
+        confidence: intent.confidence,
+      };
+    }
     const qty = intent.quantity ?? 1;
     let amount = intent.amount;
     let unitPrice = intent.unitPrice;
@@ -592,6 +632,7 @@ export function draftToCreateIntent(draft: DraftRecord): ChatIntent {
     productId: draft.productId,
     platformId: draft.platformId,
     platformName: draft.platformName,
+    orderItems: draft.orderItems,
     depositAmount: draft.depositAmount,
     shippingFee: draft.shippingFee,
     shippingPayer: draft.shippingPayer,

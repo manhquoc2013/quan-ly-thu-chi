@@ -175,7 +175,7 @@ export function Layout() {
           <nav className="flex-1 overflow-y-auto py-2 scrollbar-thin">
             {navItems.map((item) => (
               <NavLink key={item.route} to={item.route} end={item.route === '/'}
-                className={`flex items-center mb-0.5 rounded-lg transition-colors duration-150 ${isActive(item.route) ? 'bg-sidebar-active-bg text-sidebar-active-fg' : `text-sidebar-fg hover:bg-sidebar-hover`} ${sidebarCollapsed ? 'justify-center mx-0 px-0 h-10' : 'mx-2 px-3 h-10'}`}
+                className={`flex items-center mb-0.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${isActive(item.route) ? 'bg-sidebar-active-bg text-sidebar-active-fg' : `text-sidebar-fg hover:bg-sidebar-hover`} ${sidebarCollapsed ? 'justify-center mx-0 px-0 h-10' : 'mx-2 px-3 h-10'}`}
                 title={sidebarCollapsed ? item.label : undefined}
               >
                 <span className="shrink-0 flex items-center justify-center w-5">{item.icon}</span>
@@ -204,21 +204,21 @@ export function Layout() {
         <div className="flex flex-col flex-1 min-w-0">
           <header className="flex shrink-0 items-center gap-3 px-4 h-12 bg-surface border-b border-border z-20">
             <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden p-1.5 rounded-md hover:bg-surface-hover text-text-muted"><Menu size={18} /></button>
-            <button type="button" onClick={toggleSidebar} className="hidden md:block p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors shrink-0">
+            <button type="button" onClick={toggleSidebar} className="hidden md:block p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95 shrink-0">
               {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
             <h1 className="text-sm font-semibold text-text-primary truncate flex-1">{pageTitle}</h1>
             <button type="button" onClick={() => setShowSearch(true)}
-              className="hidden lg:flex items-center gap-2 bg-background border border-border rounded-md px-3 py-1.5 text-xs text-text-muted w-56 hover:border-accent-fg transition-colors">
+              className="hidden lg:flex items-center gap-2 bg-background border border-border rounded-md px-3 py-1.5 text-xs text-text-muted w-56 hover:border-accent-fg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
               <Search size={14} /><span className="flex-1 text-left">Tìm kiếm...</span>
               <kbd className="text-[10px] font-mono bg-surface border border-border rounded px-1.5 py-0.5 text-text-disabled">⌘K</kbd>
             </button>
-            <button type="button" onClick={toggleDark} className="p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors shrink-0">
+            <button type="button" onClick={toggleDark} className="p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95 shrink-0">
               {mode === 'system' ? <Monitor size={18} /> : isDark ? <Moon size={18} /> : <Sun size={18} />}
             </button>
             <div className="relative shrink-0">
               <button type="button" onClick={() => setShowBell((v) => !v)}
-                className="relative p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-colors">
+                className="relative p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95">
                 <Bell size={18} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 size-4 rounded-full bg-accent-fg text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface">

@@ -76,6 +76,31 @@ function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
   return intents;
 }
 
+/** Prefer deterministic "tạo đơn" parse over LLM when local draft is complete. */
+function preferLocalTaoDonIntents(
+  segments: string[],
+  llmIntents: ChatIntent[],
+): ChatIntent[] {
+  const out: ChatIntent[] = [];
+  let usedLocal = false;
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]!;
+    if (/^(?:tạo|thêm)\s+đơn\b/i.test(seg.trim())) {
+      const draft = parseTextToDraft(seg, 'text');
+      if (draft) {
+        const intent = sanitizeIntentAgainstMessage(seg, draftToCreateIntent(draft));
+        if (isRunnableCreate(intent)) {
+          out.push(intent);
+          usedLocal = true;
+          continue;
+        }
+      }
+    }
+    if (llmIntents[i]) out.push(llmIntents[i]!);
+  }
+  return usedLocal && out.length > 0 ? out : llmIntents;
+}
+
 function isRunnableCreate(intent: ChatIntent): boolean {
   return (
     (intent.intent === 'create_expense' ||
@@ -991,6 +1016,8 @@ export const aiRouter = {
       if (!intents.some(isRunnableCreate)) {
         const local = localCreateIntentsFromSegments(segments);
         if (local.length) intents = local;
+      } else {
+        intents = preferLocalTaoDonIntents(segments, intents);
       }
       const multiResults: string[] = [];
       let source: ChatReplySource = multi?.source ?? 'local';

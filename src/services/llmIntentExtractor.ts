@@ -261,6 +261,8 @@ Tin nhắn có ${segments.length} giao dịch RIÊNG (đã tách). Trả về Đ
 
 Quy tắc:
 - Phần có "bán/thu/khách … mua" hoặc "{Tên} đã trả/chuyển/đưa N cho SP" → create_revenue.
+- "tạo đơn khách …" mỗi dòng = 1 đơn; "A giá Xk và B giá Yk" = CÙNG đơn (nhiều món), KHÔNG tách thành 2 intent khác khách.
+- "khách Thu 3, SP giá 70k" → customerName=Thu, quantity=3, unitPrice=70000.
 - Phần có "uống/ăn/chi/đổ xăng/tôi đi …/mua (không tên khách)/nhập" → create_expense.
 - Phần "thêm/tạo SP|sản phẩm … giá" → create_product; "thêm khách" → create_customer; "thêm kênh" → create_platform.
 - Phần sửa/xóa/đổi trạng thái → update_*|delete_*|update_order_status tương ứng.

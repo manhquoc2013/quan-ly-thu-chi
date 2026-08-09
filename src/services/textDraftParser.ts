@@ -301,6 +301,10 @@ function isAnalysisOnly(lower: string): boolean {
 function tryRevenue(lower: string, original: string, source: DraftSource): DraftRecord | null {
   const { core, extras } = extractSaleExtras(lower);
 
+  // "tạo đơn khách …" (multi-line batch / multi-item / "Thu 3, SP")
+  const taoDon = parseTaoDonOrder(lower, source, extras);
+  if (taoDon) return validateDraft(taoDon);
+
   // Specialized: bán cho {khách} [{SL}] {SP} [giá] {tiền}
   const banCho = parseBanCho(core, source, extras, lower);
   if (banCho) return validateDraft(banCho);
@@ -502,6 +506,174 @@ export function extractSaleExtras(lower: string): { core: string; extras: SaleEx
 
 /** Prefix before money when stating unit price (not package total). */
 const UNIT_PRICE_PREFIX = String.raw`(?:đơn\s*giá|giá\s*mỗi\s*(?:cái|chiếc|bộ|cặp|set)|giá\s*(?:một|1)\s*(?:cái|chiếc)|giá)`;
+
+/**
+ * Spoken order commands:
+ * - tạo đơn khách Út Chi mua 1 A giá 55k và 1 B giá 55k đặt ở tiktok
+ * - tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+ * - tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok
+ */
+export function parseTaoDonOrder(
+  lower: string,
+  source: DraftSource,
+  extras: SaleExtras = {},
+): DraftRecord | null {
+  let text = lower.trim();
+  if (!/^(?:tạo|thêm)\s+đơn\b/i.test(text) && !/^khách\s+\S+/i.test(text)) {
+    return null;
+  }
+  text = text.replace(/^(?:tạo|thêm)\s+đơn\s+/i, '').trim();
+  if (!/^khách\s+/i.test(text)) return null;
+
+  const platformName =
+    extras.platformName ??
+    detectPlatformName(text) ??
+    undefined;
+
+  // Strip trailing platform phrase from body for item parsing
+  let body = text
+    .replace(
+      /\s*(?:đặt\s+)?(?:ở|qua|trên|tại|bên|kênh)\s+(?:shopee|shope|shoppe|tik\s*tok|tiktok|facebook|\bfb\b|messenger|zalo|\bzl\b|website|web|trực\s*tiếp)\s*$/i,
+      ' ',
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // "khách Thu 3, chó đeo mắt kính giá 70k"
+  const qtyComma = body.match(
+    new RegExp(
+      `^khách\\s+(.+?)\\s+(\\d{1,4})\\s*,\\s*(.+?)\\s+${UNIT_PRICE_PREFIX}\\s+${MONEY}\\s*$`,
+      'i',
+    ),
+  );
+  if (qtyComma) {
+    const customerName = capitalizeWords(cleanDesc(qtyComma[1]!));
+    const quantity = Math.max(1, parseInt(qtyComma[2]!, 10) || 1);
+    const product = capitalizeWords(cleanDesc(qtyComma[3]!));
+    const money = normalizeCasualMoney(parseMoney(qtyComma[4]!), qtyComma[4]!);
+    if (customerName.length >= 1 && product.length >= 2 && money && money.amountVnd > 0) {
+      // "giá 70k" after SL → unit price (common for catalog items)
+      const unitPrice = money.amountVnd;
+      const amount = unitPrice * quantity;
+      return makeDraft({
+        kind: 'revenue',
+        amount,
+        unitPrice,
+        quantity,
+        description: quantity > 1 ? `${quantity} × ${product}` : product,
+        customerName,
+        platformName,
+        paymentStatus: 'unpaid',
+        source,
+        confidence: 0.94,
+        rawFx: money.rawFx,
+        depositAmount: extras.depositAmount,
+        depositedAt: extras.depositAmount ? todayIso() : undefined,
+        shippingFee: extras.shippingFee,
+        shippingPayer: extras.shippingFee ? extras.shippingPayer ?? 'customer' : undefined,
+      });
+    }
+  }
+
+  // "khách T, chó đeo mắt kính giá 70k"
+  const nameComma = body.match(
+    new RegExp(
+      `^khách\\s+([^,]+?)\\s*,\\s*(.+?)\\s+${UNIT_PRICE_PREFIX}\\s+${MONEY}\\s*$`,
+      'i',
+    ),
+  );
+  if (nameComma) {
+    const customerName = capitalizeWords(cleanDesc(nameComma[1]!));
+    const product = capitalizeWords(cleanDesc(nameComma[2]!));
+    const money = normalizeCasualMoney(parseMoney(nameComma[3]!), nameComma[3]!);
+    if (customerName.length >= 1 && product.length >= 2 && money && money.amountVnd > 0) {
+      return makeDraft({
+        kind: 'revenue',
+        amount: money.amountVnd,
+        unitPrice: money.amountVnd,
+        quantity: 1,
+        description: product,
+        customerName,
+        platformName,
+        paymentStatus: 'unpaid',
+        source,
+        confidence: 0.94,
+        rawFx: money.rawFx,
+        depositAmount: extras.depositAmount,
+        depositedAt: extras.depositAmount ? todayIso() : undefined,
+        shippingFee: extras.shippingFee,
+        shippingPayer: extras.shippingFee ? extras.shippingPayer ?? 'customer' : undefined,
+      });
+    }
+  }
+
+  // "khách Út Chi mua 1 A giá 55k và 1 B giá 55k"
+  const muaIdx = body.search(/\s+mua\s+/i);
+  if (muaIdx < 0) return null;
+  const customerName = capitalizeWords(cleanDesc(body.slice(0, muaIdx).replace(/^khách\s+/i, '')));
+  if (customerName.length < 1) return null;
+
+  const itemRe = new RegExp(
+    String.raw`(\d{1,4})\s+(.+?)\s+${UNIT_PRICE_PREFIX}\s+${MONEY}`,
+    'gi',
+  );
+  const orderItems: { name: string; quantity: number; unitPrice: number }[] = [];
+  let m: RegExpExecArray | null;
+  const itemsBlob = body.slice(muaIdx).replace(/^\s*mua\s+/i, '').trim();
+  while ((m = itemRe.exec(itemsBlob)) !== null) {
+    const quantity = Math.max(1, parseInt(m[1]!, 10) || 1);
+    const name = capitalizeWords(cleanDesc(m[2]!));
+    const money = normalizeCasualMoney(parseMoney(m[3]!), m[3]!);
+    if (name.length < 2 || !money || money.amountVnd <= 0) continue;
+    orderItems.push({ name, quantity, unitPrice: money.amountVnd });
+  }
+
+  if (orderItems.length >= 2) {
+    const amount = orderItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+    const description = orderItems
+      .map((it) => (it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name))
+      .join('; ');
+    return makeDraft({
+      kind: 'revenue',
+      amount,
+      unitPrice: orderItems[0]!.unitPrice,
+      quantity: 1,
+      description,
+      customerName,
+      platformName,
+      orderItems,
+      paymentStatus: 'unpaid',
+      source,
+      confidence: 0.95,
+      depositAmount: extras.depositAmount,
+      depositedAt: extras.depositAmount ? todayIso() : undefined,
+      shippingFee: extras.shippingFee,
+      shippingPayer: extras.shippingFee ? extras.shippingPayer ?? 'customer' : undefined,
+    });
+  }
+
+  if (orderItems.length === 1) {
+    const it = orderItems[0]!;
+    return makeDraft({
+      kind: 'revenue',
+      amount: it.quantity * it.unitPrice,
+      unitPrice: it.unitPrice,
+      quantity: it.quantity,
+      description: it.quantity > 1 ? `${it.quantity} × ${it.name}` : it.name,
+      customerName,
+      platformName,
+      paymentStatus: 'unpaid',
+      source,
+      confidence: 0.94,
+      depositAmount: extras.depositAmount,
+      depositedAt: extras.depositAmount ? todayIso() : undefined,
+      shippingFee: extras.shippingFee,
+      shippingPayer: extras.shippingFee ? extras.shippingPayer ?? 'customer' : undefined,
+    });
+  }
+
+  return null;
+}
 
 /**
  * Parse "bán cho Hoa 3 kẹp tóc giá 90k" / "bán cho Hùng thú nhồi bông 25k"
@@ -864,15 +1036,21 @@ function makeDraft(partial: Omit<DraftRecord, 'id' | 'date'> & { date?: string }
     description: partial.description,
     category: partial.category,
     customerName: partial.customerName,
+    customerId: partial.customerId,
+    productId: partial.productId,
+    platformId: partial.platformId,
     platformName: partial.platformName,
     quantity: partial.quantity,
     unitPrice: partial.unitPrice,
+    orderItems: partial.orderItems,
     depositAmount: partial.depositAmount,
     depositedAt: partial.depositedAt,
     shippingFee: partial.shippingFee,
     shippingPayer: partial.shippingPayer,
     paymentStatus: partial.paymentStatus,
+    paymentMethod: partial.paymentMethod,
     orderStatus: partial.orderStatus,
+    notes: partial.notes,
     source: partial.source,
     confidence: partial.confidence ?? 0.9,
     rawFx: partial.rawFx,
@@ -889,6 +1067,14 @@ function cleanDesc(s: string): string {
 function capitalize(s: string): string {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function capitalizeWords(s: string): string {
+  return s
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => capitalize(w))
+    .join(' ');
 }
 
 export function guessCategory(desc: string): ExpenseCategory {

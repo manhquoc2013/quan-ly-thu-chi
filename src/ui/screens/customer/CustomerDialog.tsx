@@ -67,8 +67,8 @@ export function CustomerDialog({ open, onClose, editCustomer }: CustomerDialogPr
     async (e: React.FormEvent) => {
       e.preventDefault();
       const name = form.name.trim();
-      if (name.length < 2) {
-        setNameError('Họ tên phải từ 2 ký tự');
+      if (name.length < 1) {
+        setNameError('Họ tên không được để trống');
         bumpTips(['name']);
         return;
       }

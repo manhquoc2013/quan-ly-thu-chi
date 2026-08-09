@@ -6,6 +6,7 @@
 
 /* ── Smooth color transitions on theme change ── */
 html {
+  scroll-behavior: smooth;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 html * {
@@ -491,6 +492,8 @@ html * {
 .animate-fade-in-up [data-slot="card"]:nth-child(8) { animation-delay: 0.4s; }
 .animate-fade-in-up [data-slot="card"]:nth-child(n+9) { animation-delay: 0.45s; }
 
+/* ── Modern hover animations ── */
+
 /* All cards — subtle hover elevate */
 [data-slot="card"] {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -500,14 +503,111 @@ html * {
   box-shadow: 0 4px 20px rgba(13,148,136,0.1);
 }
 
-/* Buttons — press scale */
+/* Buttons — glow + press scale */
+[data-slot="button"] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
+}
+[data-slot="button"][data-variant="default"]:hover {
+  box-shadow: 0 4px 16px rgba(13,148,136,0.3);
+}
+[data-slot="button"][data-variant="destructive"]:hover {
+  box-shadow: 0 4px 16px rgba(220,38,38,0.25);
+}
+[data-slot="button"][data-variant="outline"]:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+[data-slot="button"][data-variant="secondary"]:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
 button:active {
   transform: scale(0.97);
 }
 
+/* Tab triggers — scale + smooth bg */
+[data-slot="tabs-trigger"] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+[data-slot="tabs-trigger"]:hover {
+  transform: scale(1.03);
+}
+
+/* Dropdown menu items — slide right on hover */
+[data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="dropdown-menu-sub-trigger"] {
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+[data-slot="dropdown-menu-item"]:hover,
+[data-slot="dropdown-menu-checkbox-item"]:hover,
+[data-slot="dropdown-menu-radio-item"]:hover {
+  transform: translateX(2px);
+}
+
+/* Select items — slide right on hover */
+[data-slot="select-item"] {
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+[data-slot="select-item"]:hover {
+  transform: translateX(2px);
+}
+
+/* Command palette items — slide right on hover */
+[data-slot="command-item"] {
+  transition: transform 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+[data-slot="command-item"][data-selected="true"] {
+  transform: translateX(2px);
+}
+
+/* Input & Select trigger — border glow on hover */
+[data-slot="input"] {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+[data-slot="input"]:hover:not(:focus-visible):not([aria-invalid="true"]) {
+  border-color: var(--color-input-focus-ring);
+}
+[data-slot="select-trigger"] {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+[data-slot="select-trigger"]:hover:not(:focus-visible) {
+  border-color: var(--color-input-focus-ring);
+}
+
+/* Toggle switch — subtle scale on hover */
+[role="switch"] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+}
+[role="switch"]:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
 /* Table/list rows — hover transition */
 [role="row"] {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+[role="row"]:hover {
+  transform: scale(1.002);
+}
+
+/* Dialog/Swipe close button — rotate on hover */
+[data-slot="dialog-close"]:hover svg,
+[data-slot="sheet-content"] button[data-slot="sheet-close"]:hover svg {
+  transform: rotate(90deg);
+}
+[data-slot="dialog-close"] svg,
+[data-slot="sheet-content"] button[data-slot="sheet-close"] svg {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Popover content — subtle scale origin */
+[data-slot="popover-content"] {
+  transform-origin: var(--radix-popover-content-transform-origin);
 }
 
 /* Sidebar collapsed tooltip */
@@ -533,6 +633,72 @@ aside nav a[title]:hover::after {
   box-shadow: var(--shadow-dropdown);
 }
 
+/* ── Ripple effect (Material Design gợn sóng) ── */
+[data-slot="button"] {
+  position: relative;
+  clip-path: inset(0);
+}
+[data-slot="button"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 10%, transparent 10.1%);
+  transform: scale(10);
+  opacity: 0;
+  transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+}
+[data-slot="button"]:active::after {
+  transform: scale(0);
+  opacity: 1;
+  transition: 0s;
+}
+[data-slot="button"][data-variant="outline"]::after,
+[data-slot="button"][data-variant="ghost"]::after {
+  background: radial-gradient(circle, rgba(0,0,0,0.08) 10%, transparent 10.1%);
+}
+
+/* ── 3D Press (bấm lún) ── */
+[data-slot="button"]:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ── Shimmer / Shine (vệt sáng) ── */
+.btn-shimmer {
+  position: relative;
+  clip-path: inset(0);
+}
+.btn-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+.btn-shimmer:hover::before {
+  left: 150%;
+}
+
+/* ── Glassmorphism (kính mờ) ── */
+.glass {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* ── Icon slide trong button ── */
+[data-slot="button"] svg:last-child {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-slot="button"]:hover svg:last-child {
+  transform: translateX(3px);
+}
+
 /* Reduce motion preference */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -546,17 +712,45 @@ aside nav a[title]:hover::after {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.18);
   border-radius: 100px;
-  transition: background 0.2s ease-in-out;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 0.25s ease, border-width 0.2s ease;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+  border-width: 1px;
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgba(13, 148, 136, 0.7);
+  border-width: 0px;
+}
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
 }
 
-.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
-.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
-.dark { scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
+/* ── Auto-hide scrollbar utility ── */
+.scrollbar-auto-hide {
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+.scrollbar-auto-hide:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+.scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.35); }
+.dark ::-webkit-scrollbar-thumb:active { background: rgba(45, 212, 191, 0.7); }
+.dark { scrollbar-color: rgba(255, 255, 255, 0.15) transparent; }
+.dark .scrollbar-auto-hide { scrollbar-color: transparent transparent; }
+.dark .scrollbar-auto-hide::-webkit-scrollbar-thumb { background: transparent; }
+.dark .scrollbar-auto-hide:hover { scrollbar-color: rgba(255, 255, 255, 0.15) transparent; }
+.dark .scrollbar-auto-hide:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }

@@ -18,8 +18,8 @@ function normalizeOptional(value?: string): string | undefined {
 }
 
 function assertName(name: string): void {
-  if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 100) {
-    throw new Error('Họ tên phải từ 2–100 ký tự');
+  if (typeof name !== 'string' || name.trim().length < 1 || name.trim().length > 100) {
+    throw new Error('Họ tên phải từ 1–100 ký tự');
   }
 }
 

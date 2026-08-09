@@ -1,0 +1,52 @@
+{
+  "triage_id": "TRI-1786266580959-96dd",
+  "created_at": 1786266580959,
+  "request_summary": "Thêm animation hover đẹp, hiện đại cho toàn bộ menu, button, tab, dropdown item, toggle switch, và các phần tử tương tác trong toàn bộ ứng dụng",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/components/ui/button.tsx",
+      "src/components/ui/tabs.tsx",
+      "src/index.css",
+      "src/ui/components/ToggleSwitch.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "impact_files": [
+      "src/components/ui/button.tsx",
+      "src/components/ui/tabs.tsx",
+      "src/index.css",
+      "src/ui/components/ToggleSwitch.tsx",
+      "src/ui/Layout.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Toàn bộ UI của ứng dụng - tất cả các màn hình đều sử dụng button, tabs, menu, toggle switch",
+  "blast_radius": 5,
+  "done_oracle": "Tất cả các phần tử tương tác (button, tab, menu item, nav link, toggle switch, header icon button) có animation hover mượt mà (scale, glow/shadow, color transition) khi rê chuột vào. Chạy `npx tsc --noEmit` pass và visual kiểm tra trên trình duyệt.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/components/ui/button.tsx",
+    "src/components/ui/tabs.tsx",
+    "src/index.css",
+    "src/ui/components/ToggleSwitch.tsx",
+    "src/ui/Layout.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d3f1fe26690727dbf1489f987da3b8c2df41b0fa",
+    "dirty": false,
+    "captured_at": 1786266580993
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

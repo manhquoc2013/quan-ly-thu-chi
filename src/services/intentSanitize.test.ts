@@ -44,6 +44,66 @@ describe('splitMultiTx', () => {
     const parts = splitMultiTx('bán cho Hoa, 3 cái kẹp tóc giá 90k');
     expect(parts).toEqual(['bán cho Hoa, 3 cái kẹp tóc giá 90k']);
   });
+
+  it('keeps multi-line tạo đơn as 3 intact orders', () => {
+    const msg = `tạo đơn khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok
+tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok`;
+    const parts = splitMultiTx(msg);
+    expect(parts).toHaveLength(3);
+    expect(parts[0]).toMatch(/Út Chi.*hoa màu đỏ.*tiktok/i);
+    expect(parts[1]).toMatch(/Thu 3.*chó đeo mắt kính.*tiktok/i);
+    expect(parts[2]).toMatch(/khách T,.*chó đeo mắt kính.*tiktok/i);
+  });
+
+  it('does not split và line-items inside one tạo đơn', () => {
+    const parts = splitMultiTx(
+      'tạo đơn khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok',
+    );
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toMatch(/và 1 bó hoa/i);
+  });
+});
+
+describe('parseTaoDonOrder', () => {
+  it('parses multi-item order with TikTok', async () => {
+    const { parseTextToDraft } = await import('./textDraftParser');
+    const d = parseTextToDraft(
+      'tạo đơn khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok',
+    );
+    expect(d?.kind).toBe('revenue');
+    expect(d?.customerName).toMatch(/Út Chi/i);
+    expect(d?.platformName).toBe('TikTok');
+    expect(d?.orderItems).toHaveLength(2);
+    expect(d?.amount).toBe(110000);
+    expect(d?.orderItems?.[0]?.name).toMatch(/Sửa trắng xanh hồng/i);
+    expect(d?.orderItems?.[1]?.name).toMatch(/hoa màu đỏ/i);
+  });
+
+  it('parses Thu 3, product as qty 3 unit price', async () => {
+    const { parseTextToDraft } = await import('./textDraftParser');
+    const d = parseTextToDraft(
+      'tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
+    );
+    expect(d?.kind).toBe('revenue');
+    expect(d?.customerName).toBe('Thu');
+    expect(d?.quantity).toBe(3);
+    expect(d?.unitPrice).toBe(70000);
+    expect(d?.amount).toBe(210000);
+    expect(d?.platformName).toBe('TikTok');
+    expect(d?.description).toMatch(/chó đeo mắt kính/i);
+  });
+
+  it('parses 1-letter customer T', async () => {
+    const { parseTextToDraft } = await import('./textDraftParser');
+    const d = parseTextToDraft(
+      'tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok',
+    );
+    expect(d?.kind).toBe('revenue');
+    expect(d?.customerName).toBe('T');
+    expect(d?.amount).toBe(70000);
+    expect(d?.platformName).toBe('TikTok');
+  });
 });
 
 describe('local drafts for multi-tx utterance', () => {
