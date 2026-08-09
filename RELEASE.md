@@ -8,13 +8,16 @@
 3. Build & test: npm run build && npm run test
 4. Cập nhật version trong package.json (+ CHANGELOG.md, RELEASE.md)
 5. Commit: "Release vX.Y.Z"
-6. Tag: git tag -a vX.Y.Z -m "…" && git push origin main && git push origin vX.Y.Z
+6. Tag trên commit đã có trên main:
+   git tag -a vX.Y.Z -m "…" && git push origin main && git push origin vX.Y.Z
 7. GitHub Release (bắt buộc — tag ≠ release trên tab Releases):
    gh release create vX.Y.Z --title "vX.Y.Z — …" --notes-file - --latest
-8. GitHub Actions tự deploy lên GitHub Pages
+8. GitHub Actions deploy Pages — chỉ khi tag trỏ tới commit trên main
 ```
 
 > **Lưu ý:** `git tag` chỉ tạo tag trên git. Tab **Releases** trên GitHub chỉ hiện mục đã tạo bằng `gh release create` (hoặc nút “Draft a new release”).
+>
+> **Deploy:** Workflow `deploy.yml` chặn tag không nằm trên `main` (`git merge-base --is-ancestor`). Tag trên feature branch sẽ fail, không publish Pages.
 
 ## Phiên bản hiện tại: v1.4.1
 
@@ -36,4 +39,5 @@
 - [ ] Đăng nhập/đăng ký Supabase hoạt động
 - [ ] Cập nhật CHANGELOG.md
 - [ ] Cập nhật version trong package.json
+- [ ] Tag trên commit đã merge vào `main` (deploy.yml sẽ reject tag ngoài main)
 - [ ] Tạo GitHub Release (`gh release create …`) — không chỉ đẩy tag

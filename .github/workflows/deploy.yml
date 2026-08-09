@@ -1,5 +1,6 @@
 name: Deploy to GitHub Pages
 
+# Chỉ deploy khi push tag v* — và tag đó phải trỏ tới commit nằm trên main.
 on:
   push:
     tags: ['v*']
@@ -23,6 +24,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Cần lịch sử đủ để kiểm tra tag ⊆ main
+          fetch-depth: 0
+
+      - name: Ensure tag is on main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::Deploy bị chặn: tag phải trỏ tới commit đã có trên nhánh main."
+            echo "Tag: ${GITHUB_REF_NAME}"
+            echo "Commit: ${GITHUB_SHA}"
+            echo "main tip: $(git rev-parse origin/main)"
+            exit 1
+          fi
+          echo "OK: ${GITHUB_REF_NAME} → ${GITHUB_SHA} nằm trên origin/main"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
