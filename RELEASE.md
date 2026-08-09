@@ -21,11 +21,11 @@
 >
 > **Cấu hình repo (một lần):** Settings → Pages → Build and deployment → **Source = GitHub Actions** (không còn “Deploy from a branch / gh-pages”).
 
-## Phiên bản hiện tại: v1.4.2
+## Phiên bản hiện tại: v1.5.0
 
 | Thành phần | Phiên bản |
 |:---|:---|
-| App | 1.4.2 |
+| App | 1.5.0 |
 | React | 19 |
 | Vite | 6 |
 | Tailwind CSS | 4 |

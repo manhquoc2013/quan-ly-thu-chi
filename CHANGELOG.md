@@ -6,6 +6,29 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [1.5.0] — 2026-08-09
+
+🔗 [So sánh với v1.4.2](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.2...v1.5.0)
+
+### Thêm mới
+- Ưu tiên đơn hàng: đánh dấu / bỏ ưu tiên (UI + lệnh chat), lọc danh sách ưu tiên, migration Supabase `priority` / `priority_at`
+- Parse local "tạo đơn" đa dòng / nhiều món không tách sai line items
+- `TableHScroll` — scroll ngang chỉ trong bảng, không đẩy layout trang
+
+### Sửa lỗi
+- Khoảng trắng / scroll ngang giả sau cột cuối (ripple button `scale(10)` + `clip-path` phình `scrollWidth`)
+- `giá` trần trong câu "khách … mua N … giá Xk" = tổng gói (không nhân SL)
+- Tên khách 1 ký tự hợp lệ trong dialog / parse đơn
+
+### Thay đổi
+- Hover / press animation nút (overflow:hidden chứa ripple)
+- Grid doanh thu / chi phí dùng CSS grid + minWidth trong TableHScroll
+
+### Tài liệu
+- CHANGELOG.md, RELEASE.md
+
+---
+
 ## [1.4.2] — 2026-08-09
 
 🔗 [So sánh với v1.4.1](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.1...v1.4.2)
