@@ -14,7 +14,8 @@ import { kiloService } from '@/services/kiloService';
 import { openRouterService } from '@/services/openRouterService';
 import { siliconFlowService } from '@/services/siliconFlowService';
 import { useTheme, type ThemeMode } from '@/hooks/useTheme';
-import { type LlmSource, AI_PRIORITY_DEFAULT, llmSourceLabel } from '@/services/llmCall';
+import { type LlmSource, llmSourceLabel } from '@/services/llmCall';
+import { mergeAiPriority } from '@/services/llmTypes';
 import { reloadAppData } from '@/services/bootstrap';
 import { isSupabaseConfigured } from '@/services/supabaseClient';
 import { createHousehold, createInvite, getSupabaseSessionEmail, redeemInvite } from '@/services/householdService';
@@ -30,6 +31,7 @@ import { Key, Info, Users, User, Settings as SettingsIcon, CheckCircle, XCircle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ToggleSwitch } from '@/ui/components/ToggleSwitch';
+import { validateApiKey } from '@/utils/apiKey';
 
 type Tab = 'account' | 'ai' | 'mascot' | 'about';
 
@@ -105,9 +107,23 @@ export function SettingsScreen() {
     })();
   }, [supabaseConfigured, setSupabaseEmail]);
 
+  const priorityOrder = useMemo(() => mergeAiPriority(aiPriority), [aiPriority]);
+
+  // Persist merged order once so older saves that omitted openrouter/siliconflow get upgraded
+  useEffect(() => {
+    const merged = mergeAiPriority(aiPriority);
+    if (
+      !aiPriority?.length ||
+      merged.length !== aiPriority.length ||
+      merged.some((s, i) => s !== aiPriority[i])
+    ) {
+      setAiPriority(merged);
+      queueUserSettingsSync();
+    }
+  }, [aiPriority, setAiPriority]);
+
   const availableSources = useMemo<LlmSource[]>(() => {
-    const full = aiPriority?.length ? aiPriority : AI_PRIORITY_DEFAULT;
-    return full.filter((src) => {
+    return priorityOrder.filter((src) => {
       switch (src) {
         case 'kilo': return enableKiloFree !== false;
         case 'openrouter': return enableOpenRouter !== false && openRouterConfigured;
@@ -118,7 +134,7 @@ export function SettingsScreen() {
         default: return false;
       }
     });
-  }, [aiPriority, enableKiloFree, enableOpenRouter, openRouterConfigured, enableSiliconFlow, siliconFlowConfigured, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
+  }, [priorityOrder, enableKiloFree, enableOpenRouter, openRouterConfigured, enableSiliconFlow, siliconFlowConfigured, enableGroq, groqConfigured, geminiConfigured, enableWebLLM]);
 
   useEffect(() => { setApiKey(geminiApiKey ?? ''); }, [geminiApiKey]);
   useEffect(() => { setGroqKeyInput(groqApiKey ?? ''); }, [groqApiKey]);
@@ -190,8 +206,34 @@ export function SettingsScreen() {
   async function handleTestGroq(): Promise<void> { const t = groqKeyInput.trim(); if (!t) { toast.error('Vui lòng nhập API key trước'); return; } setTestingGroq(true); try { groqService.configure(t); const r = await groqService.testConnection(); if (r.ok) { setGroqApiKey(t); queueUserSettingsSync(); toast.success(`Groq hoạt động tốt — ${r.detail}`); } else toast.error(`Kiểm tra thất bại: ${r.detail}`); } catch (err) { toast.error(err instanceof Error ? err.message : 'Không kết nối được Groq'); } finally { setTestingGroq(false); } }
   function handleClearGroqKey(): void { setGroqApiKey(null); groqService.disconnect(); setGroqKeyInput(''); queueUserSettingsSync(); toast.message('Đã xóa Groq API key'); }
 
-  function handleSaveOpenRouterKey(): void { const t = openRouterKeyInput.trim(); if (!t) { toast.error('Vui lòng nhập OpenRouter API key'); return; } setOpenRouterApiKey(t); openRouterService.configure(t); queueUserSettingsSync(); toast.success('Đã lưu OpenRouter API key'); }
-  async function handleTestOpenRouter(): Promise<void> { const t = openRouterKeyInput.trim(); if (!t) { toast.error('Vui lòng nhập API key trước'); return; } setTestingOpenRouter(true); try { openRouterService.configure(t); const r = await openRouterService.testConnection(); if (r.ok) { setOpenRouterApiKey(t); queueUserSettingsSync(); toast.success(`OpenRouter hoạt động tốt — ${r.detail}`); } else toast.error(`Kiểm tra thất bại: ${r.detail}`); } catch (err) { toast.error(err instanceof Error ? err.message : 'Không kết nối được OpenRouter'); } finally { setTestingOpenRouter(false); } }
+  function handleSaveOpenRouterKey(): void {
+    const parsed = validateApiKey(openRouterKeyInput);
+    if (!parsed.ok) { toast.error(parsed.detail); return; }
+    setOpenRouterKeyInput(parsed.key);
+    setOpenRouterApiKey(parsed.key);
+    openRouterService.configure(parsed.key);
+    queueUserSettingsSync();
+    toast.success('Đã lưu OpenRouter API key');
+  }
+  async function handleTestOpenRouter(): Promise<void> {
+    const parsed = validateApiKey(openRouterKeyInput);
+    if (!parsed.ok) { toast.error(parsed.detail); return; }
+    setOpenRouterKeyInput(parsed.key);
+    setTestingOpenRouter(true);
+    try {
+      openRouterService.configure(parsed.key);
+      const r = await openRouterService.testConnection();
+      if (r.ok) {
+        setOpenRouterApiKey(parsed.key);
+        queueUserSettingsSync();
+        toast.success(`OpenRouter hoạt động tốt — ${r.detail}`);
+      } else toast.error(`Kiểm tra thất bại: ${r.detail}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Không kết nối được OpenRouter');
+    } finally {
+      setTestingOpenRouter(false);
+    }
+  }
   function handleClearOpenRouterKey(): void { setOpenRouterApiKey(null); openRouterService.disconnect(); setOpenRouterKeyInput(''); queueUserSettingsSync(); toast.message('Đã xóa OpenRouter API key'); }
 
   function handleSaveSiliconFlowKey(): void { const t = siliconFlowKeyInput.trim(); if (!t) { toast.error('Vui lòng nhập SiliconFlow API key'); return; } setSiliconFlowApiKey(t); siliconFlowService.configure(t); queueUserSettingsSync(); toast.success('Đã lưu SiliconFlow API key'); }
@@ -199,8 +241,16 @@ export function SettingsScreen() {
   function handleClearSiliconFlowKey(): void { setSiliconFlowApiKey(null); siliconFlowService.disconnect(); setSiliconFlowKeyInput(''); queueUserSettingsSync(); toast.message('Đã xóa SiliconFlow API key'); }
 
   function swapAdjacent(order: LlmSource[], i: number): LlmSource[] { const r = [...order]; const a = r[i], b = r[i+1]; if (a === undefined || b === undefined) return r; r[i] = b; r[i+1] = a; return r; }
-  function handleMoveUp(index: number): void { if (index <= 0) return; setAiPriority(swapAdjacent(aiPriority.length ? aiPriority : AI_PRIORITY_DEFAULT, index - 1)); queueUserSettingsSync(); }
-  function handleMoveDown(index: number): void { const order = aiPriority.length ? aiPriority : AI_PRIORITY_DEFAULT; if (index >= order.length - 1) return; setAiPriority(swapAdjacent(order, index)); queueUserSettingsSync(); }
+  function handleMoveUp(index: number): void {
+    if (index <= 0) return;
+    setAiPriority(swapAdjacent(priorityOrder, index - 1));
+    queueUserSettingsSync();
+  }
+  function handleMoveDown(index: number): void {
+    if (index >= priorityOrder.length - 1) return;
+    setAiPriority(swapAdjacent(priorityOrder, index));
+    queueUserSettingsSync();
+  }
 
   async function handleLogout(): Promise<void> { await logout(); toast.message('Đã đăng xuất.'); }
 
@@ -270,15 +320,15 @@ export function SettingsScreen() {
           <section aria-label="AI provider priority order">
             <Card><CardHeader><div className="flex items-center gap-2"><ArrowUp className="h-4 w-4 text-accent-fg" /><CardTitle>Thứ tự ưu tiên AI</CardTitle></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-xs)]"><p className="text-xs text-text-muted">Kéo sắp xếp thứ tự ưu tiên — AI đầu tiên khả dụng sẽ được dùng.</p>
-                <div className="space-y-1">{availableSources.map((source, visibleIdx) => { const fullOrder = aiPriority?.length ? aiPriority : AI_PRIORITY_DEFAULT; const fullIdx = fullOrder.indexOf(source); return <div key={source} className="flex items-center justify-between bg-input-bg rounded-field px-[var(--s-sm)] py-1.5"><span className="text-xs text-text-primary">{llmSourceLabel(source)}</span><div className="flex items-center gap-0.5"><Button variant="ghost" size="sm" disabled={visibleIdx === 0} onClick={() => handleMoveUp(fullIdx)} aria-label={`Di chuyển ${source} lên`} className="h-7 w-7 p-0"><ArrowUp className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" disabled={visibleIdx >= availableSources.length - 1} onClick={() => handleMoveDown(fullIdx)} aria-label={`Di chuyển ${source} xuống`} className="h-7 w-7 p-0"><ArrowDown className="h-3.5 w-3.5" /></Button></div></div>; })}</div>
+                <div className="space-y-1">{availableSources.map((source, visibleIdx) => { const fullIdx = priorityOrder.indexOf(source); return <div key={source} className="flex items-center justify-between bg-input-bg rounded-field px-[var(--s-sm)] py-1.5"><span className="text-xs text-text-primary">{llmSourceLabel(source)}</span><div className="flex items-center gap-0.5"><Button variant="ghost" size="sm" disabled={visibleIdx === 0} onClick={() => handleMoveUp(fullIdx)} aria-label={`Di chuyển ${source} lên`} className="h-7 w-7 p-0"><ArrowUp className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" disabled={visibleIdx >= availableSources.length - 1} onClick={() => handleMoveDown(fullIdx)} aria-label={`Di chuyển ${source} xuống`} className="h-7 w-7 p-0"><ArrowDown className="h-3.5 w-3.5" /></Button></div></div>; })}</div>
               </div></CardContent>
             </Card>
           </section>
 
           {([ 
             { label: 'Groq AI', configured: groqConfigured, enable: enableGroq, setEnable: setEnableGroq, keyInput: groqKeyInput, setKeyInput: setGroqKeyInput, testing, setTesting: setTestingGroq, onSave: handleSaveGroqKey, onTest: handleTestGroq, onClear: handleClearGroqKey, link: 'https://console.groq.com/keys', linkLabel: 'Groq Console', desc: 'Model mặc định: llama-3.3-70b-versatile.' },
-            { label: 'OpenRouter', configured: openRouterConfigured, enable: enableOpenRouter, setEnable: setEnableOpenRouter, keyInput: openRouterKeyInput, setKeyInput: setOpenRouterKeyInput, testing: testingOpenRouter, setTesting: setTestingOpenRouter, onSave: handleSaveOpenRouterKey, onTest: handleTestOpenRouter, onClear: handleClearOpenRouterKey, link: 'https://openrouter.ai/keys', linkLabel: 'OpenRouter Keys', desc: 'Tự động thử 4 model free (Gemini Flash, Llama 4, Qwen3, DeepSeek V3).' },
-            { label: 'SiliconFlow', configured: siliconFlowConfigured, enable: enableSiliconFlow, setEnable: setEnableSiliconFlow, keyInput: siliconFlowKeyInput, setKeyInput: setSiliconFlowKeyInput, testing: testingSiliconFlow, setTesting: setTestingSiliconFlow, onSave: handleSaveSiliconFlowKey, onTest: handleTestSiliconFlow, onClear: handleClearSiliconFlowKey, link: 'https://cloud.siliconflow.cn/account/ak', linkLabel: 'SiliconFlow API Keys', desc: 'Tự động thử 5 model free (Qwen2.5 7B, DeepSeek V2.5, Qwen2 7B, GLM-4 9B, Llama 3.1 8B).' },
+            { label: 'OpenRouter', configured: openRouterConfigured, enable: enableOpenRouter, setEnable: setEnableOpenRouter, keyInput: openRouterKeyInput, setKeyInput: setOpenRouterKeyInput, testing: testingOpenRouter, setTesting: setTestingOpenRouter, onSave: handleSaveOpenRouterKey, onTest: handleTestOpenRouter, onClear: handleClearOpenRouterKey, link: 'https://openrouter.ai/keys', linkLabel: 'OpenRouter Keys', desc: 'Tự động lấy danh sách model free mới nhất từ OpenRouter (cập nhật định kỳ, có fallback).' },
+            { label: 'SiliconFlow', configured: siliconFlowConfigured, enable: enableSiliconFlow, setEnable: setEnableSiliconFlow, keyInput: siliconFlowKeyInput, setKeyInput: setSiliconFlowKeyInput, testing: testingSiliconFlow, setTesting: setTestingSiliconFlow, onSave: handleSaveSiliconFlowKey, onTest: handleTestSiliconFlow, onClear: handleClearSiliconFlowKey, link: 'https://cloud.siliconflow.com/account/ak', linkLabel: 'SiliconFlow API Keys', desc: 'Tự động lấy model chat free mới nhất từ SiliconFlow (cập nhật định kỳ; host .com/.cn tự chuyển).' },
           ] as const).map((p) => (
             <section key={p.label} aria-label={`${p.label} AI settings`}>
               <Card><CardHeader><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><Zap className="h-4 w-4 text-accent-fg shrink-0" /><CardTitle>{p.label}</CardTitle></div><div className="flex items-center gap-2 shrink-0">{p.configured ? <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1"><CheckCircle size={12} />Đã cấu hình</Badge> : <Badge variant="outline" className="gap-1"><XCircle size={12} />Chưa cấu hình</Badge>}<ToggleSwitch aria-label={`Bật ${p.label}`} checked={p.enable !== false} onCheckedChange={(on) => { p.setEnable(on); queueUserSettingsSync(); }} /></div></div></CardHeader>
@@ -311,12 +361,16 @@ export function SettingsScreen() {
           <section aria-label="Mascot settings">
             <Card><CardHeader><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Lucky</CardTitle></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-md)]">
-                <p className="text-xs text-text-muted">Điều chỉnh mức độ hoạt động của mascot trên màn hình. Double-click vào mèo để đổi nhanh.</p>
+                <p className="text-xs text-text-muted">Điều chỉnh mức độ hoạt động của mascot trên màn hình. Chọn là lưu ngay — giữ sau khi tải lại trang. Double-click vào mèo để đổi nhanh.</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => {
                     const active = activity === level;
                     return (
-                      <button key={level} type="button" onClick={() => setActivity(level)}
+                      <button key={level} type="button" onClick={() => {
+                        if (activity === level) return;
+                        setActivity(level);
+                        toast.success(`Đã lưu: ${ACTIVITY_LABELS[level]}`);
+                      }}
                         className={['flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition-all',
                           active ? 'border-accent-fg bg-accent-bg text-accent-fg shadow-sm' : 'border-border bg-neutral-bg hover:bg-surface-hover text-text-secondary'].join(' ')}>
                         <span className="text-lg">{level === 'low' ? '🐢' : level === 'high' ? '🐇' : '🐱'}</span>

@@ -21,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Pencil, Trash2, Square, CheckSquare } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
 import { useProductStore } from '@/store/productStore';
 
 /* ─── Props ─── */
@@ -128,6 +129,11 @@ export function ExpenseGrid({
     onPeekConsumed?.();
   }, [peekExpenseId, expenses, onPeekConsumed]);
 
+  const pageIdsKey = expenses.map((e) => e.id).join(',');
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [pageIdsKey]);
+
   const handleRowClick = useCallback(
     (expense: Expense) => {
       setDetailExpense(expense);
@@ -171,140 +177,147 @@ export function ExpenseGrid({
   const allSelected = expenses.length > 0 && selectedIds.size === expenses.length;
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto" role="grid" aria-label="Expense list">
-      <div className="inline-block min-w-full pb-[var(--dimens-fabClearance)]">
-      <div
-        className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[800px]"
-        role="row"
-      >
-        <div className="w-[36px] shrink-0 flex items-center justify-center" role="columnheader">
-          <button
-            type="button"
-            onClick={toggleSelectAll}
-            className="text-grid-header-fg hover:text-accent-fg transition-colors"
-            aria-label={allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-          >
-            {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
-          </button>
-        </div>
-        <div className="w-[110px] shrink-0" role="columnheader">Ngày</div>
-        <div className="w-[140px] shrink-0" role="columnheader">Danh mục</div>
-        <div className="flex-1 min-w-[120px]" role="columnheader">Mô tả</div>
-        <div className="w-[120px] shrink-0 text-right" role="columnheader">Số tiền</div>
-        <div className="w-[168px] shrink-0 text-center" role="columnheader">Hành động</div>
-      </div>
-
-        {expenses.map((expense, index) => (
+    <div className="flex flex-col h-full min-h-0" role="grid" aria-label="Expense list">
+      {/* ── Scrollable table body ─────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        <div className="inline-block min-w-full pb-[var(--dimens-fabClearance)]">
           <div
-            key={expense.id}
+            className="flex items-center h-10 px-3 gap-3 bg-grid-header-bg text-grid-header-fg text-xs font-semibold border-b border-border sticky top-0 z-10 min-w-[800px]"
             role="row"
-            tabIndex={0}
-            onClick={() => handleRowClick(expense)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleRowClick(expense);
-              }
-            }}
-            className={cn(
-              'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[800px]',
-              index % 2 === 0 ? 'bg-grid-row-even' : 'bg-grid-row-odd',
-              'hover:bg-grid-row-hover',
-              selectedIds.has(expense.id) ? 'bg-grid-row-selected' : '',
-            )}
-            data-expense-id={expense.id}
           >
-            <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-[36px] shrink-0 flex items-center justify-center" role="columnheader">
               <button
                 type="button"
-                onClick={() => toggleSelect(expense.id)}
-                className="text-text-muted hover:text-accent-fg transition-colors"
-                aria-label={selectedIds.has(expense.id) ? `Bỏ chọn ${expense.description}` : `Chọn ${expense.description}`}
+                onClick={toggleSelectAll}
+                className="text-grid-header-fg hover:text-accent-fg transition-colors"
+                aria-label={allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
               >
-                {selectedIds.has(expense.id) ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
+                {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
               </button>
             </div>
-            <div className="w-[110px] shrink-0 text-xs text-text-primary">
-              {formatDate(expense.date)}
-            </div>
-
-            <div className="w-[140px] shrink-0">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-badge',
-                  CATEGORY_STYLES[expense.category]?.bg ?? CATEGORY_STYLES['other']?.bg ?? 'bg-badge-offline-bg',
-                  CATEGORY_STYLES[expense.category]?.fg ?? CATEGORY_STYLES['other']?.fg ?? 'text-badge-offline-fg',
-                )}
-              >
-                {EXPENSE_CATEGORY_LABELS[expense.category]}
-              </span>
-            </div>
-
-            <div
-              className="flex-1 min-w-[120px] text-xs text-text-primary"
-              title={expense.description}
-            >
-              <span className="block text-ellipsis overflow-hidden whitespace-nowrap">
-                {expense.description}
-              </span>
-            </div>
-
-            <div className="w-[120px] shrink-0 text-xs text-text-primary text-right font-mono">
-              {formatCurrency(expense.amount)}
-            </div>
-
-            <div
-              className="w-[168px] shrink-0 flex items-center justify-end gap-1.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => onEdit(expense)}
-                className="px-2 py-0.5 text-xs"
-              >
-                <Pencil size={12} /> Sửa
-              </Button>
-              <Button
-                variant="destructive"
-                size="xs"
-                onClick={() => setConfirmDeleteId(expense)}
-                className="px-2 py-0.5 text-xs"
-              >
-                <Trash2 size={12} /> Xóa
-              </Button>
-            </div>
+            <div className="w-[110px] shrink-0" role="columnheader">Ngày</div>
+            <div className="w-[140px] shrink-0" role="columnheader">Danh mục</div>
+            <div className="flex-1 min-w-[120px]" role="columnheader">Mô tả</div>
+            <div className="w-[120px] shrink-0 text-right" role="columnheader">Số tiền</div>
+            <div className="w-[168px] shrink-0 text-center" role="columnheader">Hành động</div>
           </div>
-        ))}
+
+          {expenses.map((expense, index) => (
+            <div
+              key={expense.id}
+              role="row"
+              tabIndex={0}
+              onClick={() => handleRowClick(expense)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleRowClick(expense);
+                }
+              }}
+              className={cn(
+                'flex items-center h-11 px-3 gap-3 cursor-pointer border-b border-border transition-colors duration-[var(--d-fast)] min-w-[800px]',
+                index % 2 === 0 ? 'bg-grid-row-even' : 'bg-grid-row-odd',
+                'hover:bg-grid-row-hover',
+                selectedIds.has(expense.id) ? 'bg-grid-row-selected' : '',
+              )}
+              data-expense-id={expense.id}
+            >
+              <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => toggleSelect(expense.id)}
+                  className="text-text-muted hover:text-accent-fg transition-colors"
+                  aria-label={selectedIds.has(expense.id) ? `Bỏ chọn ${expense.description}` : `Chọn ${expense.description}`}
+                >
+                  {selectedIds.has(expense.id) ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
+                </button>
+              </div>
+              <div className="w-[110px] shrink-0 text-xs text-text-primary">
+                {formatDate(expense.date)}
+              </div>
+
+              <div className="w-[140px] shrink-0">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-badge',
+                    CATEGORY_STYLES[expense.category]?.bg ?? CATEGORY_STYLES['other']?.bg ?? 'bg-badge-offline-bg',
+                    CATEGORY_STYLES[expense.category]?.fg ?? CATEGORY_STYLES['other']?.fg ?? 'text-badge-offline-fg',
+                  )}
+                >
+                  {EXPENSE_CATEGORY_LABELS[expense.category]}
+                </span>
+              </div>
+
+              <div
+                className="flex-1 min-w-[120px] text-xs text-text-primary"
+                title={expense.description}
+              >
+                <span className="block text-ellipsis overflow-hidden whitespace-nowrap">
+                  {expense.description}
+                </span>
+              </div>
+
+              <div className="w-[120px] shrink-0 text-xs text-text-primary text-right font-mono">
+                {formatCurrency(expense.amount)}
+              </div>
+
+              <div
+                className="w-[168px] shrink-0 flex items-center justify-end gap-1.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => onEdit(expense)}
+                  className="px-2 py-0.5 text-xs"
+                >
+                  <Pencil size={12} /> Sửa
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="xs"
+                  onClick={() => setConfirmDeleteId(expense)}
+                  className="px-2 py-0.5 text-xs"
+                >
+                  <Trash2 size={12} /> Xóa
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* ── Bulk action toolbar ──────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 bg-accent-bg border-t-2 border-accent-fg shadow-lg rounded-t-lg mx-2">
-          <span className="text-xs font-semibold text-accent-fg">
-            Đã chọn <span className="text-sm">{selectedIds.size}</span> chi phí
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs"
-            >
-              Bỏ chọn
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setBulkDeleteOpen(true)}
-              className="text-xs gap-1"
-            >
-              <Trash2 size={13} />
-              Xóa {selectedIds.size} mục
-            </Button>
-          </div>
-        </div>
+        <div className="shrink-0" style={{ height: SELECTION_BAR_HEIGHT }} aria-hidden />
       )}
+
+      <StickyBulkBar
+        open={selectedIds.size > 0}
+        ariaLabel={`Đã chọn ${selectedIds.size} chi phí`}
+      >
+        <span className="text-xs font-semibold text-accent-fg">
+          Đã chọn <span className="text-sm">{selectedIds.size}</span> chi phí
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs"
+          >
+            Bỏ chọn
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setBulkDeleteOpen(true)}
+            className="text-xs gap-1"
+          >
+            <Trash2 size={13} />
+            Xóa {selectedIds.size} mục
+          </Button>
+        </div>
+      </StickyBulkBar>
 
       <EntityDetailDialog
         open={detailExpense !== null}

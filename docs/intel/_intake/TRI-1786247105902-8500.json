@@ -1,0 +1,49 @@
+{
+  "triage_id": "TRI-1786247105902-8500",
+  "created_at": 1786247105903,
+  "request_summary": "Fix bulk action toolbar hidden below scrollable area in ExpenseGrid and RevenueGrid — restructure layout so toolbar is always visible outside overflow container; add mobile checkboxes to RevenueGrid cards; minor toolbar responsive improvements",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/expense/ExpenseGrid.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/RevenueGrid.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "ExpenseGrid and RevenueGrid — bulk selection toolbar visible when items checked",
+  "blast_radius": 4,
+  "done_oracle": "npx tsc --noEmit passes; bulk toolbar visible without scrolling when items selected in both Expense and Revenue grids; mobile RevenueGrid cards have selection checkboxes",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/ui/screens/expense/ExpenseGrid.tsx",
+    "src/ui/screens/expense/ExpenseScreen.tsx",
+    "src/ui/screens/revenue/RevenueGrid.tsx",
+    "src/ui/screens/revenue/RevenueScreen.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "8cfe3f75992b4297d570e5feaffeb39c70292bd5",
+    "dirty": false,
+    "captured_at": 1786247105936
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

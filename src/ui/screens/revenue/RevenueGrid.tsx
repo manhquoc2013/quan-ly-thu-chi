@@ -3,7 +3,7 @@
  * Desktop: wide table. Mobile: stacked cards.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Play, Package, X } from 'lucide-react';
+import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
 
 /* ─── Props ─── */
 
@@ -77,6 +78,11 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
+  const pageIdsKey = records.map((r) => r.id).join(',');
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [pageIdsKey]);
+
   const handleConfirmDelete = useCallback(() => {
     if (!confirmDelete) return;
     onDelete?.(confirmDelete);
@@ -123,7 +129,9 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
   ].join(' ');
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto" aria-label="Danh sách đơn hàng">
+    <div className="flex flex-col h-full min-h-0" aria-label="Danh sách đơn hàng">
+      {/* ── Scrollable content ────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-auto">
       {/* ── Mobile cards ───────────────────────────────────────────── */}
       <ul className="md:hidden flex flex-col gap-2 p-2 pb-[var(--dimens-fabClearance)] list-none m-0">
         {records.length === 0 && (
@@ -132,6 +140,7 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
         {records.map((row) => {
           const itemQty = row.items.reduce((s, i) => s + i.quantity, 0);
           const platformName = platformOf(row);
+          const isSelected = selectedIds.has(row.id);
           return (
             <li key={row.id}>
               <article
@@ -145,12 +154,23 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                   }
                 }}
                 className={
-                  'rounded-lg border border-border bg-surface px-3 py-3 ' +
+                  'rounded-lg border ' +
+                  (isSelected ? 'border-accent-fg bg-accent-bg' : 'border-border bg-surface') +
+                  ' px-3 py-3 ' +
                   'active:bg-surface-hover transition-colors duration-[var(--d-fast)]'
                 }
               >
+                {/* Select checkbox + header */}
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(row.id); }}
+                    className="p-1 -ml-1 text-text-muted hover:text-accent-fg transition-colors shrink-0"
+                    aria-label={isSelected ? `Bỏ chọn ${row.orderCode}` : `Chọn ${row.orderCode}`}
+                  >
+                    {isSelected ? <CheckSquare size={16} className="text-accent-fg" /> : <Square size={16} />}
+                  </button>
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs font-mono font-semibold text-text-primary truncate">
                       {row.orderCode}
                     </p>
@@ -348,52 +368,58 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
           })}
         </div>
       </div>
+      </div>{/* end scrollable area */}
 
-      {/* ── Bulk action toolbar ──────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 px-4 py-2.5 bg-accent-bg border-t-2 border-accent-fg shadow-lg rounded-t-lg mx-2 flex-wrap">
-          <span className="text-xs font-semibold text-accent-fg">
-            Đã chọn <span className="text-sm">{selectedIds.size}</span> đơn hàng
-          </span>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs"
-            >
-              Bỏ chọn
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkStatus('confirmed')}
-              className="text-xs gap-1"
-            >
-              <CheckCircle2 size={13} />
-              Xác nhận
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleBulkStatus('completed')}
-              className="text-xs gap-1"
-            >
-              <Package size={13} />
-              Hoàn thành
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setBulkDeleteOpen(true)}
-              className="text-xs gap-1"
-            >
-              <Trash2 size={13} />
-              Xóa {selectedIds.size} đơn
-            </Button>
-          </div>
-        </div>
+        <div className="shrink-0" style={{ height: SELECTION_BAR_HEIGHT }} aria-hidden />
       )}
+
+      <StickyBulkBar
+        open={selectedIds.size > 0}
+        ariaLabel={`Đã chọn ${selectedIds.size} đơn hàng`}
+        className="flex-wrap"
+      >
+        <span className="text-xs font-semibold text-accent-fg">
+          Đã chọn <span className="text-sm">{selectedIds.size}</span> đơn hàng
+        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs"
+          >
+            Bỏ chọn
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkStatus('confirmed')}
+            className="text-xs gap-1"
+          >
+            <CheckCircle2 size={13} />
+            Xác nhận
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkStatus('completed')}
+            className="text-xs gap-1"
+          >
+            <Package size={13} />
+            Hoàn thành
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setBulkDeleteOpen(true)}
+            className="text-xs gap-1"
+          >
+            <Trash2 size={13} />
+            Xóa {selectedIds.size} đơn
+          </Button>
+        </div>
+      </StickyBulkBar>
 
       <AlertDialog
         open={confirmDelete !== null}

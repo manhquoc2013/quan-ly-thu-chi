@@ -11,7 +11,7 @@ import { kiloService } from './kiloService';
 import { openRouterService } from './openRouterService';
 import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
-import { type LlmSource, AI_PRIORITY_DEFAULT, LLM_SOURCE_LABELS } from './llmTypes';
+import { type LlmSource, AI_PRIORITY_DEFAULT, LLM_SOURCE_LABELS, mergeAiPriority } from './llmTypes';
 
 // Re-export for backward compatibility — callers import from llmCall.
 export type { LlmSource } from './llmTypes';
@@ -97,7 +97,7 @@ export async function callLlmCascade(
   localMode: 'raw' | 'chat' = 'raw',
 ): Promise<{ text: string; source: LlmSource } | null> {
   const { aiPriority } = useAuthStore.getState();
-  const order = aiPriority?.length ? aiPriority : AI_PRIORITY_DEFAULT;
+  const order = mergeAiPriority(aiPriority);
 
   for (const source of order) {
     const text = await tryProvider(source, prompt, localMode);

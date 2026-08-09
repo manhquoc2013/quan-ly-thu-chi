@@ -64,11 +64,13 @@ export interface ExpenseDialogProps {
   open: boolean;
   onClose: () => void;
   editExpense?: Expense | null;
+  /** Called after successful save. isEdit=true nếu là sửa, false nếu thêm mới. */
+  onSuccess?: (isEdit: boolean) => void;
 }
 
 /* ─── Component ─── */
 
-export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps) {
+export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: ExpenseDialogProps) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -194,6 +196,7 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
             stockQtyIn,
           });
         }
+        onSuccess?.(!!editExpense);
         onClose();
       } catch (err) {
         notify.error(err instanceof Error ? err.message : 'Không lưu được chi phí');
@@ -201,7 +204,7 @@ export function ExpenseDialog({ open, onClose, editExpense }: ExpenseDialogProps
         setSaving(false);
       }
     },
-    [form, editExpense, validate, onClose],
+    [form, editExpense, validate, onClose, onSuccess],
   );
 
   const handleCancel = useCallback(() => {

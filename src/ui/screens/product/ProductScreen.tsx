@@ -9,6 +9,8 @@ import { useProductStore } from '@/store/productStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { getAllProducts, deleteProduct, generateSkusForProducts } from '@/services/productService';
+import { notifyListInvalidated, queryProductsPage } from '@/services/listQuery';
+import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency } from '@/utils/currency';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ProductDialog } from './ProductDialog';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { ListLoadingOverlay } from '@/ui/components/ListLoadingOverlay';
+import { PaginationBar } from '@/ui/components/PaginationBar';
 import { formatDate } from '@/utils/date';
 
 export function ProductScreen() {
@@ -35,14 +39,34 @@ export function ProductScreen() {
   const setSearchQuery = useProductStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
+  const listFilters = useMemo(() => ({ search: searchQuery }), [searchQuery]);
+  const filterKey = useMemo(() => searchQuery.trim(), [searchQuery]);
+
+  const {
+    items,
+    total,
+    page,
+    pageSize,
+    loading,
+    setPage,
+    setPageSize,
+    refetch,
+  } = usePagedList<Product, typeof listFilters>({
+    entity: 'products',
+    filters: listFilters,
+    filterKey,
+    fetchPage: ({ page: p, pageSize: ps, filters: f }) =>
+      queryProductsPage({ page: p, pageSize: ps }, f),
+  });
+
   useEffect(() => {
-    getAllProducts().finally(() => setLoading(false));
+    getAllProducts().finally(() => setBootstrapping(false));
   }, []);
 
   const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);
@@ -50,10 +74,12 @@ export function ProductScreen() {
 
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'product') return;
-    const row = products.find((p) => p.id === recordDetailRequest.id);
+    const row =
+      products.find((p) => p.id === recordDetailRequest.id) ??
+      items.find((p) => p.id === recordDetailRequest.id);
     if (row) setDetailProduct(row);
     clearRecordDetailRequest();
-  }, [recordDetailRequest, products, clearRecordDetailRequest]);
+  }, [recordDetailRequest, products, items, clearRecordDetailRequest]);
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -66,25 +92,11 @@ export function ProductScreen() {
     return map;
   }, [revenues]);
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    let list = [...products];
-    if (q) {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.sku?.toLowerCase().includes(q) ?? false) ||
-          (p.notes?.toLowerCase().includes(q) ?? false),
-      );
-    }
-    list.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
-    return list;
-  }, [products, searchQuery]);
-
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       await deleteProduct(deleteTarget.id);
+      notifyListInvalidated('products');
     } catch {
       // toasted
     } finally {
@@ -104,6 +116,7 @@ export function ProductScreen() {
     setSkuBusy(true);
     try {
       const { updated, skipped } = await generateSkusForProducts({ onlyMissing: true });
+      notifyListInvalidated('products');
       if (updated.length === 0) {
         toast.message('Tất cả sản phẩm đã có mã SKU');
       } else {
@@ -116,6 +129,8 @@ export function ProductScreen() {
     }
   }, [skuBusy]);
 
+  const showSkeleton = loading && items.length === 0;
+
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
@@ -127,7 +142,7 @@ export function ProductScreen() {
           className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[180px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
           aria-label="Tìm sản phẩm"
         />
-        <span className="text-xs text-text-muted">{filtered.length} SP</span>
+        <span className="text-xs text-text-muted">{total} SP</span>
         {missingSkuCount > 0 && (
           <Button
             variant="outline"
@@ -152,23 +167,26 @@ export function ProductScreen() {
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none">
-        <CardContent className="flex-1 p-0 overflow-y-auto">
-          {loading ? (
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none gap-0 py-0">
+        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+          {showSkeleton ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : total === 0 && !loading ? (
             <p className="text-xs text-text-muted py-16 text-center">
               {searchQuery
                 ? 'Không tìm thấy sản phẩm'
                 : 'Chưa có sản phẩm — thêm mới hoặc để AI tự tạo khi bán'}
             </p>
           ) : (
-            <ul className="divide-y divide-border-subtle">
-              {filtered.map((p) => {
+            <>
+              <div className="flex-1 min-h-0 relative">
+              <ListLoadingOverlay show={loading} />
+              <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
+              {items.map((p) => {
                 const used = usageCount.get(p.id) ?? 0;
                 return (
                   <li
@@ -249,7 +267,17 @@ export function ProductScreen() {
                   </li>
                 );
               })}
-            </ul>
+              </ul>
+              </div>
+              <PaginationBar
+                page={page}
+                pageSize={pageSize}
+                total={total}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                disabled={loading}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -259,6 +287,8 @@ export function ProductScreen() {
         onClose={() => {
           setDialogOpen(false);
           setEditing(null);
+          notifyListInvalidated('products');
+          refetch();
         }}
         editProduct={editing}
       />

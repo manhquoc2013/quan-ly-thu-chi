@@ -9,6 +9,7 @@
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { getAllExpenses } from './expenseService';
 import { getAllRevenues } from './revenueService';
+import { notifyListInvalidated } from './listQuery';
 import { notify } from '@/utils/notify';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -49,9 +50,13 @@ export function startRealtimeSync(): void {
             useNotificationStore.getState().addNotification('realtime', 'Đồng bộ thời gian thực', msg);
 
             if (table === 'expenses') {
-              getAllExpenses().catch(() => {});
+              getAllExpenses()
+                .then(() => notifyListInvalidated('expenses'))
+                .catch(() => {});
             } else {
-              getAllRevenues().catch(() => {});
+              getAllRevenues()
+                .then(() => notifyListInvalidated('revenues'))
+                .catch(() => {});
             }
           },
         )

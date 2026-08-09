@@ -20,3 +20,25 @@ export const LLM_SOURCE_LABELS: Record<LlmSource, string> = {
   gemini: '🟢 Gemini',
   local: '⚡ Local',
 };
+
+/**
+ * Keep user's saved order, but append any sources missing from older saves
+ * (e.g. openrouter/siliconflow added after user already persisted aiPriority).
+ */
+export function mergeAiPriority(saved: LlmSource[] | null | undefined): LlmSource[] {
+  const base = saved?.length ? saved : [];
+  const seen = new Set<LlmSource>();
+  const out: LlmSource[] = [];
+  for (const src of base) {
+    if (seen.has(src)) continue;
+    if (!(src in LLM_SOURCE_LABELS)) continue;
+    seen.add(src);
+    out.push(src);
+  }
+  for (const src of AI_PRIORITY_DEFAULT) {
+    if (seen.has(src)) continue;
+    seen.add(src);
+    out.push(src);
+  }
+  return out.length > 0 ? out : [...AI_PRIORITY_DEFAULT];
+}

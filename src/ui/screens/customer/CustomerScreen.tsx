@@ -9,6 +9,8 @@ import { useCustomerStore } from '@/store/customerStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { getAllCustomers, deleteCustomer } from '@/services/customerService';
+import { notifyListInvalidated, queryCustomersPage } from '@/services/listQuery';
+import { usePagedList } from '@/hooks/usePagedList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +27,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CustomerDialog } from './CustomerDialog';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { ListLoadingOverlay } from '@/ui/components/ListLoadingOverlay';
+import { PaginationBar } from '@/ui/components/PaginationBar';
 import { formatDate } from '@/utils/date';
 
 export function CustomerScreen() {
@@ -33,14 +37,33 @@ export function CustomerScreen() {
   const setSearchQuery = useCustomerStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
+  const listFilters = useMemo(() => ({ search: searchQuery }), [searchQuery]);
+  const filterKey = useMemo(() => searchQuery.trim(), [searchQuery]);
+
+  const {
+    items,
+    total,
+    page,
+    pageSize,
+    loading,
+    setPage,
+    setPageSize,
+  } = usePagedList<Customer, typeof listFilters>({
+    entity: 'customers',
+    filters: listFilters,
+    filterKey,
+    fetchPage: ({ page: p, pageSize: ps, filters: f }) =>
+      queryCustomersPage({ page: p, pageSize: ps }, f),
+  });
+
   useEffect(() => {
-    getAllCustomers().finally(() => setLoading(false));
+    getAllCustomers().finally(() => setBootstrapping(false));
   }, []);
 
   const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);
@@ -48,10 +71,12 @@ export function CustomerScreen() {
 
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'customer') return;
-    const row = customers.find((c) => c.id === recordDetailRequest.id);
+    const row =
+      customers.find((c) => c.id === recordDetailRequest.id) ??
+      items.find((c) => c.id === recordDetailRequest.id);
     if (row) setDetailCustomer(row);
     clearRecordDetailRequest();
-  }, [recordDetailRequest, customers, clearRecordDetailRequest]);
+  }, [recordDetailRequest, customers, items, clearRecordDetailRequest]);
 
   const orderCountByCustomer = useMemo(() => {
     const map = new Map<string, number>();
@@ -61,21 +86,6 @@ export function CustomerScreen() {
     }
     return map;
   }, [revenues]);
-
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    let list = [...customers];
-    if (q) {
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          (c.phone && c.phone.includes(q)) ||
-          (c.email?.toLowerCase().includes(q) ?? false),
-      );
-    }
-    list.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
-    return list;
-  }, [customers, searchQuery]);
 
   const handleAdd = useCallback(() => {
     setEditing(null);
@@ -90,18 +100,22 @@ export function CustomerScreen() {
   const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
     setEditing(null);
+    notifyListInvalidated('customers');
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       await deleteCustomer(deleteTarget.id);
+      notifyListInvalidated('customers');
     } catch {
       // service already toasts
     } finally {
       setDeleteTarget(null);
     }
   }, [deleteTarget]);
+
+  const showSkeleton = loading && items.length === 0;
 
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
@@ -114,27 +128,30 @@ export function CustomerScreen() {
           className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[180px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
           aria-label="Tìm khách hàng"
         />
-        <span className="text-xs text-text-muted">{filtered.length} khách</span>
+        <span className="text-xs text-text-muted">{total} khách</span>
         <Button variant="default" size="sm" className="ml-auto" onClick={handleAdd}>
           <Plus /> Thêm khách
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none">
-        <CardContent className="flex-1 p-0 overflow-y-auto">
-          {loading ? (
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none gap-0 py-0">
+        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+          {showSkeleton ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : total === 0 && !loading ? (
             <p className="text-xs text-text-muted py-16 text-center">
               {searchQuery ? 'Không tìm thấy khách hàng' : 'Chưa có khách hàng — thêm mới hoặc tạo qua AI/đơn hàng'}
             </p>
           ) : (
-            <ul className="divide-y divide-border-subtle">
-              {filtered.map((c) => {
+            <>
+            <div className="flex-1 min-h-0 relative">
+            <ListLoadingOverlay show={loading} />
+            <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
+              {items.map((c) => {
                 const orderCount = orderCountByCustomer.get(c.id) ?? 0;
                 return (
                   <li
@@ -209,6 +226,16 @@ export function CustomerScreen() {
                 );
               })}
             </ul>
+            </div>
+            <PaginationBar
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={loading}
+            />
+            </>
           )}
         </CardContent>
       </Card>

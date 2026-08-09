@@ -1,33 +1,134 @@
 /**
  * SiliconFlow Service — Cloud AI via SiliconFlow's OpenAI-compatible API.
  *
- * Auto-fallbacks across 5 free models; cascade tries each on non-200/error.
- * Docs: https://docs.siliconflow.cn
- *
- * SiliconFlow API is OpenAI-compatible — POST /v1/chat/completions.
- * Free models are available without payment on the platform.
+ * Free chat models are resolved dynamically from `/models?sub_type=chat`
+ * (heuristic + seed intersect live list), with TTL cache and .com/.cn hosts.
  */
 
-const MODEL_LIST = [
-  'Qwen/Qwen2.5-7B-Instruct',
-  'deepseek-ai/DeepSeek-V2.5',
-  'Qwen/Qwen2-7B-Instruct',
-  'THUDM/glm-4-9b-chat',
-  'Pro/Meta-Llama-3.1-8B-Instruct',
+import {
+  SILICONFLOW_FREE_SEED,
+  resolveSiliconFlowFreeModels,
+} from './freeModelCatalog';
+import { sanitizeApiKey, validateApiKey } from '@/utils/apiKey';
+
+const SILICONFLOW_BASES = [
+  'https://api.siliconflow.com/v1',
+  'https://api.siliconflow.cn/v1',
 ] as const;
 
-const SILICONFLOW_BASE = 'https://api.siliconflow.cn/v1';
 const REQUEST_TIMEOUT_MS = 45_000;
 
 let apiKey: string | null = null;
 let enabled = true;
 let configured = false;
+let preferredBase: (typeof SILICONFLOW_BASES)[number] | null = null;
+let lastModels: string[] = [...SILICONFLOW_FREE_SEED];
 
-// Auto-configure from build-time env var (developer convenience)
-const envKey = (import.meta.env.VITE_SILICONFLOW_API_KEY as string | undefined)?.trim();
+const envKey = sanitizeApiKey(import.meta.env.VITE_SILICONFLOW_API_KEY as string | undefined ?? '');
 if (envKey) {
   apiKey = envKey;
   configured = true;
+}
+
+type GenerateResult =
+  | { ok: true; text: string; model: string }
+  | { ok: false; detail: string };
+
+function summarizeHttpError(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as {
+      message?: string;
+      error?: { message?: string } | string;
+      code?: number | string;
+    };
+    const msg =
+      (typeof parsed.error === 'string' ? parsed.error : parsed.error?.message)?.trim() ||
+      parsed.message?.trim();
+    if (msg) return msg.slice(0, 160);
+  } catch {
+    // ignore
+  }
+  if (status === 401 || status === 403) return 'API key không hợp lệ hoặc bị từ chối';
+  if (status === 402) return 'Hết hạn mức / cần nạp credit SiliconFlow';
+  if (status === 429) return 'Rate limit — thử lại sau';
+  if (status === 404) return 'Model không tồn tại hoặc đã gỡ';
+  const snippet = body.replace(/\s+/g, ' ').trim().slice(0, 120);
+  return snippet || `HTTP ${status}`;
+}
+
+function basesToTry(): readonly string[] {
+  if (!preferredBase) return SILICONFLOW_BASES;
+  return [preferredBase, ...SILICONFLOW_BASES.filter((b) => b !== preferredBase)];
+}
+
+async function requestModel(
+  base: string,
+  modelId: string,
+  prompt: string,
+): Promise<{ text: string | null; error?: string; networkFail?: boolean }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: modelId,
+        temperature: 0.2,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const body = await res.text().catch(() => '');
+    if (!res.ok) {
+      const detail = summarizeHttpError(res.status, body);
+      console.warn(`SiliconFlow HTTP ${res.status} (${modelId} @ ${base}):`, body.slice(0, 200));
+      return { text: null, error: detail };
+    }
+
+    const data = JSON.parse(body || '{}') as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+      error?: { message?: string } | string;
+      message?: string;
+    };
+
+    const errMsg =
+      (typeof data.error === 'string' ? data.error : data.error?.message) || data.message;
+    if (errMsg) {
+      console.warn(`SiliconFlow API error (${modelId}):`, errMsg);
+      return { text: null, error: String(errMsg).slice(0, 160) };
+    }
+
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    return { text: text || null, error: text ? undefined : 'Phản hồi trống' };
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') {
+      console.warn(`SiliconFlow request timeout (${modelId} @ ${base})`);
+      return { text: null, error: 'Timeout', networkFail: true };
+    }
+    console.warn(`SiliconFlow request failed (${modelId} @ ${base}):`, err);
+    return {
+      text: null,
+      error: err instanceof Error ? err.message : 'Lỗi mạng',
+      networkFail: true,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function modelsForRequest(forceRefresh = false): Promise<string[]> {
+  if (!apiKey) return [...SILICONFLOW_FREE_SEED];
+  const models = await resolveSiliconFlowFreeModels(apiKey, basesToTry(), { forceRefresh });
+  lastModels = models;
+  return models;
 }
 
 export const siliconFlowService = {
@@ -40,7 +141,7 @@ export const siliconFlowService = {
   },
 
   get model(): string {
-    return MODEL_LIST[0];
+    return lastModels[0] ?? SILICONFLOW_FREE_SEED[0];
   },
 
   setEnabled(v: boolean): void {
@@ -48,100 +149,73 @@ export const siliconFlowService = {
   },
 
   configure(key: string): void {
-    const trimmed = key.trim();
-    if (trimmed) {
-      apiKey = trimmed;
-      configured = true;
+    const parsed = validateApiKey(key);
+    if (!parsed.ok) {
+      apiKey = null;
+      configured = false;
+      return;
     }
+    apiKey = parsed.key;
+    configured = true;
+    void modelsForRequest(true);
   },
 
   disconnect(): void {
     apiKey = null;
     configured = false;
+    preferredBase = null;
   },
 
-  /**
-   * Chat completion against SiliconFlow API.
-   * Iterates MODEL_LIST on any failure; returns null only if ALL models fail.
-   */
   async generateContent(prompt: string): Promise<string | null> {
-    if (!configured || !enabled || !navigator.onLine || !apiKey) return null;
+    const result = await this.generateWithDetail(prompt);
+    return result.ok ? result.text : null;
+  },
 
-    for (const modelId of MODEL_LIST) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-      try {
-        const res = await fetch(`${SILICONFLOW_BASE}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: modelId,
-            temperature: 0.2,
-            max_tokens: 1024,
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-          }),
-        });
-
-        if (!res.ok) {
-          const body = await res.text().catch(() => '');
-          console.warn(`SiliconFlow HTTP ${res.status} (${modelId}):`, body.slice(0, 200));
-          continue; // try next model
-        }
-
-        const data = (await res.json()) as {
-          choices?: Array<{ message?: { content?: string | null } }>;
-          model?: string;
-          error?: { message?: string };
-        };
-
-        if (data.error?.message) {
-          console.warn(`SiliconFlow API error (${modelId}):`, data.error.message);
-          continue; // try next model
-        }
-
-        const msg = data.choices?.[0]?.message as
-          | { content?: string | null }
-          | undefined;
-        const text = msg?.content?.trim() || '';
-        if (text) return text;
-        // empty response — try next model
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') {
-          console.warn(`SiliconFlow request timeout (${modelId})`);
-        } else {
-          console.warn(`SiliconFlow request failed (${modelId}):`, err);
-        }
-        // fall through to next model
-      } finally {
-        clearTimeout(timeoutId);
-      }
+  async generateWithDetail(prompt: string): Promise<GenerateResult> {
+    if (!configured || !enabled || !navigator.onLine || !apiKey) {
+      return { ok: false, detail: 'Chưa cấu hình hoặc offline' };
     }
 
-    return null;
+    const models = await modelsForRequest(false);
+    const errors: string[] = [];
+
+    const tryModels = async (list: string[]) => {
+      for (const modelId of list) {
+        for (const base of basesToTry()) {
+          const { text, error, networkFail } = await requestModel(base, modelId, prompt);
+          if (text) {
+            preferredBase = base as (typeof SILICONFLOW_BASES)[number];
+            return { ok: true as const, text, model: modelId };
+          }
+          if (error) errors.push(`${modelId}: ${error}`);
+          if (!networkFail) break;
+        }
+      }
+      return null;
+    };
+
+    const first = await tryModels(models);
+    if (first) return first;
+
+    const refreshed = await modelsForRequest(true);
+    if (refreshed.join('|') !== models.join('|')) {
+      const second = await tryModels(refreshed);
+      if (second) return second;
+    }
+
+    return {
+      ok: false,
+      detail: errors[0] ?? 'Không kết nối được SiliconFlow',
+    };
   },
 
-  /** Lightweight ping for Settings. Iterates models for test. */
   async testConnection(): Promise<{ ok: boolean; detail: string }> {
     if (!apiKey) return { ok: false, detail: 'Chưa có API key' };
     if (!navigator.onLine) return { ok: false, detail: 'Offline — cần mạng cho SiliconFlow' };
 
-    const text = await this.generateContent('Trả lời đúng một từ: OK');
-    if (!text) {
-      return {
-        ok: false,
-        detail: 'Không kết nối được SiliconFlow (mạng, rate limit, hoặc key sai)',
-      };
-    }
-    return { ok: true, detail: `${text.slice(0, 40)} · ${MODEL_LIST[0]}` };
+    await modelsForRequest(true);
+    const result = await this.generateWithDetail('Trả lời đúng một từ: OK');
+    if (!result.ok) return { ok: false, detail: result.detail };
+    return { ok: true, detail: `${result.text.slice(0, 40)} · ${result.model}` };
   },
 };

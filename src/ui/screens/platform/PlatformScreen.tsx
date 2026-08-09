@@ -9,6 +9,8 @@ import { PLATFORM_DIRECT_ID } from '@/models';
 import { usePlatformStore } from '@/store/platformStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { getAllPlatforms, deletePlatform } from '@/services/platformService';
+import { notifyListInvalidated, queryPlatformsPage } from '@/services/listQuery';
+import { usePagedList } from '@/hooks/usePagedList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,22 +27,42 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PlatformDialog } from './PlatformDialog';
 import { DetailField, EntityDetailDialog } from '@/ui/components/EntityDetailDialog';
+import { ListLoadingOverlay } from '@/ui/components/ListLoadingOverlay';
+import { PaginationBar } from '@/ui/components/PaginationBar';
 import { formatDate } from '@/utils/date';
 
 export function PlatformScreen() {
-  const platforms = usePlatformStore((s) => s.platforms);
   const searchQuery = usePlatformStore((s) => s.searchQuery);
   const setSearchQuery = usePlatformStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<OrderPlatform | null>(null);
   const [detailPlatform, setDetailPlatform] = useState<OrderPlatform | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrderPlatform | null>(null);
 
+  const listFilters = useMemo(() => ({ search: searchQuery }), [searchQuery]);
+  const filterKey = useMemo(() => searchQuery.trim(), [searchQuery]);
+
+  const {
+    items,
+    total,
+    page,
+    pageSize,
+    loading,
+    setPage,
+    setPageSize,
+  } = usePagedList<OrderPlatform, typeof listFilters>({
+    entity: 'platforms',
+    filters: listFilters,
+    filterKey,
+    fetchPage: ({ page: p, pageSize: ps, filters: f }) =>
+      queryPlatformsPage({ page: p, pageSize: ps }, f),
+  });
+
   useEffect(() => {
-    getAllPlatforms().finally(() => setLoading(false));
+    getAllPlatforms().finally(() => setBootstrapping(false));
   }, []);
 
   const usage = useMemo(() => {
@@ -52,19 +74,6 @@ export function PlatformScreen() {
     return map;
   }, [revenues]);
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    let list = [...platforms];
-    if (q) {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.code?.toLowerCase().includes(q) ?? false),
-      );
-    }
-    return list.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
-  }, [platforms, searchQuery]);
-
   const canDelete = (p: OrderPlatform) =>
     p.id !== PLATFORM_DIRECT_ID && (usage.get(p.id) ?? 0) === 0;
 
@@ -72,12 +81,15 @@ export function PlatformScreen() {
     if (!deleteTarget) return;
     try {
       await deletePlatform(deleteTarget.id);
+      notifyListInvalidated('platforms');
     } catch {
       // toasted
     } finally {
       setDeleteTarget(null);
     }
   }, [deleteTarget]);
+
+  const showSkeleton = loading && items.length === 0;
 
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
@@ -90,7 +102,7 @@ export function PlatformScreen() {
           className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs min-w-[160px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
           aria-label="Tìm kênh đặt hàng"
         />
-        <span className="text-xs text-text-muted">{filtered.length} kênh</span>
+        <span className="text-xs text-text-muted">{total} kênh</span>
         <Button
           variant="default"
           size="sm"
@@ -104,19 +116,22 @@ export function PlatformScreen() {
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none">
-        <CardContent className="flex-1 p-0 overflow-y-auto">
-          {loading ? (
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none gap-0 py-0">
+        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+          {showSkeleton ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : total === 0 && !loading ? (
             <p className="text-xs text-text-muted py-16 text-center">Không có kênh</p>
           ) : (
-            <ul className="divide-y divide-border-subtle">
-              {filtered.map((p) => {
+            <>
+            <div className="flex-1 min-h-0 relative">
+            <ListLoadingOverlay show={loading} />
+            <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
+              {items.map((p) => {
                 const n = usage.get(p.id) ?? 0;
                 return (
                   <li
@@ -186,6 +201,16 @@ export function PlatformScreen() {
                 );
               })}
             </ul>
+            </div>
+            <PaginationBar
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={loading}
+            />
+            </>
           )}
         </CardContent>
       </Card>
@@ -195,6 +220,7 @@ export function PlatformScreen() {
         onClose={() => {
           setDialogOpen(false);
           setEditing(null);
+          notifyListInvalidated('platforms');
         }}
         editPlatform={editing}
       />

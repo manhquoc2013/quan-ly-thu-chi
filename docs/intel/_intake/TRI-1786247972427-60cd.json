@@ -1,0 +1,83 @@
+{
+  "triage_id": "TRI-1786247972427-60cd",
+  "created_at": 1786247972427,
+  "request_summary": "Add mascot reactions for add/edit: add onSuccess callback prop to ExpenseDialog/OrderDialog, call it after save, wire mascotStore.speak() in screens",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/expense/ExpenseDialog.tsx",
+      "src/ui/screens/expense/ExpenseScreen.tsx",
+      "src/ui/screens/revenue/OrderDialog.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "ExpenseDialog and OrderDialog save → onSuccess → mascot speech bubble",
+  "blast_radius": 4,
+  "done_oracle": "npx tsc --noEmit passes; mascot speaks happy when expense/order added, idle when edited",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/ui/screens/expense/ExpenseDialog.tsx",
+    "src/ui/screens/expense/ExpenseScreen.tsx",
+    "src/ui/screens/revenue/OrderDialog.tsx",
+    "src/ui/screens/revenue/RevenueScreen.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/ui/screens/expense/ExpenseDialog.tsx",
+      "line": 155,
+      "quote": "          await updateExpense(editExpense.id, {",
+      "source_hash": "0188f0eed69cf7c94bfeea5f5b3d0f871ba5ecca28ae604eba25d9c4345b1634",
+      "quote_hash": "002055853e9863d654b983ec3389db40e99c98c42a4d7070ba0a5445975b800d",
+      "note": "edit save path"
+    },
+    {
+      "file": "src/ui/screens/expense/ExpenseDialog.tsx",
+      "line": 183,
+      "quote": "          await createExpense({",
+      "source_hash": "0188f0eed69cf7c94bfeea5f5b3d0f871ba5ecca28ae604eba25d9c4345b1634",
+      "quote_hash": "3a76f4dc6deb22ca418025daab84c1ae84f737ebc3ece251c151d3842c42bfdd",
+      "note": "create save path"
+    },
+    {
+      "file": "src/ui/screens/revenue/OrderDialog.tsx",
+      "line": 377,
+      "quote": "        await updateRevenue(editRevenue.id, {",
+      "source_hash": "25b1c17267e662bf7826dc3bf9720235a0b4e4312dacf838ec4e1063f68eb6fb",
+      "quote_hash": "933cebec10a5af8ec392da23dba055b8f9e0c871862a5ca8601d86a7fb216c09",
+      "note": "edit save path"
+    },
+    {
+      "file": "src/ui/screens/revenue/OrderDialog.tsx",
+      "line": 393,
+      "quote": "        await createRevenue({",
+      "source_hash": "25b1c17267e662bf7826dc3bf9720235a0b4e4312dacf838ec4e1063f68eb6fb",
+      "quote_hash": "53261a02e984bee1a77e27a3de55c8a0ec2120489b581fa599a9236a44336069",
+      "note": "create save path"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "8cfe3f75992b4297d570e5feaffeb39c70292bd5",
+    "dirty": true,
+    "captured_at": 1786247972463
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

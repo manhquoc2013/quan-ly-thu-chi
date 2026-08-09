@@ -50,4 +50,7 @@ export { ImagePreview, type ImagePreviewProps } from './ImagePreview';
 export { EmptyState } from './EmptyState';
 export { MarkdownText } from './MarkdownText';
 export { StatusBar } from './StatusBar';
+export { PaginationBar, type PaginationBarProps } from './PaginationBar';
+export { ListLoadingOverlay, type ListLoadingOverlayProps } from './ListLoadingOverlay';
+export { StickyBulkBar, SELECTION_BAR_HEIGHT, type StickyBulkBarProps } from './StickyBulkBar';
 export { AuthProvider } from './AuthProvider';

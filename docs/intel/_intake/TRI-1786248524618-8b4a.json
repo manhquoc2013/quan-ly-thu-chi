@@ -1,0 +1,41 @@
+{
+  "triage_id": "TRI-1786248524618-8b4a",
+  "created_at": 1786248524618,
+  "request_summary": "Fix mascot animation: partAnim function claims to fallback but doesn't — missing keyframes for tossed/spin/grapple actions cause silent animation failure; add proper valid-action lookup table with idle fallback",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/components/MascotOverlay.tsx"
+    ],
+    "impact_files": [
+      "src/ui/components/MascotOverlay.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "MascotOverlay CatBody SVG — partAnim fallback to idle keyframes",
+  "blast_radius": 1,
+  "done_oracle": "npx tsc --noEmit passes; mascot body parts animate correctly for all actions (idle/walk/jump/climb/grapple/spin/flinch/tossed) with silent fallback to idle when action lacks specific keyframe",
+  "change_type": "implementation",
+  "escalated_from": {
+    "triage_id": "TRI-1786247972427-60cd",
+    "breach_kind": "undeclared_path"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "8cfe3f75992b4297d570e5feaffeb39c70292bd5",
+    "dirty": true,
+    "captured_at": 1786248524651
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

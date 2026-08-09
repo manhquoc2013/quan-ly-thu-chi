@@ -14,12 +14,13 @@ import { kiloService } from '@/services/kiloService';
 import { openRouterService } from '@/services/openRouterService';
 import { siliconFlowService } from '@/services/siliconFlowService';
 import { webLLM } from '@/services/webLLM';
-import { type LlmSource, AI_PRIORITY_DEFAULT } from '@/services/llmTypes';
+import { type LlmSource, AI_PRIORITY_DEFAULT, mergeAiPriority } from '@/services/llmTypes';
 import type { UserProfile } from '@/services/authService';
 import { clearToken } from '@/services/tokenService';
 import { closeDatabase } from '@/services/database';
 import { setCacheUserId } from '@/services/cacheManager';
 import { clearOutbox, pendingCount } from '@/services/syncOutbox';
+import { sanitizeApiKey, validateApiKey } from '@/utils/apiKey';
 
 interface AuthState {
   geminiApiKey: string | null;
@@ -97,6 +98,14 @@ function syncOpenRouterService(apiKey: string | null): void {
 function syncSiliconFlowService(apiKey: string | null): void {
   if (apiKey) siliconFlowService.configure(apiKey);
   else siliconFlowService.disconnect();
+}
+
+function normalizeStoredApiKey(apiKey: string | null): string | null {
+  if (!apiKey) return null;
+  const parsed = validateApiKey(apiKey);
+  if (parsed.ok) return parsed.key;
+  const cleaned = sanitizeApiKey(apiKey);
+  return cleaned || null;
 }
 
 function syncKiloService(opts: { enabled: boolean; apiKey: string | null }): void {
@@ -180,11 +189,12 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setOpenRouterApiKey: (openRouterApiKey) => {
+        const normalized = normalizeStoredApiKey(openRouterApiKey);
         set((state) => {
-          state.openRouterApiKey = openRouterApiKey;
-          state.openRouterConfigured = !!openRouterApiKey;
+          state.openRouterApiKey = normalized;
+          state.openRouterConfigured = !!normalized;
         });
-        syncOpenRouterService(openRouterApiKey);
+        syncOpenRouterService(normalized);
       },
 
       setEnableOpenRouter: (enableOpenRouter) => {
@@ -195,11 +205,12 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setSiliconFlowApiKey: (siliconFlowApiKey) => {
+        const normalized = normalizeStoredApiKey(siliconFlowApiKey);
         set((state) => {
-          state.siliconFlowApiKey = siliconFlowApiKey;
-          state.siliconFlowConfigured = !!siliconFlowApiKey;
+          state.siliconFlowApiKey = normalized;
+          state.siliconFlowConfigured = !!normalized;
         });
-        syncSiliconFlowService(siliconFlowApiKey);
+        syncSiliconFlowService(normalized);
       },
 
       setEnableSiliconFlow: (enableSiliconFlow) => {
@@ -345,9 +356,7 @@ export const useAuthStore = create<AuthStore>()(
           apiKey: state.kiloApiKey ?? null,
         });
         webLLM.setDisabled(state.enableWebLLM === false);
-        if (!state.aiPriority || state.aiPriority.length === 0) {
-          state.aiPriority = AI_PRIORITY_DEFAULT;
-        }
+        state.aiPriority = mergeAiPriority(state.aiPriority);
         state.isAuthenticated = false;
       },
     },

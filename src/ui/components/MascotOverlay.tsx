@@ -80,8 +80,18 @@ const PART_STYLES = `
 `;
 
 const partAnim = (part: string, action: Action): string => {
-  const key = `${part}-${action}`;
-  // Falls back to idle if the specific action doesn't have a named keyframe
+  // Known valid (part, action) combos that have @keyframes defined
+  const validActions: Record<string, Set<string>> = {
+    tail: new Set(['idle','walk','flinch','climb']),
+    lleg: new Set(['idle','walk','jump','climb','flinch']),
+    rleg: new Set(['idle','walk','jump','climb','flinch']),
+    larm: new Set(['idle','walk','jump','climb','grapple','flinch','spin']),
+    rarm: new Set(['idle','walk','jump','climb','grapple','flinch','spin']),
+    body: new Set(['idle','walk','jump','climb','flinch']),
+    head: new Set(['idle','walk','jump','flinch']),
+  };
+  const safeAction = validActions[part]?.has(action) ? action : 'idle';
+  const key = `${part}-${safeAction}`;
   const dur =
     action === 'flinch' ? '0.2s' :
     action === 'jump' ? '0.5s' :
@@ -89,7 +99,7 @@ const partAnim = (part: string, action: Action): string => {
     action === 'grapple' ? '0.5s' :
     action === 'spin' ? '0.6s' :
     action === 'walk' ? '0.55s' :
-    '2s';
+    '2.5s';
   return `${key} ${dur} ease-in-out infinite`;
 };
 

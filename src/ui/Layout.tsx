@@ -79,6 +79,16 @@ export function Layout() {
 
   const sidebarCollapsed = collapsed;
   const toggleSidebar = () => setCollapsed((prev) => !prev);
+
+  useEffect(() => {
+    const offset = sidebarCollapsed
+      ? 'var(--dimens-sidebar-collapsed)'
+      : 'var(--dimens-sidebar-width)';
+    document.documentElement.style.setProperty('--layout-sidebar-offset', offset);
+    return () => {
+      document.documentElement.style.removeProperty('--layout-sidebar-offset');
+    };
+  }, [sidebarCollapsed]);
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Quản Lý Tài Chính';
   const displayName = userProfile?.storeName ?? 'User';
   const avatarLetter = displayName.charAt(0).toUpperCase();
@@ -287,7 +297,7 @@ export function Layout() {
             <span className="text-xs text-text-muted tabular-nums shrink-0 w-12 text-right">{clock || '--:--'}</span>
           </header>
           <main className="flex-1 overflow-y-auto min-h-0">
-            <div key={location.pathname} className="animate-fade-in-up max-w-6xl mx-auto w-full p-[var(--s-md)] md:p-[var(--s-xl)] min-w-0 pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
+            <div key={location.pathname} className="animate-fade-in-up max-w-6xl mx-auto w-full min-h-full p-[var(--s-md)] md:p-[var(--s-xl)] min-w-0 pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
               <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="flex gap-1.5">{ [0,1,2].map(i => <div key={i} className="size-2 rounded-full bg-accent-fg animate-pulse" style={{animationDelay:`${i*0.2}s`}} />) }</div></div>}>
                 <Outlet />
               </Suspense>
@@ -324,13 +334,13 @@ export function Layout() {
         <span>© 2026 Quản Lý Tài Chính</span><span>v1.3.0</span>
       </div>
       <button type="button" onClick={toggleFab}
-        className="fixed z-40 flex items-center justify-center size-12 rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-150 hover:scale-110 bottom-20 right-4 md:bottom-4 md:right-6"
+        className="fixed z-50 flex items-center justify-center size-12 rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-150 hover:scale-110 right-4 md:right-6 bottom-[var(--dimens-statusBarHeight)]"
         aria-label="Toggle AI chat"><Bot size={20} /></button>
       <MascotOverlay />
       {(fabOpen || chatClosing) && (
         <>
           <div className="fixed inset-0 z-50" onClick={closeChat} />
-          <div className={`fixed z-50 bottom-20 right-4 md:bottom-16 md:right-6 w-[calc(100vw-2rem)] max-w-[400px] h-[520px] max-h-[calc(100vh-8rem)] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden ${chatClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
+          <div className={`fixed z-50 right-4 md:right-6 w-[calc(100vw-2rem)] max-w-[400px] h-[520px] max-h-[calc(100vh-8rem)] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden bottom-[calc(var(--dimens-statusBarHeight)+var(--dimens-fabSize)+0.75rem)] ${chatClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
             <ChatPanel />
           </div>
         </>

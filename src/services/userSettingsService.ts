@@ -7,7 +7,7 @@ import { kiloService } from './kiloService';
 import { openRouterService } from './openRouterService';
 import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
-import { AI_PRIORITY_DEFAULT, type LlmSource } from './llmTypes';
+import { AI_PRIORITY_DEFAULT, mergeAiPriority, type LlmSource } from './llmTypes';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
 import { useAuthStore } from '@/store/authStore';
 import { useMascotStore } from '@/store/mascotStore';
@@ -36,7 +36,7 @@ function parseAiPriority(raw: unknown): LlmSource[] {
   const mapped = raw
     .map((v) => (v === 'webllm' ? 'local' : v))
     .filter((v): v is LlmSource => typeof v === 'string' && allowed.has(v as LlmSource));
-  return mapped.length > 0 ? mapped : [...AI_PRIORITY_DEFAULT];
+  return mergeAiPriority(mapped);
 }
 
 export async function fetchUserSettings(): Promise<UserSettingsRow | null> {

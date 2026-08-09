@@ -51,6 +51,8 @@ export interface OrderDialogProps {
   onClose: () => void;
   /** Existing revenue to edit (undefined = new order) */
   editRevenue?: Revenue | null;
+  /** Called after successful save. isEdit=true nếu là sửa, false nếu thêm mới. */
+  onSuccess?: (isEdit: boolean) => void;
 }
 
 /* ─── Form state ─── */
@@ -116,7 +118,7 @@ const DELIVERY_OPTIONS = optionsFromLabels(DELIVERY_STATUS_LABELS);
 
 /* ─── Component ─── */
 
-export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
+export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDialogProps) {
   const customers = useCustomerStore((s) => s.customers);
   const products = useProductStore((s) => s.products);
   const platforms = usePlatformStore((s) => s.platforms);
@@ -406,11 +408,12 @@ export function OrderDialog({ open, onClose, editRevenue }: OrderDialogProps) {
           notes: form.notes || undefined,
         });
       }
+      onSuccess?.(!!editRevenue);
       handleClose();
     } catch (err) {
       notify.error(err instanceof Error ? err.message : 'Không lưu được đơn hàng');
     }
-  }, [form, editRevenue, handleClose, remainingAfterDeposit]);
+  }, [form, editRevenue, handleClose, remainingAfterDeposit, onSuccess]);
 
   /* ─── Render ─── */
 
