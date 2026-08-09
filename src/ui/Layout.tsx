@@ -25,6 +25,7 @@ import { kiloService } from '@/services/kiloService';
 import { pendingCount } from '@/services/syncOutbox';
 import { flushOutbox } from '@/services/syncEngine';
 import { useTheme } from '@/hooks/useTheme';
+import { APP_VERSION_LABEL } from '@/appVersion';
 
 interface NavItem { label: string; route: string; tab: string; icon: ReactNode; }
 
@@ -335,7 +336,7 @@ export function Layout() {
           </div>
         )}
       <div className="flex items-center justify-between px-[var(--s-md)] h-8 bg-surface border-t border-border text-[10px] text-text-muted shrink-0">
-        <span>© 2026 Quản Lý Tài Chính</span><span>v1.4.0</span>
+        <span>© 2026 Quản Lý Tài Chính</span><span>{APP_VERSION_LABEL}</span>
       </div>
       <button type="button" onClick={toggleFab}
         className="fixed z-50 flex items-center justify-center size-12 rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-150 hover:scale-110 right-4 md:right-6 bottom-[var(--dimens-statusBarHeight)]"

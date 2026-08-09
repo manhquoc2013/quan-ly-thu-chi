@@ -1,92 +1,138 @@
 # Quản Lý Tài Chính
 
-> **Trạng thái**: Đang phát triển · **Phiên bản**: 1.0.3 · **Cập nhật**: 2026-08-02
+> **Phiên bản**: 1.4.0 · **Cập nhật**: 2026-08-09
 
-Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI, lưu trữ dữ liệu local (SQLite/IndexedDB) + Google Drive sync. Hỗ trợ PWA (cài như app native) và CI/CD tự động deploy lên GitHub Pages.
+Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI đa provider, lưu trữ local (SQLite/IndexedDB) + Supabase cloud sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
 
-## 🎯 Tính năng chính
+---
+
+## 📌 Giới thiệu
+
+**Quản Lý Tài Chính** giúp bạn theo dõi thu chi hàng ngày một cách thông minh. Ứng dụng kết hợp:
+
+- 📊 **Quản lý thủ công**: CRUD chi phí, doanh thu, khách hàng, sản phẩm, kênh bán
+- 🤖 **Trợ lý AI**: Nhập liệu bằng giọng nói, OCR hoá đơn, phân tích số liệu
+- 🐱 **Mascot Lucky**: Mèo hoạt hình tương tác, phản ứng theo thao tác
+- ☁️ **Đồng bộ đa thiết bị**: Supabase Auth + Sync
+
+---
+
+## 🎯 Tính năng
 
 | Module | Mô tả |
 |:---|:---|
-| 📊 **Dashboard** | Trang chủ: chart thu chi 7 ngày, đơn đang chờ + thời gian chờ, giao dịch gần đây |
-| 💰 **Quản lý Chi phí** | CRUD, danh mục, trạng thái, ảnh hóa đơn, tìm kiếm & lọc |
-| 📦 **Quản lý Doanh thu** | Tạo đơn hàng, quản lý khách hàng, sản phẩm, trạng thái đơn & giao hàng |
-| 📊 **Báo cáo (7 loại)** | Chi phí, Doanh thu, Lợi nhuận, Công nợ, Khách hàng, Sản phẩm, Kênh bán — biểu đồ tương tác |
-| 🤖 **Kimi — Trợ lý AI** | Chat thông minh, nhập liệu bằng giọng nói/text, quy đổi ngoại tệ, điều hướng app |
-| 📸 **AI OCR** | Nhập liệu từ ảnh chụp hóa đơn (cần Gemini Cloud), parse text thành đơn hàng |
-| 🔌 **Hybrid AI** | **WebLLM local** (Gemma 2B, offline, miễn phí) + **Gemini Cloud** (online, mạnh mẽ). Tự động chọn provider |
-| ☁️ **Google Drive** | Dữ liệu lưu trên Drive của bạn — bạn toàn quyền sở hữu |
-| 💼 **Portable App** | Giải nén là chạy, không cần cài đặt (Windows, macOS, Linux) |
-| 📱 **PWA** | Cài được trên mobile từ browser |
+| 📊 **Dashboard** | KPI cards (Doanh thu, Chi phí, Lợi nhuận, Công nợ, Đơn chờ), chart thu chi 7 ngày |
+| 💰 **Chi phí** | CRUD, 10 danh mục, tìm kiếm & lọc, chọn nhiều xoá hàng loạt |
+| 📦 **Doanh thu** | Đơn hàng, khách hàng, sản phẩm, kênh bán, trạng thái đơn & thanh toán |
+| 📊 **Báo cáo** | 8 loại báo cáo: Chi phí, Doanh thu, Lợi nhuận, Hàng hoá, Công nợ, Khách hàng, Sản phẩm, Kênh bán |
+| 🤖 **Trợ lý AI** | Chat, nhập liệu giọng nói, OCR hoá đơn, phân tích số liệu |
+| 🔌 **Hybrid AI** | Kilo Free → Gemini → OpenRouter → SiliconFlow → Groq → WebLLM local |
+| 🐱 **Mascot** | Mèo SVG hoạt hình, đi lại trên giao diện, phản ứng CRUD |
+| 🔐 **Auth** | Supabase email/password, đăng ký có xác nhận mật khẩu |
 
-## 📚 Tài liệu dự án
-
-| # | Tài liệu | Mô tả |
-|:--|:---|:---|
-| 01 | [Kiến trúc hệ thống](docs/01-architecture.md) | Tổng quan kiến trúc, công nghệ, luồng dữ liệu |
-| 02 | [Mô hình dữ liệu](docs/02-data-models.md) | Entity relationship, TypeScript types, validation |
-| 03 | [Thiết kế giao diện](docs/03-ui-design.md) | Design tokens, component library, screen layouts |
-| 04 | [Kế hoạch triển khai (tổng quan)](docs/04-implementation-plan.md) | Lộ trình 6 giai đoạn, dependency graph |
-| 05 | [Quyết định kỹ thuật](docs/05-technical-decisions.md) | Tại sao chọn công nghệ này, trade-off analysis |
-| 06 | [SRS — Đặc tả yêu cầu](docs/06-SRS.md) | Yêu cầu chức năng & phi chức năng chi tiết |
-| 07 | [BRD — Yêu cầu nghiệp vụ](docs/07-BRD.md) | Phân tích thị trường, mục tiêu, phạm vi |
-| 08 | [ADD — Thiết kế kiến trúc](docs/08-ADD.md) | Kiến trúc chi tiết, component tree, data flow |
-| 09 | [Kế hoạch triển khai (chi tiết)](docs/09-implementation-plan-detailed.md) | 69 tasks breakdown, ước lượng giờ, dependency |
-| 10 | [Portable Packaging](docs/10-portable-packaging.md) | Đóng gói Electron portable như fe-simulator |
-| 11 | [Hybrid AI Design](docs/11-hybrid-ai-design.md) | Kiến trúc AI lai: WebLLM local + Gemini cloud |
-| 12 | [Resource Optimization](docs/12-resource-optimization.md) | Tối ưu CPU, RAM cho i3-9100, 8GB |
-| 13 | [Theme Tokens & CSS](docs/13-theme-tokens.md) | Design tokens, Tailwind CSS 4, component style presets |
-| 14 | [Development Standards](docs/14-development-standards.md) | Quy chuẩn code: DRY, Clean Code, shared components, linting |
-| 15 | [User · Dev · Build · Deploy](docs/15-user-dev-build-deploy-guide.md) | Hướng dẫn toàn diện: sử dụng, phát triển, build, deploy |
-
-## 🎨 Preview trực tiếp
-
-Mở file trong browser để xem toàn bộ giao diện:
-
-| File | Nội dung |
-|:---|:---|
-| [`preview/full-preview.html`](preview/full-preview.html) | **Preview đầy đủ**: Expense CRUD, Revenue, Report, AI Chat, Settings, Dialogs |
-| [`preview/theme-preview.html`](preview/theme-preview.html) | Theme tokens: màu sắc, spacing, components |
+---
 
 ## 🏗️ Tech Stack
 
-| Layer | Technology |
+| Layer | Công nghệ |
 |:---|:---|
-| **UI** | React 19 + TypeScript + Tailwind CSS 4 |
+| **UI** | React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui |
 | **State** | Zustand 5 |
 | **Router** | React Router 7 |
 | **Charts** | Recharts 2 |
-| **Validation** | Zod 3 |
-| **Cache** | IndexedDB (idb) |
-| **AI** | WebLLM (Qwen 2.5 0.5B, local) + Gemini API (`@google/genai`, cloud) |
-| **Storage** | SQLite (sql.js WASM) + Google Drive API v3 |
-| **Desktop** | Electron 33 (portable packaging) |
+| **Icons** | Lucide React |
+| **AI** | Kilo Free · Gemini · OpenRouter · SiliconFlow · Groq · WebLLM (Qwen3-4B) |
+| **Storage** | SQLite (sql.js WASM) · Supabase |
 | **Build** | Vite 6 |
 | **Test** | Vitest 3 |
-| **Deploy** | GitHub Pages + GitHub Actions CI/CD |
-| **PWA** | Service Worker (manual) + Web App Manifest |
+| **Deploy** | GitHub Pages + Actions |
+| **PWA** | Service Worker + Web App Manifest |
 
-## 🚀 Bắt đầu
+---
+
+## 🚀 Cài đặt & Chạy
 
 ```bash
-# 1. Clone repository
 git clone https://github.com/tranquoc/quan-ly-thu-chi.git
 cd quan-ly-thu-chi
-
-# 2. Cài dependencies
 npm install
-
-# 3. Chạy dev server
-npm run dev
-# → http://localhost:5173
-
-# Build production
-npm run build
-
-# Phát hành phiên bản (deploy GitHub Pages qua tag)
-git tag v1.0.0 && git push origin v1.0.0
+npm run dev        # → http://localhost:5173
+npm run build      # Production build → dist/
 ```
+
+### Yêu cầu
+
+- Node.js ≥ 20
+- Trình duyệt: Chrome 90+, Edge 90+, Firefox 90+, Safari 15+
+
+### Cấu hình Supabase (tuỳ chọn)
+
+Tạo file `.env` từ `.env.example`:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Không có Supabase, app vẫn chạy offline với SQLite local.
+
+---
+
+## 📚 Tài liệu
+
+| # | Tài liệu | Nội dung |
+|:--|:---|:---|
+| | [README](README.md) | Tổng quan dự án |
+| | [RELEASE](RELEASE.md) | Lịch sử phát hành & quy trình release |
+| | [CHANGELOG](CHANGELOG.md) | Nhật ký thay đổi qua các phiên bản |
+| 01 | [Kiến trúc](docs/01-architecture.md) | Tổng quan kiến trúc, công nghệ, luồng dữ liệu |
+| 02 | [Data Models](docs/02-data-models.md) | Entity, TypeScript types |
+| 03 | [UI Design](docs/03-ui-design.md) | Design tokens, components |
+| 06 | [SRS](docs/06-SRS.md) | Yêu cầu chức năng & phi chức năng |
+| 07 | [BRD](docs/07-BRD.md) | Phân tích nghiệp vụ |
+| 13 | [Theme](docs/13-theme-tokens.md) | CSS variables, tokens |
+| 14 | [Standards](docs/14-development-standards.md) | Quy chuẩn code |
+| 15 | [Build & Deploy](docs/15-user-dev-build-deploy-guide.md) | Hướng dẫn dev, build, deploy |
+
+---
+
+## 📦 Cấu trúc thư mục
+
+```
+quan-ly-thu-chi/
+├── public/                    # Static assets (logo, manifest, sw.js)
+├── src/
+│   ├── ui/                    # UI Layer
+│   │   ├── screens/           # Màn hình (expense, revenue, report, settings...)
+│   │   ├── components/        # Shared components (AuthGuard, Mascot...)
+│   │   ├── theme/             # Design tokens
+│   │   └── Layout.tsx         # App shell
+│   ├── store/                 # Zustand stores
+│   ├── services/              # Business logic + API clients
+│   ├── models/                # TypeScript types
+│   └── utils/                 # Helpers (currency, date, cn...)
+├── docs/                      # Tài liệu dự án
+├── supabase/                  # Supabase functions & migrations
+├── test/                      # Test acceptance
+└── package.json
+```
+
+---
+
+## 🤝 Đóng góp
+
+1. Fork repository
+2. Tạo branch: `git checkout -b feature/ten-tinh-nang`
+3. Commit: `git commit -m 'Thêm tính năng X'`
+4. Push: `git push origin feature/ten-tinh-nang`
+5. Tạo Pull Request
+
+---
 
 ## ⚖️ License
 
-MIT
+MIT — Xem [LICENSE](LICENSE)
+
+---
+
+**Quản Lý Tài Chính** — Đơn giản, thông minh, hiệu quả.

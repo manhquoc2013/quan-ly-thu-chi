@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Store, Loader2, ArrowRight } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
+import { APP_VERSION_LABEL } from '@/appVersion';
 
 export function OnboardingScreen() {
   const { isDark } = useTheme();
@@ -112,7 +113,7 @@ export function OnboardingScreen() {
           </CardContent>
         </Card>
         <p className="text-center text-[10px] text-text-muted mt-6">
-          © 2026 Quản Lý Tài Chính · v2.0
+          © 2026 Quản Lý Tài Chính · {APP_VERSION_LABEL}
         </p>
       </div>
     </div>

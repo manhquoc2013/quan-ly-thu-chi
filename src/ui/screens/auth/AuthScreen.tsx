@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/authStore';
 import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { useMascotStore } from '@/store/mascotStore';
 import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
+import { APP_VERSION_LABEL } from '@/appVersion';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -410,7 +411,7 @@ export function AuthScreen() {
         </TooltipProvider>
 
         <p className="text-center text-[10px] text-slate-300/80 mt-6 drop-shadow">
-          © 2026 Quản Lý Tài Chính · v2.0
+          © 2026 Quản Lý Tài Chính · {APP_VERSION_LABEL}
         </p>
       </div>
 

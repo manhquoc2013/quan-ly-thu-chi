@@ -32,6 +32,7 @@ import { Key, Info, Users, User, FlaskConical, CheckCircle, XCircle,
 import { Input } from '@/components/ui/input';
 import { ToggleSwitch } from '@/ui/components/ToggleSwitch';
 import { validateApiKey } from '@/utils/apiKey';
+import { APP_VERSION } from '@/appVersion';
 
 type Tab = 'account' | 'ai' | 'mascot' | 'about';
 
@@ -410,7 +411,7 @@ export function SettingsScreen() {
             <Card><CardHeader><div className="flex items-center gap-2"><Info className="h-4 w-4 text-accent-fg" /><CardTitle>Thông tin</CardTitle></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-sm)]">
                 <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Ứng dụng</span><span className="text-xs font-medium text-text-primary">Quản lý thu chi</span></div>
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Phiên bản</span><span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">1.0.6</span></div>
+                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Phiên bản</span><span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">{APP_VERSION}</span></div>
                 <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Công nghệ</span><span className="text-xs text-text-primary">React 19 · Vite · TypeScript · Tailwind 4 · SQLite + Supabase</span></div>
                 <div className="flex items-center justify-between"><span className="text-xs text-text-muted">AI</span><span className="text-xs text-text-primary">Kilo Free · OpenRouter · SiliconFlow · Groq · Gemini · WebLLM</span></div>
                 <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Tác giả</span><span className="text-xs text-text-primary">Quản Lý Tài Chính Team 🐱</span></div>

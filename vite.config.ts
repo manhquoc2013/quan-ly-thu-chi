@@ -1,6 +1,11 @@
+import { readFileSync } from 'fs';
 import { defineConfig, type Connect, type Plugin, type ProxyOptions, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as {
+  version: string;
+};
 
 const KILO_UPSTREAM = 'https://api.kilo.ai/api/gateway';
 
@@ -74,6 +79,9 @@ function kiloDevProxyPlugin(): Plugin {
 
 export default defineConfig({
   plugins: [react(), kiloDevProxyPlugin()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   base: '/',
   css: {
     transformer: 'postcss',
