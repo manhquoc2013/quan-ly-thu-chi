@@ -220,11 +220,11 @@ export function ExpenseDialog({ open, onClose, editExpense, onSuccess }: Expense
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleCancel(); }}>
-      <DialogContent className="max-w-[640px] !flex !flex-col overflow-hidden p-0 gap-0" showCloseButton={false}>
+      <DialogContent className="max-w-[640px] max-h-[94vh] !flex !flex-col overflow-hidden p-0 gap-0 h-auto" showCloseButton={false}>
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle>{editExpense ? 'Chỉnh sửa chi phí' : 'Thêm chi phí mới'}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(94vh-8rem)]">
           <form ref={formRef} onSubmit={(e) => { handleSubmit(e); }} noValidate>
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
             {/* Date */}

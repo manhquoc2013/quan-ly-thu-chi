@@ -49,14 +49,14 @@ export function EntityDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={`${wide ? 'max-w-lg sm:max-w-xl' : 'max-w-lg'} max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0`}
+        className={`${wide ? 'max-w-lg sm:max-w-xl' : 'max-w-lg'} max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0 h-auto`}
         showCloseButton
       >
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">{children}</div>
+        <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(85vh-6rem)]">{children}</div>
       </DialogContent>
     </Dialog>
   );

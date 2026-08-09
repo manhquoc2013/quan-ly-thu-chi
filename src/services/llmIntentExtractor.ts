@@ -40,6 +40,7 @@ Schema:
   "paymentStatus": "paid"|"unpaid"|null,
   "paymentMethod": "cash"|"bank_transfer"|"credit_card"|"e_wallet"|null,
   "orderStatus": "new"|"confirmed"|"processing"|"completed"|"cancelled"|null,
+  "priority": boolean|null,
   "targetHint": string|null,
   "query": string|null,
   "confidence": 0.0-1.0,
@@ -99,6 +100,9 @@ Schema:
 ## Doanh thu / đơn (create_revenue)
 Mẫu bán: "bán cho Hoa 3 kẹp 90k" · "bán kẹp 20k cho Dung" · "bán 2 cặp thú len 120k" · "em bán cho chị Lan …" (customerName=Lan, bỏ xưng hô).
 Khách chủ ngữ (KHÔNG expense): "Dung mua/lấy/đặt/order …" · "khách Hoa đặt …" · "hôm nay Dung mua … Shopee 60k".
+"tạo đơn khách …" · "ưu tiên cho khách X … giá …" → create_revenue (+ priority=true nếu có ưu tiên).
+"khách Thu 3, SP giá 70k" → customerName="Thu 3"; quantity=1; amount=70000 (số sau tên KHÔNG phải SL trừ khi có đơn vị: "3 cái/con/…").
+"khách Thu 3 cái, SP giá 70k" → customerName=Thu; quantity=3; unitPrice=70000; amount=210000.
 Thu tiền: "Lan trả/chuyển/đưa/ck 80k" · "thu 50k từ Hùng" · "doanh thu 200k …" · "order/đơn … của Hà 90k" · "thêm doanh thu/ghi thu …".
 Thanh toán: chưa TT/công nợ/ghi nợ → unpaid; đã TT/paid → paid; ck/chuyển khoản → bank_transfer (+paid nếu đã TT); tiền mặt→cash; momo/zalopay/ví→e_wallet.
 description = tên SP ngắn (bỏ tên khách, kênh, chữ giá/mua/bán cho). qty mặc định 1; "3 cái/chiếc/bộ/cặp/con/set" → quantity=3.
@@ -120,6 +124,10 @@ Cụm "qua|ở|trên|tại|bên|kênh" + sàn → platformName, XÓA khỏi desc
 ## Sửa / xóa / trạng thái
 - "sửa chi phí cà phê thành 30k" · "đổi mô tả đơn …" · "đổi số tiền DH-… thành 100k" → update_*; targetHint.
 - "đánh dấu đã thanh toán đơn DH-…" → update_revenue; targetHint; paymentStatus=paid (nếu schema cho phép qua amount/summary — ưu tiên update_revenue + summaryVi "đã thanh toán").
+- "ưu tiên đơn DH-…" / "đánh dấu ưu tiên đơn …" → update_revenue; priority=true; targetHint.
+- "bỏ ưu tiên đơn DH-…" → update_revenue; priority=false; targetHint.
+- "tạo đơn … ưu tiên" / "ưu tiên cho khách X … giá …" / "ưu tiên khách X, SP giá …" → create_revenue; priority=true (KHÔNG phải update).
+- Header "tạo đơn" + nhiều dòng "khách …" / "ưu tiên cho khách …" → mỗi dòng 1 create_revenue (multi).
 - "xóa/xoá chi phí nhậu" · "xóa đơn DH-…" · "xóa SP/khách/kênh …" → delete_*; targetHint bắt buộc.
 - Trạng thái đơn → update_order_status; orderStatus ∈ new|confirmed|processing|completed|cancelled.
   hoàn thành/đã xong/done→completed; hủy/huỷ→cancelled; xác nhận→confirmed; đang xử lý→processing; đơn mới→new.
@@ -262,7 +270,10 @@ Tin nhắn có ${segments.length} giao dịch RIÊNG (đã tách). Trả về Đ
 Quy tắc:
 - Phần có "bán/thu/khách … mua" hoặc "{Tên} đã trả/chuyển/đưa N cho SP" → create_revenue.
 - "tạo đơn khách …" mỗi dòng = 1 đơn; "A giá Xk và B giá Yk" = CÙNG đơn (nhiều món), KHÔNG tách thành 2 intent khác khách.
-- "khách Thu 3, SP giá 70k" → customerName=Thu, quantity=3, unitPrice=70000.
+- "ưu tiên cho khách X …" / "ưu tiên khách X, SP giá …" → create_revenue; priority=true.
+- "khách Thu 3, SP giá 70k" → customerName="Thu 3", quantity=1, amount=70000 (không lấy 3 làm SL).
+- "khách Thu 3 cái, SP giá 70k" → customerName=Thu, quantity=3, unitPrice=70000.
+- Header riêng "tạo đơn" rồi các dòng khách → vẫn create_revenue theo từng dòng đã tách.
 - Phần có "uống/ăn/chi/đổ xăng/tôi đi …/mua (không tên khách)/nhập" → create_expense.
 - Phần "thêm/tạo SP|sản phẩm … giá" → create_product; "thêm khách" → create_customer; "thêm kênh" → create_platform.
 - Phần sửa/xóa/đổi trạng thái → update_*|delete_*|update_order_status tương ứng.

@@ -32,6 +32,7 @@ import {
   mergeClarifyReply,
   mergeIntent,
   parseEntityPickIndex,
+  parsePriorityOrderCommand,
   draftToCreateIntent,
   fillMissingSlots,
 } from './chatIntent';
@@ -62,6 +63,7 @@ import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
 import { parseProductUnitUpdateMessage, looksLikeGenerateSkuMessage } from './productService';
+import { notifyListInvalidated } from './listQuery';
 
 export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'siliconflow' | 'groq' | 'gemini' | 'tesseract';
 
@@ -76,7 +78,7 @@ function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
   return intents;
 }
 
-/** Prefer deterministic "tạo đơn" parse over LLM when local draft is complete. */
+/** Prefer deterministic "tạo đơn" / "ưu tiên cho khách" parse over LLM when local draft is complete. */
 function preferLocalTaoDonIntents(
   segments: string[],
   llmIntents: ChatIntent[],
@@ -85,7 +87,11 @@ function preferLocalTaoDonIntents(
   let usedLocal = false;
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]!;
-    if (/^(?:tạo|thêm)\s+đơn\b/i.test(seg.trim())) {
+    const isSpokenOrder =
+      /^(?:tạo|thêm)\s+đơn\b/i.test(seg.trim()) ||
+      /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(seg.trim()) ||
+      /^khách\s+\S+/i.test(seg.trim());
+    if (isSpokenOrder) {
       const draft = parseTextToDraft(seg, 'text');
       if (draft) {
         const intent = sanitizeIntentAgainstMessage(seg, draftToCreateIntent(draft));
@@ -267,14 +273,48 @@ function tryParseVnAction(jsonStr: string): { cleanText: string; action?: ChatAc
 
 /** Trigger mascot overlay if mascot_say and mascot_emotion are present in the parsed JSON. */
 function triggerMascot(mascotSay?: string, mascotEmotion?: string): void {
-  if (mascotSay && mascotEmotion) {
-    const validEmotions = ['happy', 'sad', 'warning', 'celebrate', 'thinking', 'idle'] as const;
-    type MascotEmotion = (typeof validEmotions)[number];
-    const emotion: MascotEmotion = (validEmotions as readonly string[]).includes(mascotEmotion)
-      ? (mascotEmotion as MascotEmotion)
-      : 'happy';
-    useMascotStore.getState().speak(mascotSay, emotion);
+  if (!mascotSay) return;
+  const validEmotions = ['happy', 'sad', 'warning', 'celebrate', 'thinking', 'idle'] as const;
+  type MascotEmotion = (typeof validEmotions)[number];
+  const emotion: MascotEmotion = (validEmotions as readonly string[]).includes(mascotEmotion ?? '')
+    ? (mascotEmotion as MascotEmotion)
+    : 'happy';
+  useMascotStore.getState().speak(mascotSay, emotion);
+}
+
+function plainChatText(text: string): string {
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/^✅\s*/gm, '')
+    .replace(/^❌\s*/gm, '')
+    .replace(/\n+/g, ' · ')
+    .trim();
+}
+
+function invalidateListsForIntent(intent: ChatIntent): void {
+  const i = intent.intent;
+  if (i.includes('expense')) notifyListInvalidated('expenses');
+  if (i.includes('revenue') || i === 'update_order_status') notifyListInvalidated('revenues');
+  if (i.includes('product')) notifyListInvalidated('products');
+  if (i.includes('customer')) notifyListInvalidated('customers');
+  if (i.includes('platform')) notifyListInvalidated('platforms');
+}
+
+function announceChatSuccess(intent: ChatIntent, message: string, quiet?: boolean): void {
+  if (quiet) return;
+  const plain = plainChatText(message).slice(0, 140);
+  if (!plain) return;
+  if (intent.mascotSay) {
+    triggerMascot(intent.mascotSay, intent.mascotEmotion);
+    return;
   }
+  const emotion =
+    intent.intent.startsWith('create_')
+      ? 'celebrate'
+      : intent.intent.startsWith('delete_')
+        ? 'sad'
+        : 'happy';
+  useMascotStore.getState().speak(plain, emotion);
 }
 
 // ─── Chat History & Auto-Compact ────────────────────────────────────────────────
@@ -469,7 +509,7 @@ async function persistBulkDrafts(
 
 async function runIntentTool(
   intent: ChatIntent,
-  opts?: { deleteConfirmed?: boolean },
+  opts?: { deleteConfirmed?: boolean; quietMascot?: boolean },
 ): Promise<{
   text: string;
   source: ChatReplySource;
@@ -496,8 +536,11 @@ async function runIntentTool(
     return { text: `❌ ${result.message}`, source: 'local' };
   }
   setPending(null);
+  invalidateListsForIntent(intent);
+  const text = `✅ ${result.message}`.replace(/^✅ ✅/, '✅');
+  announceChatSuccess(intent, text, opts?.quietMascot);
   return {
-    text: `✅ ${result.message}`.replace(/^✅ ✅/, '✅'),
+    text,
     source: 'local',
     createdRecord: result.createdRecord,
     navigateTo: result.navigateTo,
@@ -1022,19 +1065,18 @@ export const aiRouter = {
       const multiResults: string[] = [];
       let source: ChatReplySource = multi?.source ?? 'local';
       let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
+      let okCount = 0;
 
       for (const intent of intents) {
-        if (intent.mascotSay) {
-          triggerMascot(intent.mascotSay, intent.mascotEmotion);
-        }
         if (intent.missing.length > 0) {
           setPending({ intent, updatedAt: Date.now() });
           multiResults.push(clarifyQuestion(intent));
           break;
         }
-        const out = await runIntentTool(intent);
+        const out = await runIntentTool(intent, { quietMascot: true });
         multiResults.push(out.text);
         if (out.createdRecord) lastCreated = out.createdRecord;
+        if (out.text.startsWith('✅')) okCount += 1;
         if (multi?.source) source = multi.source;
         else source = 'local';
         if (getPending()?.awaitingEntityPick) break;
@@ -1042,21 +1084,49 @@ export const aiRouter = {
 
       if (multiResults.length > 0) {
         const text = multiResults.join('\n\n');
+        if (okCount > 0) {
+          const say =
+            okCount === 1
+              ? plainChatText(multiResults.find((l) => l.startsWith('✅')) ?? text).slice(0, 140)
+              : `Đã xử lý ${okCount} đơn/khoản từ chat! 🎉`;
+          useMascotStore.getState().speak(say || `Đã xử lý ${okCount} mục! 🎉`, 'celebrate');
+        }
         addToHistory(trimmed, text);
         return { text, source, createdRecord: lastCreated };
+      }
+    }
+
+    const priorityCmd = parsePriorityOrderCommand(trimmed);
+    if (priorityCmd) {
+      const out = await runIntentTool(priorityCmd);
+      addToHistory(trimmed, out.text);
+      return { text: out.text, source: 'local', createdRecord: out.createdRecord };
+    }
+
+    // Deterministic spoken orders — local before LLM (tạo đơn / ưu tiên cho khách / khách …)
+    if (segments.length === 1) {
+      const localSpoken = localCreateIntentsFromSegments([trimmed]);
+      const spokenOk =
+        localSpoken.length === 1 &&
+        isRunnableCreate(localSpoken[0]!) &&
+        (/^(?:tạo|thêm)\s+đơn\b/i.test(trimmed) ||
+          /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(trimmed) ||
+          /^khách\s+\S+/i.test(trimmed));
+      if (spokenOk) {
+        const out = await runIntentTool(localSpoken[0]!);
+        addToHistory(trimmed, out.text);
+        return { text: out.text, source: 'local', createdRecord: out.createdRecord };
       }
     }
 
     const extracted = await extractChatIntent(trimmed, financeCtx || undefined);
     if (extracted && extracted.intent.intent !== 'chat') {
       const intent = sanitizeIntentAgainstMessage(trimmed, extracted.intent);
-      if (intent.mascotSay) {
-        triggerMascot(intent.mascotSay, intent.mascotEmotion);
-      }
 
       if (intent.missing.length > 0) {
         setPending({ intent, updatedAt: Date.now() });
         const text = clarifyQuestion(intent);
+        if (intent.mascotSay) triggerMascot(intent.mascotSay, intent.mascotEmotion ?? 'thinking');
         addToHistory(trimmed, text);
         return { text, source: extracted.source };
       }

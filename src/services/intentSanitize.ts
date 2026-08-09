@@ -151,13 +151,8 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
     }
   }
 
-  // Prefer local qty for "Thu 3, SP" / "khách X N,"
-  const qtyComma = message.match(
-    /(?:khách\s+)?[A-Za-zÀ-ỹ]{1,40}(?:\s+[A-Za-zÀ-ỹ]{1,40}){0,3}\s+(\d{1,4})\s*,/i,
-  );
-  const qty = qtyComma
-    ? Math.max(1, parseInt(qtyComma[1]!, 10) || 1)
-    : extractQuantity(message);
+  // Qty chỉ khi có đơn vị rõ ("3 cái", "mua 3 …") — "Thu 3," = tên khách
+  const qty = extractQuantity(message);
   if (qty != null) {
     next = { ...next, quantity: qty };
   } else if (next.quantity && next.quantity > 1 && !(next.orderItems?.length)) {
@@ -172,10 +167,10 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
   } else {
     const amount = extractPrimaryAmountVnd(message);
     if (amount != null) {
-      // "Thu 3, … giá 70k" → 70k is unit price
       if (
         next.intent === 'create_revenue' &&
         (next.quantity ?? 1) > 1 &&
+        /\d{1,4}\s*(?:cái|chiếc|con|bộ|cặp|set|bó)\b/i.test(message) &&
         /,\s*.+\s+giá\s+\d/i.test(message)
       ) {
         next = {

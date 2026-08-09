@@ -301,7 +301,7 @@ function isAnalysisOnly(lower: string): boolean {
 function tryRevenue(lower: string, original: string, source: DraftSource): DraftRecord | null {
   const { core, extras } = extractSaleExtras(lower);
 
-  // "tạo đơn khách …" (multi-line batch / multi-item / "Thu 3, SP")
+  // "tạo đơn khách …" (multi-line batch / multi-item / "Thu 3," = tên khách)
   const taoDon = parseTaoDonOrder(lower, source, extras);
   if (taoDon) return validateDraft(taoDon);
 
@@ -507,11 +507,18 @@ export function extractSaleExtras(lower: string): { core: string; extras: SaleEx
 /** Prefix before money when stating unit price (not package total). */
 const UNIT_PRICE_PREFIX = String.raw`(?:đơn\s*giá|giá\s*mỗi\s*(?:cái|chiếc|bộ|cặp|set)|giá\s*(?:một|1)\s*(?:cái|chiếc)|giá)`;
 
+function isOrderBatchHeaderOnly(text: string): boolean {
+  return /^(?:tạo|thêm)\s+đơn\s*$/i.test(text.trim());
+}
+
 /**
  * Spoken order commands:
  * - tạo đơn khách Út Chi mua 1 A giá 55k và 1 B giá 55k đặt ở tiktok
- * - tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+ * - tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok  ("Thu 3" = tên khách)
+ * - tạo đơn khách Thu 3 cái, chó đeo mắt kính giá 70k      (SL=3 khi có đơn vị)
  * - tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok
+ * - ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+ * - tạo đơn\nkhách … (header tách dòng — caller/split đã bỏ header)
  */
 export function parseTaoDonOrder(
   lower: string,
@@ -519,10 +526,20 @@ export function parseTaoDonOrder(
   extras: SaleExtras = {},
 ): DraftRecord | null {
   let text = lower.trim();
-  if (!/^(?:tạo|thêm)\s+đơn\b/i.test(text) && !/^khách\s+\S+/i.test(text)) {
-    return null;
-  }
+  if (isOrderBatchHeaderOnly(text)) return null;
+
+  const looksLikeSpokenOrder =
+    /^(?:tạo|thêm)\s+đơn\b/i.test(text) ||
+    /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(text) ||
+    /^khách\s+\S+/i.test(text);
+  if (!looksLikeSpokenOrder) return null;
+
+  // Note: do not use \b around Vietnamese — JS \b is ASCII-only and misses "ưu"
+  const wantPriority = /ưu\s*tiên/i.test(text);
   text = text.replace(/^(?:tạo|thêm)\s+đơn\s+/i, '').trim();
+  // "ưu tiên cho khách …" / "ưu tiên khách …" → create + priority
+  text = text.replace(/^ưu\s*tiên(?:\s+cho)?\s+/i, '').trim();
+  text = text.replace(/ưu\s*tiên/gi, ' ').replace(/\s+/g, ' ').trim();
   if (!/^khách\s+/i.test(text)) return null;
 
   const platformName =
@@ -539,20 +556,20 @@ export function parseTaoDonOrder(
     .replace(/\s+/g, ' ')
     .trim();
 
-  // "khách Thu 3, chó đeo mắt kính giá 70k"
-  const qtyComma = body.match(
+  // Qty only when đơn vị rõ: "khách Thu 3 cái, chó đeo mắt kính giá 70k"
+  // "Thu 3," không có đơn vị → tên khách "Thu 3" (xem nameComma bên dưới)
+  const qtyUnitComma = body.match(
     new RegExp(
-      `^khách\\s+(.+?)\\s+(\\d{1,4})\\s*,\\s*(.+?)\\s+${UNIT_PRICE_PREFIX}\\s+${MONEY}\\s*$`,
+      `^khách\\s+(.+?)\\s+(\\d{1,4})\\s*(?:cái|chiếc|con|bộ|cặp|set|bó)\\s*,\\s*(.+?)\\s+${UNIT_PRICE_PREFIX}\\s+${MONEY}\\s*$`,
       'i',
     ),
   );
-  if (qtyComma) {
-    const customerName = capitalizeWords(cleanDesc(qtyComma[1]!));
-    const quantity = Math.max(1, parseInt(qtyComma[2]!, 10) || 1);
-    const product = capitalizeWords(cleanDesc(qtyComma[3]!));
-    const money = normalizeCasualMoney(parseMoney(qtyComma[4]!), qtyComma[4]!);
+  if (qtyUnitComma) {
+    const customerName = capitalizeWords(cleanDesc(qtyUnitComma[1]!));
+    const quantity = Math.max(1, parseInt(qtyUnitComma[2]!, 10) || 1);
+    const product = capitalizeWords(cleanDesc(qtyUnitComma[3]!));
+    const money = normalizeCasualMoney(parseMoney(qtyUnitComma[4]!), qtyUnitComma[4]!);
     if (customerName.length >= 1 && product.length >= 2 && money && money.amountVnd > 0) {
-      // "giá 70k" after SL → unit price (common for catalog items)
       const unitPrice = money.amountVnd;
       const amount = unitPrice * quantity;
       return makeDraft({
@@ -564,6 +581,7 @@ export function parseTaoDonOrder(
         customerName,
         platformName,
         paymentStatus: 'unpaid',
+        priority: wantPriority || undefined,
         source,
         confidence: 0.94,
         rawFx: money.rawFx,
@@ -575,7 +593,7 @@ export function parseTaoDonOrder(
     }
   }
 
-  // "khách T, chó đeo mắt kính giá 70k"
+  // "khách Thu 3, chó đeo mắt kính giá 70k" / "khách T, …" — phần trước dấu phẩy = tên khách
   const nameComma = body.match(
     new RegExp(
       `^khách\\s+([^,]+?)\\s*,\\s*(.+?)\\s+${UNIT_PRICE_PREFIX}\\s+${MONEY}\\s*$`,
@@ -596,6 +614,7 @@ export function parseTaoDonOrder(
         customerName,
         platformName,
         paymentStatus: 'unpaid',
+        priority: wantPriority || undefined,
         source,
         confidence: 0.94,
         rawFx: money.rawFx,
@@ -643,6 +662,7 @@ export function parseTaoDonOrder(
       platformName,
       orderItems,
       paymentStatus: 'unpaid',
+      priority: wantPriority || undefined,
       source,
       confidence: 0.95,
       depositAmount: extras.depositAmount,
@@ -663,6 +683,7 @@ export function parseTaoDonOrder(
       customerName,
       platformName,
       paymentStatus: 'unpaid',
+      priority: wantPriority || undefined,
       source,
       confidence: 0.94,
       depositAmount: extras.depositAmount,
@@ -1051,6 +1072,7 @@ function makeDraft(partial: Omit<DraftRecord, 'id' | 'date'> & { date?: string }
     paymentMethod: partial.paymentMethod,
     orderStatus: partial.orderStatus,
     notes: partial.notes,
+    priority: partial.priority,
     source: partial.source,
     confidence: partial.confidence ?? 0.9,
     rawFx: partial.rawFx,

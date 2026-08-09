@@ -15,7 +15,7 @@ import { notifyListInvalidated, queryRevenuesPage } from '@/services/listQuery';
 import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency } from '@/utils/currency';
 import { sumPaidRevenue } from '@/utils/revenueMetrics';
-import { Plus } from 'lucide-react';
+import { Plus, Star } from 'lucide-react';
 import { RevenueGrid } from './RevenueGrid';
 import { OrderDialog } from './OrderDialog';
 import { OrderRowCard } from './OrderRowCard';
@@ -75,6 +75,7 @@ export function RevenueScreen() {
       orderStatus: filters.orderStatus,
       paymentStatus: filters.paymentStatus,
       customerId: filters.customerId,
+      priorityOnly: filters.priorityOnly || undefined,
     }),
     [filters],
   );
@@ -88,6 +89,7 @@ export function RevenueScreen() {
         os: filters.orderStatus ?? '',
         ps: filters.paymentStatus ?? '',
         c: filters.customerId ?? '',
+        pr: filters.priorityOnly ? 1 : 0,
       }),
     [filters],
   );
@@ -190,8 +192,8 @@ export function RevenueScreen() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-background min-h-0">
-      <div className="flex flex-wrap items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface">
+    <div className="flex flex-col bg-background w-full min-w-0 max-w-full overflow-x-clip">
+      <div className="flex flex-wrap items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface min-w-0">
         <input
           type="text"
           value={filters.search}
@@ -228,6 +230,17 @@ export function RevenueScreen() {
           aria-label="Lọc thanh toán"
         />
 
+        <Button
+          variant={filters.priorityOnly ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 gap-1"
+          onClick={() => setFilters({ priorityOnly: !filters.priorityOnly })}
+          aria-pressed={!!filters.priorityOnly}
+        >
+          <Star size={14} fill={filters.priorityOnly ? 'currentColor' : 'none'} />
+          Ưu tiên
+        </Button>
+
         <span className="inline-flex items-center gap-1">
           <DatePicker
             value={filters.dateFrom}
@@ -262,64 +275,74 @@ export function RevenueScreen() {
         )}
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <Card className="flex-1 flex flex-col min-h-0 overflow-hidden gap-0 py-0 border-0 md:border shadow-none md:shadow-sm rounded-none md:rounded-lg">
-          {error ? (
-            <div className="flex flex-col items-center justify-center flex-1 gap-2 py-12 text-text-muted">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                Thử lại
-              </Button>
-            </div>
-          ) : loading && items.length === 0 ? (
-            <div className="flex flex-col gap-2 py-4 px-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="flex-1 min-h-0 relative">
-                <ListLoadingOverlay show={loading} />
-                <RevenueGrid
-                  records={items}
-                  onRowClick={handleRowClick}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onBulkDelete={async (ids: string[]) => {
-                    await deleteRevenues(ids);
-                    notifyListInvalidated('revenues');
-                    useMascotStore.getState().speak(`Đã xóa ${ids.length} đơn hàng 🧹`, 'warning');
-                  }}
-                  onBulkStatusChange={async (ids: string[], status) => {
-                    for (const id of ids) {
-                      await updateRevenue(id, { orderStatus: status });
-                    }
-                    notifyListInvalidated('revenues');
-                    const label = ORDER_STATUS_LABELS[status] ?? status;
-                    useMascotStore
-                      .getState()
-                      .speak(`Đã cập nhật ${ids.length} đơn → ${label} ✅`, 'happy');
-                  }}
-                />
-              </div>
-              <PaginationBar
-                page={page}
-                pageSize={pageSize}
-                total={total}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-                disabled={loading}
+      <Card className="flex flex-col gap-0 py-0 border-0 md:border shadow-none md:shadow-sm rounded-none md:rounded-lg min-w-0">
+        {error ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-text-muted">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Thử lại
+            </Button>
+          </div>
+        ) : loading && items.length === 0 ? (
+          <div className="flex flex-col gap-2 py-4 px-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <ListLoadingOverlay show={loading} />
+              <RevenueGrid
+                records={items}
+                onRowClick={handleRowClick}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onBulkDelete={async (ids: string[]) => {
+                  await deleteRevenues(ids);
+                  notifyListInvalidated('revenues');
+                  useMascotStore.getState().speak(`Đã xóa ${ids.length} đơn hàng 🧹`, 'warning');
+                }}
+                onBulkStatusChange={async (ids: string[], status) => {
+                  for (const id of ids) {
+                    await updateRevenue(id, { orderStatus: status });
+                  }
+                  notifyListInvalidated('revenues');
+                  const label = ORDER_STATUS_LABELS[status] ?? status;
+                  useMascotStore
+                    .getState()
+                    .speak(`Đã cập nhật ${ids.length} đơn → ${label} ✅`, 'happy');
+                }}
+                onPriorityChange={() => {
+                  notifyListInvalidated('revenues');
+                  void refetch();
+                }}
               />
-            </>
-          )}
-        </Card>
-      </div>
+            </div>
+            <PaginationBar
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              disabled={loading}
+            />
+          </>
+        )}
+      </Card>
 
       <Dialog open={detailRevenue !== null} onOpenChange={(v) => !v && setDetailRevenueId(null)}>
-        <DialogContent className="max-w-lg sm:max-w-xl max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0">
+        <DialogContent className="max-w-lg sm:max-w-xl max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0 h-auto">
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
-            <DialogTitle className="font-mono tracking-tight">{detailRevenue?.orderCode}</DialogTitle>
+            <DialogTitle className="font-mono tracking-tight flex items-center gap-2 flex-wrap">
+              {detailRevenue?.orderCode}
+              {detailRevenue?.priority ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-warning-bg text-warning-fg text-[10px] font-sans font-semibold px-1.5 py-0.5">
+                  <Star size={10} fill="currentColor" />
+                  Ưu tiên
+                </span>
+              ) : null}
+            </DialogTitle>
             <DialogDescription>
               Ngày {detailRevenue?.date}
               {detailRevenue
@@ -327,7 +350,7 @@ export function RevenueScreen() {
                 : ''}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(85vh-8rem)]">
             {detailRevenue && <OrderRowCard row={detailRevenue} readOnly />}
           </div>
         </DialogContent>

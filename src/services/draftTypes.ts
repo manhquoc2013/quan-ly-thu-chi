@@ -41,6 +41,8 @@ export interface DraftRecord {
   unitPrice?: number;
   /** Multi line-items (order table paste) */
   orderItems?: DraftOrderItem[];
+  /** Đơn ưu tiên */
+  priority?: boolean;
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;

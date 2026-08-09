@@ -31,12 +31,23 @@ function isTxModifierOnly(text: string): boolean {
   );
 }
 
-/** One spoken/typed order or sale line (keep whole — do not split on và/comma). */
+/** Bare header line: "tạo đơn" / "thêm đơn" with no body. */
+function isOrderBatchHeader(text: string): boolean {
+  return /^(?:tạo|thêm)\s+đơn\s*$/i.test(text.trim());
+}
+
+/**
+ * One spoken/typed order or sale line (keep whole — do not split on và/comma).
+ * Includes: tạo đơn … · khách … · ưu tiên (cho) khách …
+ */
 function looksLikeOrderLine(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  if (isOrderBatchHeader(t)) return false;
   if (/^(?:tạo|thêm)\s+đơn\b/i.test(t)) return true;
   if (/^bán\s+cho\b/i.test(t)) return true;
+  // "ưu tiên cho khách Thu 3, SP giá 70k" / "ưu tiên khách T, …"
+  if (/^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(t) && hasAmountToken(t)) return true;
   if (/^khách\s+\S+/i.test(t) && /\b(?:mua|lấy|đặt|order)\b/i.test(t)) return true;
   if (/^khách\s+\S+/i.test(t) && hasAmountToken(t)) return true;
   return false;
@@ -122,18 +133,24 @@ function splitConjunctionTx(message: string): string[] {
 function splitOneLine(line: string): string[] {
   const t = line.trim();
   if (!t) return [];
-  // Spoken "tạo đơn …" / "thêm đơn …" is always one order (may contain "và" line items)
+  if (isOrderBatchHeader(t)) return [];
+  // Spoken "tạo đơn …" / "thêm đơn …" / "ưu tiên cho khách …" is always one order
   if (/^(?:tạo|thêm)\s+đơn\b/i.test(t)) return [t];
   if (looksLikeOrderLine(t) && hasAmountToken(t)) return [t];
   return splitConjunctionTx(t);
 }
 
 export function splitMultiTx(message: string): string[] {
-  const lines = message
+  let lines = message
     .replace(/\r\n/g, '\n')
     .split(/\n+/)
     .map((l) => l.trim())
     .filter(Boolean);
+
+  // Drop bare header "tạo đơn" / "thêm đơn" so body lines form the batch
+  if (lines.length >= 2 && isOrderBatchHeader(lines[0]!)) {
+    lines = lines.slice(1);
+  }
 
   // Multi-line batch of orders: one segment per line
   if (lines.length >= 2) {
@@ -146,6 +163,10 @@ export function splitMultiTx(message: string): string[] {
       const parts = lines.flatMap((l) => splitOneLine(l));
       const valid = parts.filter((p) => hasAmountToken(p) && looksLikeStandaloneTx(p));
       if (valid.length >= 2) return valid;
+    }
+    // Header was stripped; remaining may be 1 order line + noise — keep order intact
+    if (orderLines.length === 1 && lines.length === 1) {
+      return orderLines;
     }
   }
 

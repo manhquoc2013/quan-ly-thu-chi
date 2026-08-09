@@ -231,7 +231,7 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className={`max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0 ${
+          className={`max-h-[85vh] !flex !flex-col overflow-hidden p-0 gap-0 h-auto ${
             props.type === 'revenue' ? 'max-w-lg sm:max-w-xl' : 'max-w-2xl'
           }`}
         >
@@ -247,7 +247,7 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(85vh-9rem)]">
             {/* ── EXPENSE section ──────────────────────────────────────────── */}
             {props.type === 'expense' && (
               <div className="space-y-4">
@@ -416,7 +416,7 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
 
                   <div className="space-y-2">
                     <p className="text-[10px] uppercase tracking-wide text-text-muted">Sản phẩm</p>
-                    <div className="overflow-x-auto rounded-field border border-border-subtle">
+                    <div className="overflow-x-auto overflow-y-hidden rounded-field border border-border-subtle">
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="border-b border-border-subtle text-text-muted bg-surface">

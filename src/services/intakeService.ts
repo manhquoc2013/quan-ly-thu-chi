@@ -516,6 +516,8 @@ async function persistRevenueDraft(draft: DraftRecord) {
       paymentStatus: draft.paymentStatus ?? 'unpaid',
       paidAt: draft.paymentStatus === 'paid' ? draft.date : undefined,
       notes: noteBits.join(' · ') || undefined,
+      priority: draft.priority || undefined,
+      priorityAt: draft.priority ? new Date().toISOString() : undefined,
     },
     { silent: true },
   );

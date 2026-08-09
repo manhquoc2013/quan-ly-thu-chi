@@ -57,6 +57,8 @@ export interface ChatIntent {
   paymentMethod?: PaymentMethod;
   /** Multi line-items for one order (spoken "tạo đơn … A và B") */
   orderItems?: DraftOrderItem[];
+  /** Đơn ưu tiên */
+  priority?: boolean;
   forceNewCustomer?: boolean;
   forceNewProduct?: boolean;
   forceNewPlatform?: boolean;
@@ -212,6 +214,7 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     paymentStatus,
     paymentMethod,
     orderStatus,
+    priority: typeof o.priority === 'boolean' ? o.priority : undefined,
     unit: str(o.unit),
     targetHint: str(o.targetHint),
     query: str(o.query),
@@ -344,6 +347,7 @@ export function mergeIntent(base: ChatIntent, patch: ChatIntent): ChatIntent {
     forceNewProduct: patch.forceNewProduct ?? base.forceNewProduct,
     forceNewPlatform: patch.forceNewPlatform ?? base.forceNewPlatform,
     orderItems: patch.orderItems ?? base.orderItems,
+    priority: patch.priority ?? base.priority,
     orderStatus: patch.orderStatus ?? base.orderStatus,
     targetHint: patch.targetHint ?? base.targetHint,
     query: patch.query ?? base.query,
@@ -500,6 +504,7 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
           : undefined,
         paymentStatus: intent.paymentStatus ?? 'unpaid',
         paymentMethod: intent.paymentMethod,
+        priority: intent.priority || undefined,
         source,
         confidence: intent.confidence,
       };
@@ -540,6 +545,7 @@ export function intentToDraft(intent: ChatIntent, source: DraftRecord['source'] 
       paymentStatus: intent.paymentStatus ?? 'unpaid',
       paymentMethod: intent.paymentMethod,
       notes: noteBits.length ? noteBits.join(' · ') : undefined,
+      priority: intent.priority || undefined,
       source,
       confidence: intent.confidence,
     };
@@ -599,6 +605,38 @@ export function parseEntityPickIndex(message: string): number | null {
   return parseInt(m[1]!, 10);
 }
 
+/** Parse "đánh dấu ưu tiên đơn DH-…" / "bỏ ưu tiên đơn …" (không phải tạo đơn mới). */
+export function parsePriorityOrderCommand(message: string): ChatIntent | null {
+  const t = message.trim();
+  // Create-order phrasings — not an update of an existing DH-
+  if (
+    /^(?:tạo|thêm)\s+đơn\b/i.test(t) ||
+    /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(t) ||
+    (/\bkhách\s+\S+/i.test(t) &&
+      /\d+[.,]?\d*\s*(?:k|K|m|M|tr|nghìn|ngàn|đồng|vnd|₫|đ)\b/.test(t))
+  ) {
+    return null;
+  }
+  const clear = /^(?:bỏ|gỡ|hủy|huỷ)\s+ưu\s*tiên(?:\s+đơn)?\s+(.+)$/i.exec(t);
+  const set =
+    /^(?:đánh\s*dấu\s+)?ưu\s*tiên(?:\s+đơn)?\s+(.+)$/i.exec(t) ||
+    /^đánh\s*dấu\s+đơn\s+(.+?)\s+ưu\s*tiên$/i.exec(t);
+  const m = clear ?? set;
+  if (!m) return null;
+  const hint = m[1]!.trim().replace(/^đơn\s+/i, '');
+  if (hint.length < 2) return null;
+  // "ưu tiên cho khách … giá …" already excluded above; also skip bare money creates
+  if (/\bgiá\b/i.test(hint) && /\d/.test(hint)) return null;
+  return fillMissingSlots({
+    intent: 'update_revenue',
+    targetHint: hint,
+    priority: !clear,
+    confidence: 0.95,
+    missing: [],
+    summaryVi: clear ? `bỏ ưu tiên ${hint}` : `ưu tiên ${hint}`,
+  });
+}
+
 /** Build create_revenue intent from a text draft (regex intake). */
 export function draftToCreateIntent(draft: DraftRecord): ChatIntent {
   if (draft.kind === 'product') {
@@ -633,6 +671,7 @@ export function draftToCreateIntent(draft: DraftRecord): ChatIntent {
     platformId: draft.platformId,
     platformName: draft.platformName,
     orderItems: draft.orderItems,
+    priority: draft.priority,
     depositAmount: draft.depositAmount,
     shippingFee: draft.shippingFee,
     shippingPayer: draft.shippingPayer,

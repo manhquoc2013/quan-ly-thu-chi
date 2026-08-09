@@ -325,7 +325,7 @@ export async function executeChatIntent(
             .join(', ');
           return {
             ok: true,
-            message: `Đã thêm doanh thu: **${itemsLabel}** — ${formatCurrency(draft.amount)}${custLabel}${platLabel}`,
+            message: `Đã thêm doanh thu: **${itemsLabel}** — ${formatCurrency(draft.amount)}${custLabel}${platLabel}${draft.priority ? ' · ⭐ ưu tiên' : ''}`,
             createdRecord: { kind: created[0].kind, id: created[0].id },
           };
         }
@@ -371,7 +371,7 @@ export async function executeChatIntent(
             : '';
         return {
           ok: true,
-          message: `Đã thêm doanh thu: **${prod.status === 'resolved' ? prod.name : draft.description}** — ${formatCurrency(draft.amount)}${qtyLabel}${custLabel}${platLabel}${payLabel}`,
+          message: `Đã thêm doanh thu: **${prod.status === 'resolved' ? prod.name : draft.description}** — ${formatCurrency(draft.amount)}${qtyLabel}${custLabel}${platLabel}${payLabel}${draft.priority ? ' · ⭐ ưu tiên' : ''}`,
           createdRecord: { kind: created[0].kind, id: created[0].id },
         };
       }
@@ -550,11 +550,17 @@ export async function executeChatIntent(
         notes.push('chưa thanh toán');
       }
 
+      if (typeof intent.priority === 'boolean') {
+        patch.priority = intent.priority;
+        patch.priorityAt = intent.priority ? new Date().toISOString() : undefined;
+        notes.push(intent.priority ? 'đánh dấu ưu tiên' : 'bỏ ưu tiên');
+      }
+
       if (Object.keys(patch).length === 0) {
         return {
           ok: false,
           message:
-            'Chưa có thay đổi. Có thể: đánh dấu đã TT, đổi tiền/cọc/ship, đổi trạng thái, đổi khách.',
+            'Chưa có thay đổi. Có thể: ưu tiên, đánh dấu đã TT, đổi tiền/cọc/ship, đổi trạng thái, đổi khách.',
         };
       }
 

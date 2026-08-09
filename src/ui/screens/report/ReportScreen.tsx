@@ -170,7 +170,7 @@ export function ReportScreen() {
         onValueChange={(v) => setReportTab(v as ReportTab)}
         className="min-w-0 w-full"
       >
-        <div className="w-full max-w-full overflow-x-auto overscroll-x-contain pb-0.5 -mx-0.5 px-0.5">
+        <div className="w-full max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 -mx-0.5 px-0.5">
           <TabsList className="inline-flex w-max min-w-full h-auto flex-nowrap justify-start gap-0.5">
             {SEGMENTS.map((s) => (
               <TabsTrigger

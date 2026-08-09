@@ -56,6 +56,18 @@ tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok`;
     expect(parts[2]).toMatch(/khách T,.*chó đeo mắt kính.*tiktok/i);
   });
 
+  it('splits header tạo đơn + ưu tiên cho khách lines', () => {
+    const msg = `tạo đơn 
+khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok
+ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+ưu tiên cho khách T, chó đeo mắt kính giá 70k ở tiktok`;
+    const parts = splitMultiTx(msg);
+    expect(parts).toHaveLength(3);
+    expect(parts[0]).toMatch(/^khách Út Chi.*và 1 bó hoa.*tiktok/i);
+    expect(parts[1]).toMatch(/^ưu tiên cho khách Thu 3,/i);
+    expect(parts[2]).toMatch(/^ưu tiên cho khách T,/i);
+  });
+
   it('does not split và line-items inside one tạo đơn', () => {
     const parts = splitMultiTx(
       'tạo đơn khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok',
@@ -80,18 +92,30 @@ describe('parseTaoDonOrder', () => {
     expect(d?.orderItems?.[1]?.name).toMatch(/hoa màu đỏ/i);
   });
 
-  it('parses Thu 3, product as qty 3 unit price', async () => {
+  it('parses Thu 3, product as customer name Thu 3', async () => {
     const { parseTextToDraft } = await import('./textDraftParser');
     const d = parseTextToDraft(
       'tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
+    );
+    expect(d?.kind).toBe('revenue');
+    expect(d?.customerName).toBe('Thu 3');
+    expect(d?.quantity).toBe(1);
+    expect(d?.unitPrice).toBe(70000);
+    expect(d?.amount).toBe(70000);
+    expect(d?.platformName).toBe('TikTok');
+    expect(d?.description).toMatch(/chó đeo mắt kính/i);
+  });
+
+  it('parses Thu 3 cái, product as qty 3', async () => {
+    const { parseTextToDraft } = await import('./textDraftParser');
+    const d = parseTextToDraft(
+      'tạo đơn khách Thu 3 cái, chó đeo mắt kính giá 70k ở tiktok',
     );
     expect(d?.kind).toBe('revenue');
     expect(d?.customerName).toBe('Thu');
     expect(d?.quantity).toBe(3);
     expect(d?.unitPrice).toBe(70000);
     expect(d?.amount).toBe(210000);
-    expect(d?.platformName).toBe('TikTok');
-    expect(d?.description).toMatch(/chó đeo mắt kính/i);
   });
 
   it('parses 1-letter customer T', async () => {
@@ -103,6 +127,54 @@ describe('parseTaoDonOrder', () => {
     expect(d?.customerName).toBe('T');
     expect(d?.amount).toBe(70000);
     expect(d?.platformName).toBe('TikTok');
+  });
+
+  it('parses ưu tiên cho khách as create with priority', async () => {
+    const { parseTextToDraft } = await import('./textDraftParser');
+    const d = parseTextToDraft(
+      'ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
+    );
+    expect(d?.kind).toBe('revenue');
+    expect(d?.customerName).toBe('Thu 3');
+    expect(d?.quantity).toBe(1);
+    expect(d?.amount).toBe(70000);
+    expect(d?.priority).toBe(true);
+    expect(d?.platformName).toBe('TikTok');
+  });
+
+  it('parses full batch header + ưu tiên lines as 3 drafts', () => {
+    const msg = `tạo đơn 
+khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok
+ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
+ưu tiên cho khách T, chó đeo mắt kính giá 70k ở tiktok`;
+    const segs = splitMultiTx(msg);
+    const drafts = segs.map((s) => parseTextToDraft(s));
+    expect(drafts).toHaveLength(3);
+    expect(drafts[0]?.customerName).toMatch(/Út Chi/i);
+    expect(drafts[0]?.orderItems).toHaveLength(2);
+    expect(drafts[0]?.amount).toBe(110000);
+    expect(drafts[0]?.priority).toBeFalsy();
+    expect(drafts[1]?.customerName).toBe('Thu 3');
+    expect(drafts[1]?.priority).toBe(true);
+    expect(drafts[1]?.amount).toBe(70000);
+    expect(drafts[2]?.customerName).toBe('T');
+    expect(drafts[2]?.priority).toBe(true);
+    expect(drafts[2]?.amount).toBe(70000);
+  });
+
+  it('parses priority toggle commands', async () => {
+    const { parsePriorityOrderCommand } = await import('./chatIntent');
+    const set = parsePriorityOrderCommand('ưu tiên đơn DH-20260809-001');
+    expect(set?.intent).toBe('update_revenue');
+    expect(set?.priority).toBe(true);
+    expect(set?.targetHint).toMatch(/DH-20260809-001/i);
+    const clear = parsePriorityOrderCommand('bỏ ưu tiên đơn DH-20260809-001');
+    expect(clear?.priority).toBe(false);
+    expect(
+      parsePriorityOrderCommand(
+        'ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
+      ),
+    ).toBeNull();
   });
 });
 

@@ -119,7 +119,7 @@ export function CustomerScreen() {
   const showSkeleton = loading && items.length === 0;
 
   return (
-    <div className="flex flex-col h-full bg-background min-h-0">
+    <div className="flex flex-col w-full min-w-0 bg-background">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
         <input
           type="search"
@@ -135,8 +135,8 @@ export function CustomerScreen() {
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none gap-0 py-0">
-        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+      <Card className="flex flex-col border-none gap-0 py-0 shadow-none min-w-0">
+        <CardContent className="flex flex-col p-0">
           {showSkeleton ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -149,9 +149,9 @@ export function CustomerScreen() {
             </p>
           ) : (
             <>
-            <div className="flex-1 min-h-0 relative">
+            <div className="relative">
             <ListLoadingOverlay show={loading} />
-            <ul className="h-full overflow-y-auto divide-y divide-border-subtle">
+            <ul className="divide-y divide-border-subtle">
               {items.map((c, index) => {
                 const orderCount = orderCountByCustomer.get(c.id) ?? 0;
                 return (

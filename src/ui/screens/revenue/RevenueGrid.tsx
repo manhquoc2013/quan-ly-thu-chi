@@ -3,7 +3,7 @@
  * Desktop: wide table. Mobile: stacked cards.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type MouseEvent } from 'react';
 import type { Revenue, OrderStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
@@ -23,9 +23,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Package } from 'lucide-react';
+import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Package, Star } from 'lucide-react';
 import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
 import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
+import { updateRevenue } from '@/services/revenueService';
+import { useMascotStore } from '@/store/mascotStore';
+import { cn } from '@/utils/cn';
+import { TableHScroll } from '@/ui/components/TableHScroll';
+
+/* Desktop row: fixed tracks so content can exceed narrow viewports → TableHScroll. */
+const REVENUE_MIN_WIDTH = 1100;
+const REVENUE_GRID_COLS =
+  '32px 28px minmax(140px,1.2fr) 88px minmax(120px,1fr) 40px 100px 110px 120px 148px';
 
 /* ─── Props ─── */
 
@@ -36,6 +45,7 @@ export interface RevenueGridProps {
   onDelete?: (row: Revenue) => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: OrderStatus) => void;
+  onPriorityChange?: (row: Revenue, priority: boolean) => void;
 }
 
 /* ─── Badge helpers ─── */
@@ -72,7 +82,15 @@ function customerLabel(row: Revenue, customers: Array<{ id: string; name: string
 
 /* ─── Component ─── */
 
-export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelete, onBulkStatusChange }: RevenueGridProps) {
+export function RevenueGrid({
+  records,
+  onRowClick,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+  onBulkStatusChange,
+  onPriorityChange,
+}: RevenueGridProps) {
   const customers = useCustomerStore((s) => s.customers);
   const platforms = usePlatformStore((s) => s.platforms);
   const [confirmDelete, setConfirmDelete] = useState<Revenue | null>(null);
@@ -83,6 +101,25 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
   useEffect(() => {
     setSelectedIds(new Set());
   }, [pageIdsKey]);
+
+  const togglePriority = useCallback(
+    async (row: Revenue, e: MouseEvent) => {
+      e.stopPropagation();
+      const next = !row.priority;
+      await updateRevenue(row.id, {
+        priority: next,
+        priorityAt: next ? new Date().toISOString() : undefined,
+      });
+      useMascotStore
+        .getState()
+        .speak(
+          next ? `Ưu tiên ${row.orderCode}! ⭐` : `Bỏ ưu tiên ${row.orderCode}`,
+          next ? 'celebrate' : 'idle',
+        );
+      onPriorityChange?.(row, next);
+    },
+    [onPriorityChange],
+  );
 
   const handleConfirmDelete = useCallback(() => {
     if (!confirmDelete) return;
@@ -123,18 +160,21 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
   const platformOf = (row: Revenue) =>
     row.platformId ? platforms.find((p) => p.id === row.platformId)?.name : undefined;
 
-  const rowClass = [
-    'flex items-center gap-[var(--s-md)] px-[var(--s-md)] h-12',
-    'border-b border-border-subtle cursor-pointer',
-    'transition-colors duration-[var(--d-fast)] hover:bg-surface-hover',
-  ].join(' ');
+  const rowGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: REVENUE_GRID_COLS,
+    width: '100%',
+    alignItems: 'center',
+    columnGap: '0.5rem',
+    paddingLeft: '0.75rem',
+    paddingRight: '0.75rem',
+    boxSizing: 'border-box',
+  } as const;
 
   return (
-    <div className="flex flex-col h-full min-h-0" aria-label="Danh sách đơn hàng">
-      {/* ── Scrollable content ────────────────────────────────────── */}
-      <div className="flex-1 min-h-0">
+    <div className="flex flex-col w-full min-w-0 max-w-full" aria-label="Danh sách đơn hàng">
       {/* ── Mobile cards ───────────────────────────────────────────── */}
-      <ul className="md:hidden flex flex-col gap-2 p-2 pb-[var(--dimens-fabClearance)] list-none m-0">
+      <ul className="md:hidden flex flex-col gap-2 p-2 list-none m-0">
         {records.length === 0 && (
           <li className="px-3 py-8 text-center text-xs text-text-muted">Chưa có đơn hàng</li>
         )}
@@ -156,12 +196,15 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                 }}
                 className={
                   'rounded-lg border ' +
-                  (isSelected ? 'border-accent-fg bg-accent-bg' : 'border-border bg-surface') +
+                  (isSelected
+                    ? 'border-accent-fg bg-accent-bg'
+                    : row.priority
+                      ? 'border-warning-fg/40 bg-warning-bg'
+                      : 'border-border bg-surface') +
                   ' px-3 py-3 ' +
                   'active:bg-surface-hover transition-colors duration-[var(--d-fast)]'
                 }
               >
-                {/* Select checkbox + header */}
                 <div className="flex items-start justify-between gap-2">
                   <button
                     type="button"
@@ -172,7 +215,20 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                     {isSelected ? <CheckSquare size={16} className="text-accent-fg" /> : <Square size={16} />}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-mono font-semibold text-text-primary truncate">
+                    <p className="text-xs font-mono font-semibold text-text-primary truncate flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => void togglePriority(row, e)}
+                        className={
+                          row.priority
+                            ? 'text-warning-fg shrink-0'
+                            : 'text-text-muted hover:text-warning-fg shrink-0'
+                        }
+                        aria-label={row.priority ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
+                        title={row.priority ? 'Bỏ ưu tiên' : 'Ưu tiên'}
+                      >
+                        <Star size={14} fill={row.priority ? 'currentColor' : 'none'} />
+                      </button>
                       {row.orderCode}
                     </p>
                     <p className="text-[11px] text-text-muted mt-0.5">
@@ -191,6 +247,11 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                 </p>
 
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {row.priority ? (
+                    <Badge variant="outline" className="text-[10px] bg-warning-bg text-warning-fg border-transparent">
+                      Ưu tiên
+                    </Badge>
+                  ) : null}
                   <Badge
                     variant={statusVariant(row.orderStatus)}
                     className={statusBadgeClass(row.orderStatus)}
@@ -232,18 +293,15 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
         })}
       </ul>
 
-      {/* ── Desktop table ──────────────────────────────────────────── */}
-      <div className="hidden md:block overflow-x-auto pb-[var(--dimens-fabClearance)]" role="grid">
-        <div className="inline-block min-w-full">
+      {/* Desktop — scroll X only inside TableHScroll; page shell never scrolls X. */}
+      <div className="hidden md:block w-full min-w-0 max-w-full">
+        <TableHScroll minWidth={REVENUE_MIN_WIDTH}>
           <div
-            className={
-              'flex items-center gap-[var(--s-md)] px-[var(--s-md)] ' +
-              'h-8 text-xs font-semibold text-grid-header-fg ' +
-              'bg-grid-header-bg border-b border-border sticky top-0 z-10 min-w-[1020px]'
-            }
             role="row"
+            className="h-8 text-xs font-semibold bg-grid-header-bg text-grid-header-fg border-b border-border"
+            style={rowGridStyle}
           >
-            <div className="w-[36px] shrink-0 flex items-center justify-center" role="columnheader">
+            <div className="flex justify-center" role="columnheader">
               <button
                 type="button"
                 onClick={toggleSelectAll}
@@ -253,31 +311,20 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                 {allSelected ? <CheckSquare size={15} /> : <Square size={15} />}
               </button>
             </div>
-            <div className="w-[150px] shrink-0" role="columnheader">
-              Mã đơn
-            </div>
-            <div className="w-[100px] shrink-0" role="columnheader">
-              Ngày
-            </div>
-            <div className="flex-1 min-w-[100px]" role="columnheader">
-              Khách hàng
-            </div>
-            <div className="w-[56px] shrink-0 text-right" role="columnheader">
-              SL
-            </div>
-            <div className="w-[120px] shrink-0 text-right" role="columnheader">
-              Tổng tiền
-            </div>
-            <div className="w-[110px] shrink-0 text-center" role="columnheader">
-              Trạng thái
-            </div>
-            <div className="w-[120px] shrink-0 text-center" role="columnheader">
-              Thanh toán
-            </div>
-            <div className="w-[168px] shrink-0 text-center" role="columnheader">
-              Thao tác
-            </div>
+            <div role="columnheader" aria-label="Ưu tiên" />
+            <div className="min-w-0 truncate" role="columnheader">Mã đơn</div>
+            <div className="min-w-0 truncate" role="columnheader">Ngày</div>
+            <div className="min-w-0 truncate" role="columnheader">Khách</div>
+            <div className="text-right" role="columnheader">SL</div>
+            <div className="text-right truncate" role="columnheader">Tổng tiền</div>
+            <div className="text-center truncate" role="columnheader">Trạng thái</div>
+            <div className="text-center truncate" role="columnheader">Thanh toán</div>
+            <div className="text-center truncate" role="columnheader">Thao tác</div>
           </div>
+
+          {records.length === 0 && (
+            <div className="px-3 py-8 text-center text-xs text-text-muted">Chưa có đơn hàng</div>
+          )}
 
           {records.map((row, index) => {
             const itemQty = row.items.reduce((s, i) => s + i.quantity, 0);
@@ -286,19 +333,20 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
             return (
               <div
                 key={row.id}
-                className={`${rowClass} min-w-[1020px] ${LIST_ROW_ANIM} ${isSelected ? 'bg-grid-row-selected' : ''}`}
-                style={listRowStyle(index)}
                 role="row"
                 onClick={() => onRowClick?.(row)}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onRowClick?.(row);
-                  }
-                }}
+                className={cn(
+                  LIST_ROW_ANIM,
+                  'h-12 text-xs cursor-pointer border-b border-border-subtle',
+                  'transition-colors duration-[var(--d-fast)] hover:bg-surface-hover',
+                  isSelected && 'bg-grid-row-selected',
+                  row.priority &&
+                    !isSelected &&
+                    'bg-warning-bg/70 shadow-[inset_3px_0_0_0_var(--color-warning-fg)]',
+                )}
+                style={{ ...rowGridStyle, ...listRowStyle(index) }}
               >
-                <div className="w-[36px] shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
                     onClick={() => toggleSelect(row.id)}
@@ -308,54 +356,56 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
                     {isSelected ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
                   </button>
                 </div>
-                <div className="w-[150px] shrink-0 text-xs font-mono text-text-primary" role="gridcell">
-                  <div>{row.orderCode}</div>
+                <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => void togglePriority(row, e)}
+                    className={
+                      row.priority
+                        ? 'text-warning-fg'
+                        : 'text-text-muted hover:text-warning-fg'
+                    }
+                    aria-label={row.priority ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
+                    title={row.priority ? 'Bỏ ưu tiên' : 'Ưu tiên'}
+                  >
+                    <Star size={14} fill={row.priority ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+                <div className="min-w-0 font-mono text-text-primary overflow-hidden">
+                  <div className="truncate">{row.orderCode}</div>
                   {platformName ? (
                     <div className="text-[10px] text-text-muted font-sans truncate">{platformName}</div>
                   ) : null}
                 </div>
-                <div className="w-[100px] shrink-0 text-xs text-text-secondary" role="gridcell">
-                  {row.date}
-                </div>
-                <div className="flex-1 min-w-[100px] text-xs text-text-primary truncate" role="gridcell">
-                  {customerLabel(row, customers)}
-                </div>
-                <div
-                  className="w-[56px] shrink-0 text-xs text-right text-text-secondary font-medium"
-                  role="gridcell"
-                >
-                  {itemQty}
-                </div>
-                <div
-                  className="w-[120px] shrink-0 text-xs text-right font-semibold text-text-primary"
-                  role="gridcell"
-                >
+                <div className="min-w-0 text-text-secondary truncate">{row.date}</div>
+                <div className="min-w-0 text-text-primary truncate">{customerLabel(row, customers)}</div>
+                <div className="text-right text-text-secondary font-medium tabular-nums">{itemQty}</div>
+                <div className="text-right font-semibold text-text-primary tabular-nums truncate">
                   {formatCurrency(row.finalAmount)}
                 </div>
-                <div className="w-[110px] shrink-0 text-center" role="gridcell">
+                <div className="flex justify-center min-w-0 overflow-hidden">
                   <Badge
                     variant={statusVariant(row.orderStatus)}
-                    className={statusBadgeClass(row.orderStatus)}
+                    className={cn('max-w-full truncate', statusBadgeClass(row.orderStatus))}
                   >
                     {ORDER_STATUS_LABELS[row.orderStatus]}
                   </Badge>
                 </div>
-                <div className="w-[120px] shrink-0 text-center" role="gridcell">
+                <div className="flex flex-col items-center justify-center min-w-0 gap-0.5 overflow-hidden">
                   <Badge
                     variant="outline"
-                    className={paymentBadgeClass(row.paymentStatus === 'paid')}
+                    className={cn('max-w-full truncate', paymentBadgeClass(row.paymentStatus === 'paid'))}
                   >
                     {PAYMENT_STATUS_LABELS[row.paymentStatus ?? 'unpaid']}
                   </Badge>
                   {(hasDeposit(row) || row.paymentStatus === 'paid') && (
-                    <p className="text-[10px] text-text-muted mt-0.5 leading-tight">
+                    <p className="text-[10px] text-text-muted leading-tight truncate max-w-full">
                       {paymentSummaryLabel(row)}
                     </p>
                   )}
                 </div>
                 <div
-                  className="w-[168px] shrink-0 flex items-center justify-end gap-1.5 pr-1"
-                  role="gridcell"
+                  className="flex items-center justify-center gap-1.5 min-w-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Button variant="outline" size="xs" onClick={() => onEdit?.(row)}>
@@ -368,9 +418,8 @@ export function RevenueGrid({ records, onRowClick, onEdit, onDelete, onBulkDelet
               </div>
             );
           })}
-        </div>
+        </TableHScroll>
       </div>
-      </div>{/* end scrollable area */}
 
       {selectedIds.size > 0 && (
         <div className="shrink-0" style={{ height: SELECTION_BAR_HEIGHT }} aria-hidden />

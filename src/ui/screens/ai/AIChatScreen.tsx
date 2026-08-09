@@ -50,14 +50,11 @@ export function AIChatScreen() {
   const sendingRef = useRef(false);
   const [aiReady, setAiReady] = useState<boolean>(aiRouter.isConfigured);
   const [modelProgress, setModelProgress] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, isTyping]);
 
   useEffect(() => {
@@ -218,7 +215,7 @@ export function AIChatScreen() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col w-full min-w-0">
       <div className="px-[var(--s-md)] py-[var(--s-sm)] bg-info-banner border-b border-border-subtle">
         <div className="flex items-center gap-[var(--s-xs)]">
           <span className="text-sm">🤖</span>
@@ -233,8 +230,7 @@ export function AIChatScreen() {
       </div>
 
       <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-[var(--s-md)] flex flex-col gap-[var(--s-sm)]"
+        className="p-[var(--s-md)] flex flex-col gap-[var(--s-sm)]"
         role="log"
         aria-label="Chat messages"
       >
@@ -295,6 +291,7 @@ export function AIChatScreen() {
             </div>
           </div>
         )}
+        <div ref={bottomRef} aria-hidden className="h-px w-full" />
       </div>
 
       <div className="p-[var(--s-md)] border-t border-border bg-surface">

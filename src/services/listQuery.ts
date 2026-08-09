@@ -71,6 +71,7 @@ export interface RevenueListFilters {
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
   customerId?: string;
+  priorityOnly?: boolean;
 }
 
 export interface SearchListFilters {
@@ -178,7 +179,18 @@ function filterRevenuesLocal(records: Revenue[], filters: RevenueListFilters): R
     result = result.filter((x) => x.paymentStatus === filters.paymentStatus);
   }
   if (filters.customerId) result = result.filter((x) => x.customerId === filters.customerId);
-  result.sort((a, b) => b.date.localeCompare(a.date));
+  if (filters.priorityOnly) result = result.filter((x) => x.priority === true);
+  result.sort((a, b) => {
+    const pa = a.priority ? 1 : 0;
+    const pb = b.priority ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    if (pa && pb) {
+      const at = a.priorityAt ?? '';
+      const bt = b.priorityAt ?? '';
+      if (at !== bt) return bt.localeCompare(at);
+    }
+    return b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt);
+  });
   return result;
 }
 
@@ -274,6 +286,8 @@ async function queryRevenuesCloud(
     .from('revenues')
     .select('*', { count: 'exact' })
     .eq('household_id', householdId)
+    .order('priority', { ascending: false })
+    .order('priority_at', { ascending: false, nullsFirst: false })
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -286,6 +300,7 @@ async function queryRevenuesCloud(
   if (filters.orderStatus) q = q.eq('order_status', filters.orderStatus);
   if (filters.paymentStatus) q = q.eq('payment_status', filters.paymentStatus);
   if (filters.customerId) q = q.eq('customer_id', filters.customerId);
+  if (filters.priorityOnly) q = q.eq('priority', true);
 
   const { data, error, count } = await q.range(from, to);
   if (error) throw new Error(error.message);

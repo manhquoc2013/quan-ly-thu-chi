@@ -60,7 +60,9 @@ export function PaginationBar({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-surface text-xs text-text-muted',
+        'flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t border-border bg-surface text-xs text-text-muted',
+        /* Clear AI FAB so page-size select stays clickable */
+        'pr-[calc(var(--dimens-fabSize)+1.5rem)] md:pr-[calc(var(--dimens-fabSize)+2rem)]',
         className,
       )}
       role="navigation"

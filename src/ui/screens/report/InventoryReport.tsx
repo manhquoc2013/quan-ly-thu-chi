@@ -106,7 +106,7 @@ export function InventoryReport() {
               Không có phiếu nhập trong khoảng này
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">
@@ -147,7 +147,7 @@ export function InventoryReport() {
               Không có đơn đã TT (có gắn SP) trong khoảng này
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">
@@ -209,7 +209,7 @@ export function InventoryReport() {
               Không còn tồn theo hàng đợi FIFO
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-text-muted border-b border-border">

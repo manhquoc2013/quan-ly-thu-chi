@@ -1,0 +1,56 @@
+{
+  "triage_id": "TRI-1786268026508-d9a1",
+  "created_at": 1786268026508,
+  "request_summary": "Bỏ scroll dọc lồng: xóa overflow-y-auto/h-full khỏi ul trong Customer/Product/PlatformScreen, xóa overflow-hidden khỏi RevenueScreen wrapper, xóa overflow-y-auto khỏi SettingsScreen",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/platform/PlatformScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/customer/CustomerScreen.tsx",
+      "src/ui/screens/platform/PlatformScreen.tsx",
+      "src/ui/screens/product/ProductScreen.tsx",
+      "src/ui/screens/revenue/RevenueScreen.tsx",
+      "src/ui/screens/settings/SettingsScreen.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Các màn hình danh sách và cài đặt",
+  "blast_radius": 5,
+  "done_oracle": "Không còn scroll dọc lồng, chỉ 1 thanh cuộn từ Layout. npx tsc --noEmit pass.",
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "src/ui/screens/customer/CustomerScreen.tsx",
+    "src/ui/screens/platform/PlatformScreen.tsx",
+    "src/ui/screens/product/ProductScreen.tsx",
+    "src/ui/screens/revenue/RevenueScreen.tsx",
+    "src/ui/screens/settings/SettingsScreen.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1786267554069-7864",
+    "breach_kind": "file_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "50604c8ce853d8cc5d0f6277dc5c2c54e54b2285",
+    "dirty": false,
+    "captured_at": 1786268026545
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

@@ -257,7 +257,7 @@ export function SettingsScreen() {
   async function handleLogout(): Promise<void> { await logout(); toast.message('Đã đăng xuất.'); }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col w-full min-w-0">
       {/* Tab bar */}
       <div className="flex gap-1 px-[var(--s-md)] pt-[var(--s-md)] pb-2 border-b border-border-subtle bg-surface shrink-0">
         {TABS.map((t) => {
@@ -274,7 +274,7 @@ export function SettingsScreen() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-[var(--s-md)] space-y-[var(--s-lg)]">
+      <div className="p-[var(--s-md)] space-y-[var(--s-lg)]">
 
         {/* ═══ TAB: Tài khoản ═══ */}
         {tab === 'account' && (<>

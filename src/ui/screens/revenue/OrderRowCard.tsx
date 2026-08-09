@@ -9,7 +9,7 @@ import { formatCurrency } from '@/utils/currency';
 import { todayISO } from '@/utils/date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote } from 'lucide-react';
+import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote, Star } from 'lucide-react';
 import { useCustomerStore } from '@/store/customerStore';
 import { updateRevenue } from '@/services/revenueService';
 import { notify } from '@/utils/notify';
@@ -74,6 +74,14 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
     }
   };
 
+  const handleTogglePriority = async () => {
+    const next = !row.priority;
+    await updateRevenue(row.id, {
+      priority: next,
+      priorityAt: next ? new Date().toISOString() : undefined,
+    });
+  };
+
   const canMarkPaid =
     row.paymentStatus !== 'paid' && row.orderStatus !== 'cancelled';
   const paySummary = paymentSummaryLabel(row);
@@ -81,6 +89,18 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
 
   return (
     <div className="space-y-4" role="region" aria-label={`Chi tiết đơn ${row.orderCode}`}>
+      {row.priority ? (
+        <div className="flex items-center gap-2 rounded-field bg-warning-bg text-warning-fg px-3 py-2 text-xs font-semibold">
+          <Star size={14} fill="currentColor" className="shrink-0" />
+          Đơn ưu tiên
+          {row.priorityAt ? (
+            <span className="font-normal text-warning-fg/80 ml-auto tabular-nums">
+              {new Date(row.priorityAt).toLocaleString('vi-VN')}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Meta grid — no UUID, no duplicate order code */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-panel border border-border-subtle bg-surface p-3">
         <div className="min-w-0">
@@ -96,9 +116,16 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Trạng thái</p>
-          <Badge variant="outline" className={`text-xs ${statusBadgeClass(row.orderStatus)}`}>
-            {ORDER_STATUS_LABELS[row.orderStatus]}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge variant="outline" className={`text-xs ${statusBadgeClass(row.orderStatus)}`}>
+              {ORDER_STATUS_LABELS[row.orderStatus]}
+            </Badge>
+            {row.priority ? (
+              <Badge variant="outline" className="text-[10px] bg-warning-bg text-warning-fg border-transparent">
+                Ưu tiên
+              </Badge>
+            ) : null}
+          </div>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-wide text-text-muted mb-0.5">Giao hàng</p>
@@ -131,7 +158,7 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
       {/* Items */}
       <div>
         <h4 className="text-xs font-semibold text-text-secondary mb-2">Sản phẩm / Dịch vụ</h4>
-        <div className="overflow-x-auto rounded-field border border-border-subtle">
+        <div className="overflow-x-auto overflow-y-hidden rounded-field border border-border-subtle">
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-surface-hover border-b border-border-subtle">
@@ -189,6 +216,15 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
 
       {!readOnly ? (
         <div className="pt-2 border-t border-border-subtle space-y-3">
+          <Button
+            variant={row.priority ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 text-xs gap-1"
+            onClick={() => void handleTogglePriority()}
+          >
+            <Star size={12} fill={row.priority ? 'currentColor' : 'none'} />
+            {row.priority ? 'Bỏ ưu tiên' : 'Đánh dấu ưu tiên'}
+          </Button>
           {canMarkPaid && (
             <Button variant="default" size="sm" className="h-8 text-xs gap-1" onClick={handleMarkPaid}>
               <Banknote size={12} />

@@ -174,6 +174,23 @@ export async function upsertRevenue(householdId: string, revenue: Revenue): Prom
     p_items: payload.items,
   });
   throwIfError(error);
+
+  // Remote RPC may still be an older definition that ignores priority / stock_applied
+  // (columns exist; INSERT/UPDATE omit them). Patch explicitly so star/DB stay in sync.
+  const rid = String(payload.revenue.id);
+  const { error: patchError } = await getSupabase()
+    .from('revenues')
+    .update({
+      priority: revenue.priority === true,
+      priority_at:
+        revenue.priority === true
+          ? (revenue.priorityAt ?? revenue.updatedAt ?? new Date().toISOString())
+          : null,
+      stock_applied: revenue.stockApplied === true,
+    })
+    .eq('household_id', householdId)
+    .eq('id', rid);
+  throwIfError(patchError);
 }
 
 export async function deleteRevenueRemote(householdId: string, id: string): Promise<void> {

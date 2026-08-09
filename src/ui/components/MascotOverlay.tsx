@@ -1062,7 +1062,13 @@ export function MascotOverlay() {
   const setActivity = useMascotStore((s) => s.setActivity);
   const profile = PROFILES[activity] ?? PROFILES.medium;
 
-  const groundY = () => window.innerHeight - H - MARGIN;
+  /** Floor above the status bar so the cat isn't clipped / sitting on pagination. */
+  const groundY = () => {
+    const statusBar = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--dimens-statusBarHeight'),
+    ) || 32;
+    return window.innerHeight - H - MARGIN - statusBar;
+  };
   const maxX = () => window.innerWidth - W - 5;
 
   const [pos, setPos] = useState(() => ({ x: rand(30, Math.max(40, window.innerWidth - W - 20)), y: groundY() }));

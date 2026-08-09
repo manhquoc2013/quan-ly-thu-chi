@@ -94,6 +94,16 @@ export function Layout() {
       document.documentElement.style.removeProperty('--layout-sidebar-offset');
     };
   }, [sidebarCollapsed]);
+
+  /* overflow-y:auto also enables overflow-x in CSS — pin scrollLeft so content never sits under the sidebar */
+  useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+    main.scrollLeft = 0;
+    const lock = () => { if (main.scrollLeft !== 0) main.scrollLeft = 0; };
+    main.addEventListener('scroll', lock, { passive: true });
+    return () => main.removeEventListener('scroll', lock);
+  }, [location.pathname]);
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Quản Lý Tài Chính';
   const displayName = userProfile?.storeName ?? 'User';
   const avatarLetter = displayName.charAt(0).toUpperCase();
@@ -156,8 +166,8 @@ export function Layout() {
   const syncLabel = syncState === 'synced' ? 'Đã đồng bộ' : syncState === 'pending' ? `${pending} thay đổi` : 'Đang sync...';
 
   return (
-    <div className="flex flex-col h-screen bg-background min-w-0 overflow-hidden">
-      <div className="flex flex-1 min-h-0">
+    <div className="fixed inset-0 flex flex-col bg-background min-w-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 min-w-0">
         {/* Sidebar — inline styles for smooth animation */}
         <aside
           className="hidden md:flex flex-col shrink-0 bg-sidebar-bg text-sidebar-fg border-r border-sidebar-border overflow-hidden"
@@ -172,7 +182,7 @@ export function Layout() {
               transition: 'opacity 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease',
             }} className="text-sm font-semibold text-sidebar-fg truncate overflow-hidden whitespace-nowrap">Quản Lý Tài Chính</span>
           </div>
-          <nav className="flex-1 overflow-y-auto py-2 scrollbar-thin">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 scrollbar-thin overscroll-contain">
             {navItems.map((item) => (
               <NavLink key={item.route} to={item.route} end={item.route === '/'}
                 className={`flex items-center mb-0.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${isActive(item.route) ? 'bg-sidebar-active-bg text-sidebar-active-fg' : `text-sidebar-fg hover:bg-sidebar-hover`} ${sidebarCollapsed ? 'justify-center mx-0 px-0 h-10' : 'mx-2 px-3 h-10'}`}
@@ -201,7 +211,7 @@ export function Layout() {
           </div>
         </aside>
 
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
           <header className="flex shrink-0 items-center gap-3 px-4 h-12 bg-surface border-b border-border z-20">
             <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden p-1.5 rounded-md hover:bg-surface-hover text-text-muted"><Menu size={18} /></button>
             <button type="button" onClick={toggleSidebar} className="hidden md:block p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95 shrink-0">
@@ -301,8 +311,13 @@ export function Layout() {
             </div>
             <span className="text-xs text-text-muted tabular-nums shrink-0 w-12 text-right">{clock || '--:--'}</span>
           </header>
-          <main className="flex-1 overflow-y-auto min-h-0">
-            <div key={location.pathname} className="animate-fade-in-up max-w-6xl mx-auto w-full min-h-full p-[var(--s-md)] md:p-[var(--s-xl)] min-w-0 pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
+          <main
+            ref={(node) => {
+              if (node) node.scrollLeft = 0;
+            }}
+            className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-clip overscroll-y-contain"
+          >
+            <div key={location.pathname} className="animate-fade-in-up w-full max-w-full mx-auto min-w-0 p-[var(--s-md)] md:p-[var(--s-xl)] pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
               <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="flex gap-1.5">{ [0,1,2].map(i => <div key={i} className="size-2 rounded-full bg-accent-fg animate-pulse" style={{animationDelay:`${i*0.2}s`}} />) }</div></div>}>
                 <Outlet />
               </Suspense>

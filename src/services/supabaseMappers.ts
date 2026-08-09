@@ -92,6 +92,8 @@ export interface RevenueRow {
   platform_id: string | null;
   notes: string | null;
   stock_applied?: boolean | null;
+  priority?: boolean | null;
+  priority_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -258,6 +260,8 @@ export function mapRevenue(row: RevenueRow, items: RevenueItemRow[]): Revenue {
     platformId: row.platform_id ?? undefined,
     notes: row.notes ?? undefined,
     stockApplied: row.stock_applied ? true : undefined,
+    priority: row.priority ? true : undefined,
+    priorityAt: row.priority_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -291,6 +295,8 @@ export function revenueToUpsertPayload(householdId: string, r: Revenue): {
       platform_id: r.platformId ?? null,
       notes: r.notes ?? null,
       stock_applied: r.stockApplied ?? false,
+      priority: r.priority ?? false,
+      priority_at: r.priority ? (r.priorityAt ?? r.updatedAt) : null,
       created_at: r.createdAt,
       updated_at: r.updatedAt,
     },

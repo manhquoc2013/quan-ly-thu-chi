@@ -118,6 +118,12 @@ export interface Revenue {
   /** true khi đã trừ tồn kho cho đơn (paid, chưa huỷ) */
   stockApplied?: boolean;
 
+  /** Đơn ưu tiên — đẩy lên đầu danh sách / dashboard */
+  priority?: boolean;
+
+  /** Thời điểm gắn ưu tiên (ISO); dùng để sort ổn định giữa các đơn ưu tiên */
+  priorityAt?: string;
+
   /** Thời điểm tạo */
   createdAt: string;
 

@@ -77,6 +77,7 @@ interface OrderFormState {
   notes: string;
   orderStatus: OrderStatus;
   deliveryStatus: DeliveryStatus;
+  priority: boolean;
 }
 
 const emptyItem = (): OrderItem => ({
@@ -108,6 +109,7 @@ const defaultForm: OrderFormState = {
   notes: '',
   orderStatus: 'new',
   deliveryStatus: 'pending',
+  priority: false,
 };
 
 const PAYMENT_METHOD_OPTIONS = optionsFromLabels(PAYMENT_METHOD_LABELS);
@@ -172,6 +174,7 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
         notes: editRevenue.notes ?? '',
         orderStatus: editRevenue.orderStatus,
         deliveryStatus: editRevenue.deliveryStatus,
+        priority: !!editRevenue.priority,
       });
     } else {
       const date = todayISO();
@@ -390,6 +393,10 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
           paymentMethod: form.paymentMethod,
           ...paymentPayload,
           notes: form.notes || undefined,
+          priority: form.priority || undefined,
+          priorityAt: form.priority
+            ? editRevenue.priorityAt ?? new Date().toISOString()
+            : undefined,
         });
       } else {
         await createRevenue({
@@ -406,6 +413,8 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
           paymentMethod: form.paymentMethod,
           ...paymentPayload,
           notes: form.notes || undefined,
+          priority: form.priority || undefined,
+          priorityAt: form.priority ? new Date().toISOString() : undefined,
         });
       }
       onSuccess?.(!!editRevenue);
@@ -421,11 +430,11 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="w-[min(960px,calc(100vw-2rem))] !max-w-[960px] sm:!max-w-[960px] max-h-[94vh] !flex !flex-col overflow-hidden p-0 gap-0" showCloseButton={false}>
+      <DialogContent className="w-[min(960px,calc(100vw-2rem))] !max-w-[960px] sm:!max-w-[960px] max-h-[94vh] !flex !flex-col overflow-hidden p-0 gap-0 h-auto" showCloseButton={false}>
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle>{isEditing ? 'Chỉnh sửa đơn hàng' : 'Tạo đơn hàng mới'}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(94vh-8rem)]">
           <div className="flex flex-col gap-4">
           {/* Date + order code + Status row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -483,6 +492,18 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
                 aria-label="Trạng thái giao"
                 className="h-8"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5 justify-end">
+              <label className="text-xs font-medium text-text-muted flex items-center gap-2 h-8 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.priority}
+                  onChange={(e) => setForm((p) => ({ ...p, priority: e.target.checked }))}
+                  className="size-3.5 accent-[var(--color-warning-fg,#d97706)]"
+                />
+                Đơn ưu tiên
+              </label>
             </div>
           </div>
 

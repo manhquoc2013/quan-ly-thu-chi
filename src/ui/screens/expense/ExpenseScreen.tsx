@@ -153,7 +153,7 @@ export function ExpenseScreen() {
   const showSkeleton = loading && items.length === 0;
 
   return (
-    <div className="flex flex-col h-full bg-background min-h-0">
+    <div className="flex flex-col w-full min-w-0 bg-background">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
         <input
           type="text"
@@ -193,8 +193,8 @@ export function ExpenseScreen() {
         </Button>
       </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border-none gap-0 py-0">
-        <CardContent className="flex-1 flex flex-col min-h-0 p-0">
+      <Card className="flex flex-col border-none gap-0 py-0 shadow-none min-w-0">
+        <CardContent className="flex flex-col p-0">
           {showSkeleton ? (
             <div className="flex flex-col gap-2 py-4">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -208,14 +208,14 @@ export function ExpenseScreen() {
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 py-12 text-text-muted">
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-text-muted">
               <p className="text-sm text-destructive">{error}</p>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 Thử lại
               </Button>
             </div>
           ) : total === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 py-12 text-text-muted">
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-text-muted">
               <Plus size={32} className="opacity-30" />
               <p className="text-sm font-medium">Không có chi phí nào</p>
               <p className="text-xs">
@@ -231,7 +231,7 @@ export function ExpenseScreen() {
             </div>
           ) : (
             <>
-              <div className="flex-1 min-h-0 relative">
+              <div className="relative">
                 <ListLoadingOverlay show={loading} />
                 <ExpenseGrid
                   expenses={items}

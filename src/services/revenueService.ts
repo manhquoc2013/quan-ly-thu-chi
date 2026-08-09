@@ -18,8 +18,18 @@ import {
 import { cacheGet, cacheSet } from './cacheManager';
 import { createExpense, updateExpense, deleteExpenses } from './expenseService';
 import { reverseOrderStockOut, syncOrderStock } from './stockService';
+import { notifyListInvalidated } from './listQuery';
 
 const CACHE_KEY = 'revenues';
+
+async function pushRevenueCloud(record: Revenue): Promise<void> {
+  try {
+    const m = await import('./cloudSync');
+    await m.cloudUpsertRevenue(record);
+  } catch (err) {
+    console.error('[cloud] revenue upsert', err);
+  }
+}
 
 /**
  * Build a display order code: `DH-YYYYMMDD-NNN`.
@@ -259,9 +269,8 @@ export async function createRevenue(
   await cacheSet(CACHE_KEY, updated);
   useRevenueStore.getState().setRecords(updated);
 
-  void import('./cloudSync')
-    .then((m) => m.cloudUpsertRevenue(record))
-    .catch((err) => console.error('[cloud] revenue create', err));
+  await pushRevenueCloud(record);
+  notifyListInvalidated('revenues');
 
   notify.success(`Đã thêm đơn ${record.orderCode}`, opts);
   return record;
@@ -305,6 +314,17 @@ export async function updateRevenue(
     patch = { ...patch, orderCode: patch.orderCode.trim() };
   }
 
+  // Normalize priority flag + timestamp
+  if (patch.priority === true) {
+    patch = {
+      ...patch,
+      priority: true,
+      priorityAt: patch.priorityAt ?? existing[idx]!.priorityAt ?? new Date().toISOString(),
+    };
+  } else if (patch.priority === false) {
+    patch = { ...patch, priority: false, priorityAt: undefined };
+  }
+
   const merged = {
     ...existing[idx]!,
     ...patch,
@@ -312,6 +332,10 @@ export async function updateRevenue(
     date: (patch.date ?? existing[idx]!.date)!,
     updatedAt: new Date().toISOString(),
   };
+  if (patch.priority === false) {
+    delete (merged as { priorityAt?: string }).priorityAt;
+    merged.priority = false;
+  }
 
   const totals = computeOrderTotals(
     merged.items,
@@ -369,11 +393,16 @@ export async function updateRevenue(
   await cacheSet(CACHE_KEY, updatedAll);
   useRevenueStore.getState().setRecords(updatedAll);
 
-  void import('./cloudSync')
-    .then((m) => m.cloudUpsertRevenue(updated))
-    .catch((err) => console.error('[cloud] revenue update', err));
+  await pushRevenueCloud(updated);
+  notifyListInvalidated('revenues');
 
-  notify.success(`Đã cập nhật đơn ${updated.orderCode}`, opts);
+  if (patch.priority === true) {
+    notify.success(`⭐ Đã đánh dấu ưu tiên ${updated.orderCode}`, opts);
+  } else if (patch.priority === false) {
+    notify.success(`Đã bỏ ưu tiên ${updated.orderCode}`, opts);
+  } else {
+    notify.success(`Đã cập nhật đơn ${updated.orderCode}`, opts);
+  }
   return updated;
 }
 
@@ -397,11 +426,13 @@ export async function deleteRevenues(ids: string[], opts?: NotifyOpts): Promise<
   const updated = existing.filter((r) => !ids.includes(r.id));
   await cacheSet(CACHE_KEY, updated);
   useRevenueStore.getState().setRecords(updated);
-  void import('./cloudSync')
-    .then(async (m) => {
-      for (const id of ids) await m.cloudDeleteRevenue(id);
-    })
-    .catch((err) => console.error('[cloud] revenue delete', err));
+  try {
+    const m = await import('./cloudSync');
+    for (const id of ids) await m.cloudDeleteRevenue(id);
+  } catch (err) {
+    console.error('[cloud] revenue delete', err);
+  }
+  notifyListInvalidated('revenues');
   const n = ids.length;
   notify.success(n > 1 ? `Đã xóa ${n} đơn hàng` : 'Đã xóa đơn hàng', opts);
 }

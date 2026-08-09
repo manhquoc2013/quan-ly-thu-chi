@@ -12,6 +12,7 @@ import {
   Clock,
   Package,
   Wallet,
+  Star,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
@@ -102,6 +103,16 @@ export function DashboardScreen() {
     () => revenues.filter((r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled').length,
     [revenues],
   );
+  const priorityOpenCount = useMemo(
+    () =>
+      revenues.filter(
+        (r) =>
+          r.priority &&
+          r.orderStatus !== 'completed' &&
+          r.orderStatus !== 'cancelled',
+      ).length,
+    [revenues],
+  );
 
   const chartData = useMemo(() => {
     const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -118,12 +129,36 @@ export function DashboardScreen() {
     });
   }, [expenses, revenues]);
 
+  const priorityOrders = useMemo(
+    () =>
+      revenues
+        .filter(
+          (r) =>
+            r.priority &&
+            r.orderStatus !== 'completed' &&
+            r.orderStatus !== 'cancelled',
+        )
+        .slice()
+        .sort(
+          (a, b) =>
+            (b.priorityAt ?? '').localeCompare(a.priorityAt ?? '') ||
+            b.date.localeCompare(a.date),
+        )
+        .slice(0, 6),
+    [revenues],
+  );
+
   const pendingOrders = useMemo(
     () =>
       revenues
         .filter((r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled')
         .slice()
-        .sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt))
+        .sort((a, b) => {
+          const pa = a.priority ? 1 : 0;
+          const pb = b.priority ? 1 : 0;
+          if (pa !== pb) return pb - pa;
+          return b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt);
+        })
         .slice(0, 6),
     [revenues],
   );
@@ -189,7 +224,12 @@ export function DashboardScreen() {
     {
       title: 'Đơn chờ',
       value: String(pendingCount),
-      hint: pendingCount > 0 ? 'Cần xử lý' : 'Đã xong',
+      hint:
+        pendingCount > 0
+          ? priorityOpenCount > 0
+            ? `Cần xử lý · ${priorityOpenCount} ưu tiên`
+            : 'Cần xử lý'
+          : 'Đã xong',
       icon: Clock,
       tone: 'text-text-primary',
       // Odd last card: full width on mobile, half on md, 1/5 on xl
@@ -198,7 +238,7 @@ export function DashboardScreen() {
   ];
 
   return (
-    <div className="space-y-[var(--s-lg)] min-w-0 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-[var(--s-lg)] min-w-0 w-full max-w-full">
       {/*
         Responsive KPI:
         - mobile: 2 cols, last card full-width
@@ -281,6 +321,54 @@ export function DashboardScreen() {
         </CardContent>
       </Card>
 
+      {priorityOrders.length > 0 ? (
+        <Card data-mascot-platform className="overflow-hidden min-w-0 border-warning-fg/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-warning-bg/40 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-field bg-warning-bg text-warning-fg shrink-0">
+                <Star size={16} fill="currentColor" />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-sm">Đơn ưu tiên</CardTitle>
+                <p className="text-[11px] text-text-muted font-normal">Cần làm trước</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-warning-bg text-warning-fg border-transparent">
+              {priorityOpenCount} đơn
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border-subtle">
+              {priorityOrders.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    data-mascot-platform
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:bg-accent-bg/40"
+                    onClick={() => setSelectedId({ type: 'revenue', id: o.id, readOnly: false })}
+                  >
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Star size={12} className="text-warning-fg shrink-0" fill="currentColor" />
+                        <span className="font-mono text-xs font-semibold text-accent-fg">{o.orderCode}</span>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusTone(o.orderStatus)}`}>
+                          {ORDER_STATUS_LABELS[o.orderStatus]}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-text-primary truncate">{customerLabel(o, customers)}</p>
+                      <p className="text-[11px] text-text-muted truncate">{orderSummary(o)} · {o.date}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold tabular-nums text-text-primary">{money(o.finalAmount)}</p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-[var(--s-lg)] min-w-0">
         {/* ── Đơn đang chờ ─────────────────────────────────────────────── */}
         <Card data-mascot-platform className="overflow-hidden min-w-0">
@@ -315,6 +403,14 @@ export function DashboardScreen() {
                           <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusTone(o.orderStatus)}`}>
                             {ORDER_STATUS_LABELS[o.orderStatus]}
                           </Badge>
+                          {o.priority ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 h-5 bg-warning-bg text-warning-fg border-transparent"
+                            >
+                              Ưu tiên
+                            </Badge>
+                          ) : null}
                           <Badge
                             variant="outline"
                             className={`text-[10px] px-1.5 py-0 h-5 border-transparent ${

@@ -382,12 +382,44 @@ html * {
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body,
+  #root {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  @supports (height: 100dvh) {
+    html,
+    body,
+    #root {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+  }
   body {
     @apply bg-background text-foreground;
+    position: relative;
   }
   html {
     @apply font-sans;
   }
+}
+
+/* Hard lock — unlayered so utilities / portals cannot re-open document scroll */
+html,
+body,
+#root {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+/* overflow-y:auto forces overflow-x:auto per CSS — clip X on the page scroller.
+   Table horizontal scroll lives only in [data-table-hscroll]. */
+main {
+  overflow-x: clip !important;
+  max-width: 100%;
 }
 
 /* ── Global animations ── */
@@ -465,19 +497,19 @@ html * {
   animation-delay: min(calc(var(--row-i, 0) * 28ms), 420ms);
 }
 
-/* Page content — slide up + fade on route change */
+/* Page content — fade only (no transform: avoids overflow/scroll bugs with fixed shell) */
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(24px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .animate-fade-in-up {
-  animation: page-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: page-enter 0.35s ease both;
 }
 
 /* Card/widget enter — staggered when inside animated page wrapper */
 @keyframes card-enter {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .animate-fade-in-up [data-slot="card"] {
   animation: card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -494,12 +526,11 @@ html * {
 
 /* ── Modern hover animations ── */
 
-/* All cards — subtle hover elevate */
+/* All cards — subtle hover elevate (shadow only; transform breaks overflow/scroll) */
 [data-slot="card"] {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 [data-slot="card"]:hover {
-  transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(13,148,136,0.1);
 }
 
@@ -587,12 +618,9 @@ button:active {
   transform: scale(1.08);
 }
 
-/* Table/list rows — hover transition */
+/* Table/list rows — hover transition (no scale: avoids horizontal overflow jank) */
 [role="row"] {
-  transition: background-color 0.15s ease, transform 0.15s ease;
-}
-[role="row"]:hover {
-  transform: scale(1.002);
+  transition: background-color 0.15s ease;
 }
 
 /* Dialog/Swipe close button — rotate on hover */
@@ -691,11 +719,11 @@ aside nav a[title]:hover::after {
   border: 1px solid rgba(255,255,255,0.12);
 }
 
-/* ── Icon slide trong button ── */
-[data-slot="button"] svg:last-child {
+/* ── Icon slide trong button (skip dense table actions) ── */
+[data-slot="button"]:not([data-size="xs"]) svg:last-child {
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-[data-slot="button"]:hover svg:last-child {
+[data-slot="button"]:not([data-size="xs"]):hover svg:last-child {
   transform: translateX(3px);
 }
 

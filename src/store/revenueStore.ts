@@ -32,6 +32,8 @@ export interface RevenueFilters {
   orderStatus: OrderStatus | undefined;
   paymentStatus: PaymentStatus | undefined;
   customerId: string | undefined;
+  /** true = chỉ đơn ưu tiên */
+  priorityOnly?: boolean;
 }
 
 export interface RevenueSortConfig {
@@ -46,6 +48,7 @@ const defaultFilters: RevenueFilters = {
   orderStatus: undefined,
   paymentStatus: undefined,
   customerId: undefined,
+  priorityOnly: false,
 };
 
 const defaultSort: RevenueSortConfig = {
@@ -132,10 +135,22 @@ function applyFiltersAndSort(
     result = result.filter((r) => r.customerId === filters.customerId);
   }
 
-  // Sort
+  if (filters.priorityOnly) {
+    result = result.filter((r) => r.priority === true);
+  }
+
+  // Sort — priority orders always first, then configured column
   const { sortBy, sortDir } = sort;
   const dir = sortDir === 'asc' ? 1 : -1;
   result.sort((a, b) => {
+    const pa = a.priority ? 1 : 0;
+    const pb = b.priority ? 1 : 0;
+    if (pa !== pb) return pb - pa;
+    if (pa && pb) {
+      const at = a.priorityAt ?? '';
+      const bt = b.priorityAt ?? '';
+      if (at !== bt) return bt.localeCompare(at);
+    }
     let cmp = 0;
     switch (sortBy) {
       case 'date':
