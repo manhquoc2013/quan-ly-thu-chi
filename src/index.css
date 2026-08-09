@@ -661,22 +661,25 @@ aside nav a[title]:hover::after {
   box-shadow: var(--shadow-dropdown);
 }
 
-/* ── Ripple effect (Material Design gợn sóng) ── */
+/* ── Ripple effect (Material Design gợn sóng) ──
+   overflow:hidden (not clip-path) — transformed ::after must not expand
+   ancestor overflow-x:auto scrollWidth (table trailing whitespace). */
 [data-slot="button"] {
   position: relative;
-  clip-path: inset(0);
+  overflow: hidden;
 }
 [data-slot="button"]::after {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(circle, rgba(255,255,255,0.4) 10%, transparent 10.1%);
-  transform: scale(10);
+  transform: scale(0);
   opacity: 0;
+  pointer-events: none;
   transition: transform 0.5s ease-out, opacity 0.5s ease-out;
 }
 [data-slot="button"]:active::after {
-  transform: scale(0);
+  transform: scale(2.5);
   opacity: 1;
   transition: 0s;
 }
@@ -694,7 +697,7 @@ aside nav a[title]:hover::after {
 /* ── Shimmer / Shine (vệt sáng) ── */
 .btn-shimmer {
   position: relative;
-  clip-path: inset(0);
+  overflow: hidden;
 }
 .btn-shimmer::before {
   content: '';
