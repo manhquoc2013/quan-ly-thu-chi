@@ -6,6 +6,22 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [1.6.0] — 2026-08-10
+
+🔗 [So sánh với v1.5.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.5.0...v1.6.0)
+
+### Thêm mới
+- Dashboard: khối "Sản phẩm cần làm" — tổng hợp SL theo món từ đơn chưa hoàn thành / chưa hủy, ưu tiên món có đơn ưu tiên
+- Grid doanh thu: cột "Sản phẩm" (badge tên × SL) trên desktop; card mobile hiển thị danh sách món
+
+### Thay đổi
+- `REVENUE_MIN_WIDTH` 1100 → 1270; hàng grid `min-h` linh hoạt khi nhiều badge sản phẩm
+
+### Tài liệu
+- CHANGELOG.md, RELEASE.md
+
+---
+
 ## [1.5.0] — 2026-08-09
 
 🔗 [So sánh với v1.4.2](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.4.2...v1.5.0)
