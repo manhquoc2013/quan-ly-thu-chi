@@ -13,6 +13,7 @@ import {
   Package,
   Wallet,
   Star,
+  ClipboardList,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useExpenseStore } from '@/store/expenseStore';
@@ -113,6 +114,35 @@ export function DashboardScreen() {
       ).length,
     [revenues],
   );
+
+  const pendingProductSummary = useMemo(() => {
+    const pendingOrders = revenues.filter(
+      (r) => r.orderStatus !== 'completed' && r.orderStatus !== 'cancelled',
+    );
+    const map = new Map<string, { name: string; totalQty: number; orderCount: number; hasPriority: boolean }>();
+    for (const order of pendingOrders) {
+      for (const item of order.items) {
+        const key = item.name.toLowerCase().trim();
+        const existing = map.get(key);
+        if (existing) {
+          existing.totalQty += item.quantity;
+          existing.orderCount += 1;
+          existing.hasPriority = existing.hasPriority || !!order.priority;
+        } else {
+          map.set(key, {
+            name: item.name.trim(),
+            totalQty: item.quantity,
+            orderCount: 1,
+            hasPriority: !!order.priority,
+          });
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.hasPriority !== b.hasPriority) return a.hasPriority ? -1 : 1;
+      return b.totalQty - a.totalQty;
+    });
+  }, [revenues]);
 
   const chartData = useMemo(() => {
     const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -517,6 +547,38 @@ export function DashboardScreen() {
           </CardContent>
         </Card>
       </div>
+
+      {pendingProductSummary.length > 0 && (
+        <Card data-mascot-platform className="overflow-hidden min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border-subtle bg-surface/60 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-field bg-accent-bg text-accent-fg shrink-0">
+                <ClipboardList size={16} />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-sm">Sản phẩm cần làm</CardTitle>
+                <p className="text-[11px] text-text-muted font-normal">Tổng hợp từ {pendingCount} đơn chưa hoàn thành</p>
+              </div>
+            </div>
+            <Badge variant="secondary">{pendingProductSummary.length} SP</Badge>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {pendingProductSummary.map((p) => (
+                <Badge
+                  key={p.name.toLowerCase()}
+                  variant="secondary"
+                  className={`text-xs max-w-[200px] truncate ${p.hasPriority ? 'border-warning-fg/40' : ''}`}
+                  title={`${p.name} x${p.totalQty} — ${p.orderCount} đơn${p.hasPriority ? ' · có đơn ưu tiên' : ''}`}
+                >
+                  {p.hasPriority && <Star size={10} className="text-warning-fg shrink-0" fill="currentColor" />}
+                  {p.name} x{p.totalQty}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedTransaction?.type === 'expense' && (
         <TransactionDetailModal

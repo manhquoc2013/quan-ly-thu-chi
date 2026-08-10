@@ -1,0 +1,37 @@
+{
+  "triage_id": "TRI-1786325801188-4f6a",
+  "created_at": 1786325801188,
+  "request_summary": "Hiển thị danh sách sản phẩm trong đơn hàng dưới dạng chip (Badge) trên màn hình danh sách đơn hàng (RevenueGrid) - cả chế độ mobile và desktop",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "src/ui/screens/revenue/RevenueGrid.tsx"
+    ],
+    "impact_files": [
+      "src/ui/screens/revenue/RevenueGrid.tsx"
+    ],
+    "packages": [
+      "."
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Màn hình RevenueScreen → RevenueGrid, hiển thị danh sách đơn hàng",
+  "blast_radius": 1,
+  "done_oracle": "Mỗi đơn hàng hiển thị các chip sản phẩm (tên từ OrderItem.name), tối đa 4 chip + \"+N\". Mobile: chip nằm giữa tên khách và badge trạng thái. Desktop: chip trong cột mới \"Sản phẩm\".",
+  "change_type": "implementation",
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "c3a1de5052278b6118944090cd0e2decf0a694b4",
+    "dirty": false,
+    "captured_at": 1786325801490
+  },
+  "budget": {
+    "wall_clock_ms": 900000,
+    "turns": 40
+  }
+}

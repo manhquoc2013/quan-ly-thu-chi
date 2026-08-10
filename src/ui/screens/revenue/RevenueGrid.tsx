@@ -32,9 +32,9 @@ import { cn } from '@/utils/cn';
 import { TableHScroll } from '@/ui/components/TableHScroll';
 
 /* Desktop row: fixed tracks so content can exceed narrow viewports → TableHScroll. */
-const REVENUE_MIN_WIDTH = 1100;
+const REVENUE_MIN_WIDTH = 1270;
 const REVENUE_GRID_COLS =
-  '32px 28px minmax(140px,1.2fr) 88px minmax(120px,1fr) 40px 100px 110px 120px 148px';
+  '32px 28px minmax(140px,1.2fr) 88px minmax(120px,1fr) minmax(0,2fr) 40px 100px 110px 120px 148px';
 
 /* ─── Props ─── */
 
@@ -246,6 +246,16 @@ export function RevenueGrid({
                   {customerLabel(row, customers)}
                 </p>
 
+                {row.items.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                    {row.items.map((item) => (
+                      <Badge key={item.id} variant="secondary" className="text-[10px] max-w-[120px] truncate">
+                        {item.name} x{item.quantity}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   {row.priority ? (
                     <Badge variant="outline" className="text-[10px] bg-warning-bg text-warning-fg border-transparent">
@@ -315,6 +325,7 @@ export function RevenueGrid({
             <div className="min-w-0 truncate" role="columnheader">Mã đơn</div>
             <div className="min-w-0 truncate" role="columnheader">Ngày</div>
             <div className="min-w-0 truncate" role="columnheader">Khách</div>
+            <div className="min-w-0 truncate" role="columnheader">Sản phẩm</div>
             <div className="text-right" role="columnheader">SL</div>
             <div className="text-right truncate" role="columnheader">Tổng tiền</div>
             <div className="text-center truncate" role="columnheader">Trạng thái</div>
@@ -337,7 +348,7 @@ export function RevenueGrid({
                 onClick={() => onRowClick?.(row)}
                 className={cn(
                   LIST_ROW_ANIM,
-                  'h-12 text-xs cursor-pointer border-b border-border-subtle',
+                  'min-h-[3rem] py-1 text-xs cursor-pointer border-b border-border-subtle',
                   'transition-colors duration-[var(--d-fast)] hover:bg-surface-hover',
                   isSelected && 'bg-grid-row-selected',
                   row.priority &&
@@ -379,6 +390,15 @@ export function RevenueGrid({
                 </div>
                 <div className="min-w-0 text-text-secondary truncate">{row.date}</div>
                 <div className="min-w-0 text-text-primary truncate">{customerLabel(row, customers)}</div>
+                <div className="min-w-0 overflow-hidden">
+                  <div className="flex flex-wrap items-start gap-0.5">
+                    {row.items.map((item) => (
+                      <Badge key={item.id} variant="secondary" className="text-[10px] max-w-[120px] truncate">
+                        {item.name} x{item.quantity}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
                 <div className="text-right text-text-secondary font-medium tabular-nums">{itemQty}</div>
                 <div className="text-right font-semibold text-text-primary tabular-nums truncate">
                   {formatCurrency(row.finalAmount)}
