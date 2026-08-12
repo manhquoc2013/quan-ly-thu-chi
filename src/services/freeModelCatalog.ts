@@ -250,6 +250,174 @@ export async function resolveSiliconFlowFreeModels(
   return models;
 }
 
+/* ── Gemini ──────────────────────────────────────────────────────────────── */
+
+export const GEMINI_MODEL_SEED = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'] as const;
+
+function stripGeminiPrefix(id: string): string {
+  return id.replace(/^models\//, '').trim();
+}
+
+export function isGeminiGenerateFlash(id: string): boolean {
+  const name = stripGeminiPrefix(id);
+  if (!/^gemini-/i.test(name)) return false;
+  if (/embedding|imagen|image|tts|audio|veo|lyria|robotics|computer|native-audio/i.test(name)) {
+    return false;
+  }
+  if (/-pro\b/i.test(name)) return false;
+  return /flash/i.test(name);
+}
+
+export function isGeminiFlashLite(id: string): boolean {
+  return /flash-lite/i.test(stripGeminiPrefix(id));
+}
+
+function geminiVersionScore(id: string): number {
+  const name = stripGeminiPrefix(id);
+  const match = name.match(/gemini-(\d+)(?:\.(\d+))?/i);
+  if (!match) return 0;
+  let score = Number(match[1]) * 100 + Number(match[2] ?? 0);
+  if (/preview|exp/i.test(name)) score -= 5;
+  return score;
+}
+
+function rankGeminiIds(ids: string[]): string[] {
+  return [...ids].sort(
+    (a, b) => geminiVersionScore(b) - geminiVersionScore(a) || a.localeCompare(b),
+  );
+}
+
+export function buildGeminiTaskModels(
+  liveIds: string[],
+  task: 'extract' | 'chat' | 'vision',
+): string[] {
+  const usable = uniquePreserve(
+    liveIds.map(stripGeminiPrefix).filter(isGeminiGenerateFlash),
+  );
+  const lite = rankGeminiIds(usable.filter(isGeminiFlashLite));
+  const flash = rankGeminiIds(usable.filter((id) => !isGeminiFlashLite(id)));
+  const ordered = task === 'chat' ? [...lite, ...flash] : [...flash, ...lite];
+  if (ordered.length > 0) return cap(ordered, 6);
+  return task === 'chat'
+    ? [GEMINI_MODEL_SEED[1], GEMINI_MODEL_SEED[0]]
+    : [...GEMINI_MODEL_SEED];
+}
+
+async function fetchGeminiModelIds(apiKey: string): Promise<string[] | null> {
+  const json = await fetchJson(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=200`,
+  );
+  if (!json || typeof json !== 'object') return null;
+  const models = (json as { models?: Array<{ name?: string; supportedGenerationMethods?: string[] }> }).models;
+  if (!Array.isArray(models)) return null;
+  const ids = models
+    .filter((row) => (row.supportedGenerationMethods ?? []).includes('generateContent'))
+    .map((row) => stripGeminiPrefix(row.name ?? ''))
+    .filter(Boolean);
+  return ids.length ? ids : null;
+}
+
+export async function resolveGeminiModels(
+  apiKey: string,
+  options?: { forceRefresh?: boolean },
+): Promise<string[]> {
+  const cacheKey = 'free_models_gemini';
+  if (!options?.forceRefresh) {
+    const mem = memory.get(cacheKey);
+    if (isFresh(mem)) return mem.models;
+    const persisted = await readPersist(cacheKey);
+    if (isFresh(persisted)) {
+      memory.set(cacheKey, persisted);
+      return persisted.models;
+    }
+  }
+
+  const live = apiKey ? await fetchGeminiModelIds(apiKey) : null;
+  const models =
+    live && live.length > 0
+      ? uniquePreserve([...live.filter(isGeminiGenerateFlash), ...GEMINI_MODEL_SEED])
+      : [...GEMINI_MODEL_SEED];
+
+  const entry: CatalogEntry = { models, fetchedAt: now() };
+  memory.set(cacheKey, entry);
+  void writePersist(cacheKey, entry);
+  return models;
+}
+
+/* ── Groq ────────────────────────────────────────────────────────────────── */
+
+export const GROQ_CHAT_SEED = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'gemma2-9b-it',
+  'qwen/qwen3-32b',
+] as const;
+
+export function isGroqChatModel(id: string): boolean {
+  if (!id) return false;
+  if (/whisper|tts|guard|prompt-guard|allam|speech|audio/i.test(id)) return false;
+  return /llama|gemma|mixtral|qwen|gpt-oss|deepseek|kimi|moonshot|mistral|compound/i.test(id);
+}
+
+function groqSizeScore(id: string, task: 'extract' | 'chat'): number {
+  let score = 0;
+  if (/70b|72b|32b/i.test(id)) score += task === 'extract' ? 50 : 10;
+  if (/instant/i.test(id)) score += task === 'chat' ? 70 : 20;
+  else if (/8b|9b|lite/i.test(id)) score += task === 'chat' ? 50 : 15;
+  if (/3b|1b/i.test(id)) score += task === 'chat' ? 20 : 0;
+  if (/llama-3\.3/i.test(id)) score += 8;
+  if (/preview|exp/i.test(id)) score -= 10;
+  return score;
+}
+
+export function buildGroqTaskModels(
+  liveIds: string[],
+  task: 'extract' | 'chat' = 'chat',
+): string[] {
+  const pool =
+    liveIds.length > 0
+      ? liveIds.filter(isGroqChatModel)
+      : [...GROQ_CHAT_SEED];
+  const ranked = uniquePreserve(pool).sort(
+    (a, b) => groqSizeScore(b, task) - groqSizeScore(a, task) || a.localeCompare(b),
+  );
+  return cap(ranked.length ? ranked : [...GROQ_CHAT_SEED]);
+}
+
+async function fetchGroqModelIds(apiKey: string): Promise<string[] | null> {
+  const json = await fetchJson('https://api.groq.com/openai/v1/models', {
+    Authorization: `Bearer ${apiKey}`,
+  });
+  if (!json || typeof json !== 'object') return null;
+  const data = (json as { data?: Array<{ id?: string }> }).data;
+  if (!Array.isArray(data)) return null;
+  const ids = data.map((row) => row.id?.trim()).filter((id): id is string => Boolean(id));
+  return ids.length ? ids : null;
+}
+
+export async function resolveGroqChatModels(
+  apiKey: string,
+  options?: { forceRefresh?: boolean },
+): Promise<string[]> {
+  const cacheKey = 'free_models_groq';
+  if (!options?.forceRefresh) {
+    const mem = memory.get(cacheKey);
+    if (isFresh(mem)) return mem.models;
+    const persisted = await readPersist(cacheKey);
+    if (isFresh(persisted)) {
+      memory.set(cacheKey, persisted);
+      return persisted.models;
+    }
+  }
+
+  const live = apiKey ? await fetchGroqModelIds(apiKey) : null;
+  const models = live && live.length > 0 ? live.filter(isGroqChatModel) : [...GROQ_CHAT_SEED];
+  const entry: CatalogEntry = { models: models.length ? models : [...GROQ_CHAT_SEED], fetchedAt: now() };
+  memory.set(cacheKey, entry);
+  void writePersist(cacheKey, entry);
+  return entry.models;
+}
+
 /** Invalidate in-memory cache (tests / after provider key change). */
 export function clearFreeModelCatalogMemory(): void {
   memory.clear();

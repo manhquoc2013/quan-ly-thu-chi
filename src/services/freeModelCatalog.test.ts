@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildGeminiTaskModels,
+  buildGroqTaskModels,
   buildOpenRouterFreeList,
   buildSiliconFlowFreeList,
+  isGeminiFlashLite,
+  isGeminiGenerateFlash,
+  isGroqChatModel,
   isLikelySiliconFlowFreeChat,
   isOpenRouterFreeTextChat,
   rankOpenRouterFreeIds,
@@ -62,5 +67,35 @@ describe('freeModelCatalog SiliconFlow', () => {
     expect(list[0]).toBe('Qwen/Qwen3-8B');
     expect(list).toContain('Some/New-7B-Instruct');
     expect(list).not.toContain('deepseek-ai/DeepSeek-V4-Pro');
+  });
+});
+
+describe('freeModelCatalog Gemini', () => {
+  it('keeps generate flash/lite and drops pro/image', () => {
+    expect(isGeminiGenerateFlash('models/gemini-2.5-flash')).toBe(true);
+    expect(isGeminiGenerateFlash('gemini-2.5-flash-lite')).toBe(true);
+    expect(isGeminiGenerateFlash('gemini-2.5-pro')).toBe(false);
+    expect(isGeminiGenerateFlash('gemini-2.5-flash-image')).toBe(false);
+    expect(isGeminiFlashLite('gemini-2.5-flash-lite')).toBe(true);
+  });
+
+  it('prefers newer flash for extract and lite for chat', () => {
+    const live = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.6-flash'];
+    expect(buildGeminiTaskModels(live, 'extract')[0]).toBe('gemini-3.6-flash');
+    expect(buildGeminiTaskModels(live, 'chat')[0]).toBe('gemini-3.1-flash-lite');
+  });
+});
+
+describe('freeModelCatalog Groq', () => {
+  it('drops whisper/tts/guard', () => {
+    expect(isGroqChatModel('llama-3.3-70b-versatile')).toBe(true);
+    expect(isGroqChatModel('whisper-large-v3')).toBe(false);
+    expect(isGroqChatModel('llama-prompt-guard-86m')).toBe(false);
+  });
+
+  it('puts larger models first for extract and instant first for chat', () => {
+    const live = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'gemma2-9b-it'];
+    expect(buildGroqTaskModels(live, 'extract')[0]).toBe('llama-3.3-70b-versatile');
+    expect(buildGroqTaskModels(live, 'chat')[0]).toBe('llama-3.1-8b-instant');
   });
 });

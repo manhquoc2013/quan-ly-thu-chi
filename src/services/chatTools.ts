@@ -48,6 +48,8 @@ import {
   guessProductUnit,
   cleanProductSearchHint,
   isAnimalProductName,
+  generateSkusForProducts,
+  looksLikeGenerateSkuMessage,
 } from './productService';
 import {
   createPlatform,
@@ -234,10 +236,52 @@ function extractPhoneFromText(text?: string): string | undefined {
   return m?.[0];
 }
 
+function isSkuBatchIntent(intent: ChatIntent): boolean {
+  const blob = [intent.targetHint, intent.query, intent.summaryVi, intent.description]
+    .filter(Boolean)
+    .join(' ');
+  return looksLikeGenerateSkuMessage(blob) || /sku\s*tất\s*cả/i.test(blob);
+}
+
+async function executeSkuBatch(intent: ChatIntent): Promise<ToolResult> {
+  const blob = [intent.targetHint, intent.query, intent.summaryVi, intent.description]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  const onlyMissing = !/ghi\s*đè|đổi\s*hết|tạo\s*lại|force|overwrite/i.test(blob);
+  const { updated, skipped } = await generateSkusForProducts({
+    onlyMissing,
+    silent: true,
+  });
+  if (updated.length === 0) {
+    return { ok: true, message: 'Tất cả sản phẩm đã có mã SKU.' };
+  }
+  const detail = updated
+    .slice(0, 30)
+    .map((p, i) => `${i + 1}. **${p.name}** → \`${p.sku}\``);
+  if (updated.length > 30) detail.push(`… và ${updated.length - 30} SP khác`);
+  return {
+    ok: true,
+    message: [
+      `Đã gán **${updated.length}** mã SKU${onlyMissing ? ' (chỉ SP thiếu)' : ''}.`,
+      skipped ? `Bỏ qua ${skipped} SP đã có SKU.` : '',
+      '',
+      '🏷️ **Chi tiết:**',
+      ...detail,
+    ]
+      .filter((line, idx, arr) => line.length > 0 || idx === arr.length - 1)
+      .join('\n'),
+    createdRecord: { kind: 'product', id: updated[0]!.id },
+  };
+}
+
 export async function executeChatIntent(
   intent: ChatIntent,
   opts?: { deleteConfirmed?: boolean },
 ): Promise<ToolResult> {
+  if (isSkuBatchIntent(intent)) {
+    return executeSkuBatch(intent);
+  }
   switch (intent.intent) {
     case 'create_expense': {
       const draft = intentToDraft(intent, 'text');

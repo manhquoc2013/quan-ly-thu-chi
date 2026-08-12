@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { emptyIntent, type ChatIntent } from './chatIntent';
+import { emptyIntent, normalizeIntent, type ChatIntent } from './chatIntent';
 import {
   extractPaymentFromMessage,
   extractPrimaryAmountVnd,
   sanitizeIntentAgainstMessage,
 } from './intentSanitize';
 import { splitMultiTx } from './splitMultiTx';
-import { parseTextToDraft } from './textDraftParser';
+import { EXTRACT_PROMPT } from './llmIntentExtractor';
 
 describe('splitMultiTx', () => {
   it('splits bán … sau đó lại uống …', () => {
@@ -77,91 +77,7 @@ khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ
   });
 });
 
-describe('parseTaoDonOrder', () => {
-  it('parses multi-item order with TikTok', async () => {
-    const { parseTextToDraft } = await import('./textDraftParser');
-    const d = parseTextToDraft(
-      'tạo đơn khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok',
-    );
-    expect(d?.kind).toBe('revenue');
-    expect(d?.customerName).toMatch(/Út Chi/i);
-    expect(d?.platformName).toBe('TikTok');
-    expect(d?.orderItems).toHaveLength(2);
-    expect(d?.amount).toBe(110000);
-    expect(d?.orderItems?.[0]?.name).toMatch(/Sửa trắng xanh hồng/i);
-    expect(d?.orderItems?.[1]?.name).toMatch(/hoa màu đỏ/i);
-  });
-
-  it('parses Thu 3, product as customer name Thu 3', async () => {
-    const { parseTextToDraft } = await import('./textDraftParser');
-    const d = parseTextToDraft(
-      'tạo đơn khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
-    );
-    expect(d?.kind).toBe('revenue');
-    expect(d?.customerName).toBe('Thu 3');
-    expect(d?.quantity).toBe(1);
-    expect(d?.unitPrice).toBe(70000);
-    expect(d?.amount).toBe(70000);
-    expect(d?.platformName).toBe('TikTok');
-    expect(d?.description).toMatch(/chó đeo mắt kính/i);
-  });
-
-  it('parses Thu 3 cái, product as qty 3', async () => {
-    const { parseTextToDraft } = await import('./textDraftParser');
-    const d = parseTextToDraft(
-      'tạo đơn khách Thu 3 cái, chó đeo mắt kính giá 70k ở tiktok',
-    );
-    expect(d?.kind).toBe('revenue');
-    expect(d?.customerName).toBe('Thu');
-    expect(d?.quantity).toBe(3);
-    expect(d?.unitPrice).toBe(70000);
-    expect(d?.amount).toBe(210000);
-  });
-
-  it('parses 1-letter customer T', async () => {
-    const { parseTextToDraft } = await import('./textDraftParser');
-    const d = parseTextToDraft(
-      'tạo đơn khách T, chó đeo mắt kính giá 70k ở tiktok',
-    );
-    expect(d?.kind).toBe('revenue');
-    expect(d?.customerName).toBe('T');
-    expect(d?.amount).toBe(70000);
-    expect(d?.platformName).toBe('TikTok');
-  });
-
-  it('parses ưu tiên cho khách as create with priority', async () => {
-    const { parseTextToDraft } = await import('./textDraftParser');
-    const d = parseTextToDraft(
-      'ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok',
-    );
-    expect(d?.kind).toBe('revenue');
-    expect(d?.customerName).toBe('Thu 3');
-    expect(d?.quantity).toBe(1);
-    expect(d?.amount).toBe(70000);
-    expect(d?.priority).toBe(true);
-    expect(d?.platformName).toBe('TikTok');
-  });
-
-  it('parses full batch header + ưu tiên lines as 3 drafts', () => {
-    const msg = `tạo đơn 
-khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ giá 55k đặt ở tiktok
-ưu tiên cho khách Thu 3, chó đeo mắt kính giá 70k ở tiktok
-ưu tiên cho khách T, chó đeo mắt kính giá 70k ở tiktok`;
-    const segs = splitMultiTx(msg);
-    const drafts = segs.map((s) => parseTextToDraft(s));
-    expect(drafts).toHaveLength(3);
-    expect(drafts[0]?.customerName).toMatch(/Út Chi/i);
-    expect(drafts[0]?.orderItems).toHaveLength(2);
-    expect(drafts[0]?.amount).toBe(110000);
-    expect(drafts[0]?.priority).toBeFalsy();
-    expect(drafts[1]?.customerName).toBe('Thu 3');
-    expect(drafts[1]?.priority).toBe(true);
-    expect(drafts[1]?.amount).toBe(70000);
-    expect(drafts[2]?.customerName).toBe('T');
-    expect(drafts[2]?.priority).toBe(true);
-    expect(drafts[2]?.amount).toBe(70000);
-  });
-
+describe('parsePriorityOrderCommand', () => {
   it('parses priority toggle commands', async () => {
     const { parsePriorityOrderCommand } = await import('./chatIntent');
     const set = parsePriorityOrderCommand('ưu tiên đơn DH-20260809-001');
@@ -178,61 +94,35 @@ khách Út Chi mua 1 Sửa trắng xanh hồng giá 55k và 1 bó hoa màu đỏ
   });
 });
 
-describe('local drafts for multi-tx utterance', () => {
-  it('parses customer paid + typo nết + đổ xăng hết as 3 drafts', () => {
-    const msg =
-      'oa đã trả 300k cho 6 kẹp tóc, tôi đi uống nước nết 30k và đổ xăng hết 100k';
-    const segs = splitMultiTx(msg);
-    expect(segs).toHaveLength(3);
-    const drafts = segs.map((s) => parseTextToDraft(s));
-    expect(drafts[0]?.kind).toBe('revenue');
-    expect(drafts[0]?.amount).toBe(300000);
-    expect(drafts[0]?.quantity).toBe(6);
-    expect(drafts[1]?.kind).toBe('expense');
-    expect(drafts[1]?.amount).toBe(30000);
-    expect(drafts[2]?.kind).toBe('expense');
-    expect(drafts[2]?.amount).toBe(100000);
-  });
-});
-
-describe('sanitize customer paid → revenue', () => {
-  it('flips expense to revenue for "Hoa đã trả 300k cho 6 kẹp tóc"', () => {
+describe('sanitize does not flip LLM kind', () => {
+  it('keeps create_expense even if message looks like a customer payment', () => {
     const bad: ChatIntent = {
       ...emptyIntent('create_expense'),
       amount: 300000,
       description: 'kẹp tóc',
     };
     const out = sanitizeIntentAgainstMessage('Hoa đã trả 300k cho 6 kẹp tóc', bad);
-    expect(out.intent).toBe('create_revenue');
+    expect(out.intent).toBe('create_expense');
     expect(out.amount).toBe(300000);
-    expect(out.quantity).toBe(6);
   });
 
-  it('cleans revenue description to product name only', () => {
-    const bad: ChatIntent = {
+  it('keeps create_revenue for "tạo đơn hàng khách"', () => {
+    const intent: ChatIntent = {
       ...emptyIntent('create_revenue'),
-      amount: 300000,
-      quantity: 6,
-      description: 'Hoa đã trả 300k cho 6 kẹp tóc',
       customerName: 'Hoa',
+      description: 'kẹp tóc',
+      amount: 90000,
     };
-    const out = sanitizeIntentAgainstMessage('Hoa đã trả 300k cho 6 kẹp tóc', bad);
-    expect(out.description?.toLowerCase()).toBe('kẹp tóc');
-  });
-});
-
-describe('extractPaymentFromMessage', () => {
-  it('detects paid + bank transfer', () => {
-    const pay = extractPaymentFromMessage(
-      'bán cho hoa 3 cái kẹp tóc giá 90k, đã thanh toán bằng chuyển khoản',
+    const out = sanitizeIntentAgainstMessage(
+      'tạo đơn hàng khách Hoa kẹp tóc giá 90k',
+      intent,
     );
-    expect(pay.paymentStatus).toBe('paid');
-    expect(pay.paymentMethod).toBe('bank_transfer');
+    expect(out.intent).toBe('create_revenue');
+    expect(out.customerName?.toLowerCase()).toBe('hoa');
+    expect(out.amount).toBe(90000);
   });
-});
 
-describe('sanitizeIntentAgainstMessage', () => {
-  it('forces expense for uống nước and strips hallucinated entities', () => {
+  it('does not force expense for uống nước when LLM said revenue', () => {
     const bad: ChatIntent = {
       ...emptyIntent('create_revenue'),
       amount: 50000,
@@ -244,7 +134,7 @@ describe('sanitizeIntentAgainstMessage', () => {
       missing: [],
     };
     const fixed = sanitizeIntentAgainstMessage('uống nước hết 50k', bad);
-    expect(fixed.intent).toBe('create_expense');
+    expect(fixed.intent).toBe('create_revenue');
     expect(fixed.customerName).toBeUndefined();
     expect(fixed.platformName).toBeUndefined();
     expect(fixed.quantity ?? 1).toBe(1);
@@ -272,12 +162,48 @@ describe('sanitizeIntentAgainstMessage', () => {
     expect(fixed.paymentStatus).toBe('paid');
     expect(fixed.paymentMethod).toBe('bank_transfer');
     expect(fixed.description?.toLowerCase()).toContain('kẹp tóc');
-    expect(fixed.description?.toLowerCase()).not.toContain('uống');
+  });
+});
+
+describe('extractPaymentFromMessage', () => {
+  it('detects paid + bank transfer', () => {
+    const pay = extractPaymentFromMessage(
+      'bán cho hoa 3 cái kẹp tóc giá 90k, đã thanh toán bằng chuyển khoản',
+    );
+    expect(pay.paymentStatus).toBe('paid');
+    expect(pay.paymentMethod).toBe('bank_transfer');
   });
 });
 
 describe('extractPrimaryAmountVnd', () => {
   it('prefers giá 90k over bare 3', () => {
     expect(extractPrimaryAmountVnd('bán cho hoa 3 cái kẹp tóc giá 90k')).toBe(90000);
+  });
+});
+
+describe('LLM-only routing contracts', () => {
+  it('EXTRACT_PROMPT maps tạo đơn hàng khách to create_revenue', () => {
+    expect(EXTRACT_PROMPT).toMatch(/tạo đơn hàng khách/i);
+    expect(EXTRACT_PROMPT).toMatch(/CẤM create_expense/i);
+    expect(EXTRACT_PROMPT).toMatch(/targetHint="SKU tất cả"/);
+  });
+
+  it('normalizeIntent keeps orderItems on create_revenue', () => {
+    const intent = normalizeIntent({
+      intent: 'create_revenue',
+      customerName: 'Út Chi',
+      description: 'Đơn Út Chi',
+      amount: 110000,
+      orderItems: [
+        { name: 'Sửa trắng xanh hồng', quantity: 1, unitPrice: 55000 },
+        { name: 'bó hoa màu đỏ', quantity: 1, unitPrice: 55000 },
+      ],
+      confidence: 0.9,
+      missing: [],
+      summaryVi: 'tạo đơn hàng khách Út Chi',
+    });
+    expect(intent?.intent).toBe('create_revenue');
+    expect(intent?.orderItems).toHaveLength(2);
+    expect(intent?.customerName).toMatch(/Út Chi/i);
   });
 });

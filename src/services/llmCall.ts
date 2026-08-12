@@ -1,7 +1,8 @@
 /**
  * Shared LLM cascade: user-configurable priority order.
  *
- * Default: Kilo Free → Groq → Gemini → WebLLM.
+ * Chat: Kilo Free → OpenRouter → SiliconFlow → Groq → Gemini → WebLLM.
+ * Extract (create/update/paste/slots): Groq → Gemini → Kilo → rest.
  */
 
 import { useAuthStore } from '@/store/authStore';
@@ -11,16 +12,25 @@ import { kiloService } from './kiloService';
 import { openRouterService } from './openRouterService';
 import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
-import { type LlmSource, AI_PRIORITY_DEFAULT, LLM_SOURCE_LABELS, mergeAiPriority } from './llmTypes';
+import {
+  type LlmSource,
+  AI_PRIORITY_DEFAULT,
+  LLM_SOURCE_LABELS,
+  mergeAiPriority,
+  mergeExtractPriority,
+} from './llmTypes';
 
 // Re-export for backward compatibility — callers import from llmCall.
 export type { LlmSource } from './llmTypes';
-export { AI_PRIORITY_DEFAULT } from './llmTypes';
+export { AI_PRIORITY_DEFAULT, mergeExtractPriority } from './llmTypes';
+
+export type LlmCascadeProfile = 'chat' | 'extract';
 
 async function tryProvider(
   source: LlmSource,
   prompt: string,
   localMode: 'raw' | 'chat',
+  profile: LlmCascadeProfile,
 ): Promise<string | null> {
   switch (source) {
     case 'kilo': {
@@ -50,7 +60,9 @@ async function tryProvider(
     case 'groq': {
       if (groqService.isEnabled && groqService.isConfigured && navigator.onLine) {
         try {
-          return await groqService.generateContent(prompt);
+          return await groqService.generateContent(prompt, {
+            task: profile === 'extract' ? 'extract' : 'chat',
+          });
         } catch { /* fall through */ }
       }
       return null;
@@ -58,7 +70,9 @@ async function tryProvider(
     case 'gemini': {
       if (geminiService.isConfigured && navigator.onLine) {
         try {
-          const text = await geminiService.generateContent(prompt);
+          const text = await geminiService.generateContent(prompt, {
+            task: profile === 'extract' ? 'extract' : 'chat',
+          });
           if (text && !text.startsWith('Lỗi Gemini:') && !text.startsWith('[Gemini chưa')) {
             return text;
           }
@@ -95,12 +109,14 @@ async function tryProvider(
 export async function callLlmCascade(
   prompt: string,
   localMode: 'raw' | 'chat' = 'raw',
+  profile: LlmCascadeProfile = 'chat',
 ): Promise<{ text: string; source: LlmSource } | null> {
   const { aiPriority } = useAuthStore.getState();
-  const order = mergeAiPriority(aiPriority);
+  const order =
+    profile === 'extract' ? mergeExtractPriority(aiPriority) : mergeAiPriority(aiPriority);
 
   for (const source of order) {
-    const text = await tryProvider(source, prompt, localMode);
+    const text = await tryProvider(source, prompt, localMode, profile);
     if (text) return { text, source };
   }
 

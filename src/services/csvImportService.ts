@@ -5,7 +5,7 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import type { ExpenseCategory } from '@/models';
-import { guessCategory } from './textDraftParser';
+import { guessCategory } from './categoryGuess';
 import {
   MAX_CSV_ROWS,
   newDraftId,

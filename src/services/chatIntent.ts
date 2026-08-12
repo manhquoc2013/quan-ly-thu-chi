@@ -226,6 +226,20 @@ export function normalizeIntent(raw: unknown): ChatIntent | null {
     mascotEmotion: str(o.mascot_emotion) ?? str(o.mascotEmotion),
   };
 
+  if (Array.isArray(o.orderItems)) {
+    const items: DraftOrderItem[] = [];
+    for (const row of o.orderItems) {
+      if (!row || typeof row !== 'object') continue;
+      const it = row as Record<string, unknown>;
+      const name = str(it.name);
+      const quantity = num(it.quantity) ?? 1;
+      const unitPrice = num(it.unitPrice, true);
+      if (!name || unitPrice == null) continue;
+      items.push({ name, quantity: Math.max(1, quantity), unitPrice });
+    }
+    if (items.length) intentObj.orderItems = items;
+  }
+
   return fillMissingSlots(intentObj);
 }
 

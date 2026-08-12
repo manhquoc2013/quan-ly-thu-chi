@@ -7,11 +7,9 @@ import { createExpense } from './expenseService';
 import { geminiService } from './geminiService';
 import { parseSpreadsheetFile } from './csvImportService';
 import { ocrFileToDraft } from './ocrService';
-import {
-  looksLikeAnalysisIntent,
-  looksLikeCreateIntent,
-  parseTextToDrafts,
-} from './textDraftParser';
+import { extractBulkDrafts } from './llmBulkDraftExtractor';
+import { extractChatIntent } from './llmIntentExtractor';
+import { intentToDraft } from './chatIntent';
 import {
   ACCEPTED_INTAKE_MIME,
   MAX_INTAKE_FILE_BYTES,
@@ -103,11 +101,27 @@ export async function intakeFromFile(file: File): Promise<IntakeResult> {
   };
 }
 
-export function intakeFromText(message: string, source: 'text' | 'voice' = 'text'): IntakeResult | null {
-  const drafts = parseTextToDrafts(message, source);
-  if (!drafts.length) return null;
+export async function intakeFromText(
+  message: string,
+  source: 'text' | 'voice' = 'text',
+): Promise<IntakeResult | null> {
+  const bulk = await extractBulkDrafts(message, source);
+  let resolved = bulk?.drafts?.length ? bulk.drafts : [];
+  if (!resolved.length) {
+    const extracted = await extractChatIntent(message);
+    if (
+      extracted &&
+      (extracted.intent.intent === 'create_expense' ||
+        extracted.intent.intent === 'create_revenue' ||
+        extracted.intent.intent === 'create_product')
+    ) {
+      const one = intentToDraft(extracted.intent, source);
+      if (one) resolved = [one];
+    }
+  }
+  if (!resolved.length) return null;
 
-    const lines = drafts.map((d) => {
+  const lines = resolved.map((d) => {
     const kindLabel =
       d.kind === 'expense' ? 'chi phí' : d.kind === 'revenue' ? 'doanh thu' : 'sản phẩm';
     const cust = d.kind === 'revenue' && d.customerName ? ` · ${d.customerName}` : '';
@@ -115,19 +129,19 @@ export function intakeFromText(message: string, source: 'text' | 'voice' = 'text
   });
 
   const singleKind =
-    drafts[0]!.kind === 'expense'
+    resolved[0]!.kind === 'expense'
       ? 'chi phí'
-      : drafts[0]!.kind === 'revenue'
+      : resolved[0]!.kind === 'revenue'
         ? 'doanh thu'
         : 'sản phẩm';
 
   return {
     text:
-      drafts.length === 1
-        ? `Đã nhận diện ${singleKind}: **${drafts[0]!.description}** — ${drafts[0]!.amount.toLocaleString('vi-VN')}₫`
-        : `Đã nhận diện **${drafts.length}** mục:\n${lines.join('\n')}`,
-    source: 'local',
-    drafts,
+      resolved.length === 1
+        ? `Đã nhận diện ${singleKind}: **${resolved[0]!.description}** — ${resolved[0]!.amount.toLocaleString('vi-VN')}₫`
+        : `Đã nhận diện **${resolved.length}** mục:\n${lines.join('\n')}`,
+    source: bulk?.llmSource === 'local' ? 'local' : 'cloud',
+    drafts: resolved,
   };
 }
 
@@ -202,15 +216,10 @@ ${recentRev || '  (trống)'}`;
 export function shouldAttachFinanceContext(message: string): boolean {
   // Do NOT attach for create — store entities bleed into small local models
   // (hallucinated customer/platform). Create only needs the user message.
-  return (
-    looksLikeAnalysisIntent(message) ||
-    /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu|tổng quan|công nợ)\b/i.test(
-      message,
-    )
+  return /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu|tổng quan|công nợ|phân tích|báo cáo|thống kê|dự báo|so sánh|xu hướng|tổng hợp|lợi nhuận|tổng chi|tổng thu)\b/i.test(
+    message,
   );
 }
-
-export { looksLikeCreateIntent, looksLikeAnalysisIntent };
 
 export async function persistConfirmed(
   drafts: DraftRecord[],

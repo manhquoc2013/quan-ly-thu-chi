@@ -1,8 +1,8 @@
 /**
- * AI Router — Hybrid AI: Kilo Free → Gemini → WebLLM.
+ * AI Router — LLM-only chat routing (Kilo Free → Gemini → WebLLM).
  *
- * Chat messages go through LLM intent extract (cloud preferred).
- * Only structured paste (order table / multi-line bulk list) uses deterministic parsers.
+ * All natural-language chat (create / update / navigate / SKU / paste) goes through
+ * LLM intent or bulk extract. No regex NL classifiers on the send path.
  *
  * Usage:
  *   import { aiRouter } from '@/services/aiRouter';
@@ -32,7 +32,6 @@ import {
   mergeClarifyReply,
   mergeIntent,
   parseEntityPickIndex,
-  parsePriorityOrderCommand,
   draftToCreateIntent,
   fillMissingSlots,
 } from './chatIntent';
@@ -44,78 +43,18 @@ import {
 } from './llmIntentExtractor';
 import { extractBulkDrafts } from './llmBulkDraftExtractor';
 import {
-  looksLikeBulkLineList,
-  parseLineListDrafts,
-  parseTextToDraft,
-  isClearBulkPaste,
-} from './textDraftParser';
-import { parseOrderTableDrafts } from './orderTableParser';
-import {
-  parseSalesProductTableDrafts,
-  parseStockInTableDrafts,
-} from './stockInTableParser';
-import { parseRevenueCashTableDrafts } from './revenueCashTableParser';
-import {
   executeChatIntent,
   executeLegacyCreate,
 } from './chatTools';
 import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
-import { parseProductUnitUpdateMessage, looksLikeGenerateSkuMessage } from './productService';
 import { notifyListInvalidated } from './listQuery';
 
 export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'siliconflow' | 'groq' | 'gemini' | 'tesseract';
 
-/** When LLM returns prose/chat, rebuild create intents from split segments via local parsers. */
-function localCreateIntentsFromSegments(segments: string[]): ChatIntent[] {
-  const intents: ChatIntent[] = [];
-  for (const seg of segments) {
-    const draft = parseTextToDraft(seg, 'text');
-    if (!draft) continue;
-    intents.push(sanitizeIntentAgainstMessage(seg, draftToCreateIntent(draft)));
-  }
-  return intents;
-}
-
-/** Prefer deterministic "tạo đơn" / "ưu tiên cho khách" parse over LLM when local draft is complete. */
-function preferLocalTaoDonIntents(
-  segments: string[],
-  llmIntents: ChatIntent[],
-): ChatIntent[] {
-  const out: ChatIntent[] = [];
-  let usedLocal = false;
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]!;
-    const isSpokenOrder =
-      /^(?:tạo|thêm)\s+đơn\b/i.test(seg.trim()) ||
-      /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(seg.trim()) ||
-      /^khách\s+\S+/i.test(seg.trim());
-    if (isSpokenOrder) {
-      const draft = parseTextToDraft(seg, 'text');
-      if (draft) {
-        const intent = sanitizeIntentAgainstMessage(seg, draftToCreateIntent(draft));
-        if (isRunnableCreate(intent)) {
-          out.push(intent);
-          usedLocal = true;
-          continue;
-        }
-      }
-    }
-    if (llmIntents[i]) out.push(llmIntents[i]!);
-  }
-  return usedLocal && out.length > 0 ? out : llmIntents;
-}
-
-function isRunnableCreate(intent: ChatIntent): boolean {
-  return (
-    (intent.intent === 'create_expense' ||
-      intent.intent === 'create_revenue' ||
-      intent.intent === 'create_product' ||
-      intent.intent === 'create_customer' ||
-      intent.intent === 'create_platform') &&
-    intent.missing.length === 0
-  );
+function isMultiLinePaste(message: string): boolean {
+  return message.split(/\r?\n/).filter((line) => line.trim().length > 0).length >= 2;
 }
 
 function isCloudSource(source: string | undefined): boolean {
@@ -789,279 +728,31 @@ export const aiRouter = {
       }
     }
 
-    // ── 0b. Local: đổi/sửa đơn vị sản phẩm (không cần LLM) ───────────────
-    const unitUpdate = parseProductUnitUpdateMessage(trimmed);
-    if (unitUpdate) {
-      const intent = fillMissingSlots({
-        intent: 'update_product',
-        targetHint: unitUpdate.targetHint,
-        unit: unitUpdate.unit,
-        confidence: 0.95,
-        missing: [],
-        summaryVi: `đổi đơn vị ${unitUpdate.targetHint} → ${unitUpdate.unit}`,
-      });
-      const out = await runIntentTool(intent);
-      addToHistory(trimmed, out.text);
-      return out;
-    }
-
-    // ── 0c. Local: mở màn hình ───────────────────────────────────────────
-    const navMatch = /^(?:mở|vào|đi\s*(?:tới|đến)|chuyển\s*(?:sang|tới))\s+(.+)$/i.exec(trimmed);
-    if (navMatch) {
-      const intent = fillMissingSlots({
-        intent: 'navigate',
-        query: navMatch[1]!.trim(),
-        confidence: 0.95,
-        missing: [],
-      });
-      const out = await runIntentTool(intent);
-      addToHistory(trimmed, out.text);
-      return out;
-    }
-
-    // ── 0d. Local: đánh dấu đã thanh toán đơn ───────────────────────────
-    const paidMatch =
-      /(?:đánh\s*dấu\s*)?(?:đã\s*)?thanh\s*toán(?:\s+đơn)?\s+(.+)/i.exec(trimmed) ||
-      /đơn\s+(.+?)\s+(?:đã\s*)?thanh\s*toán/i.exec(trimmed);
-    if (paidMatch && !/thêm|bán|mua|chi\b/i.test(trimmed)) {
-      const intent = fillMissingSlots({
-        intent: 'update_revenue',
-        targetHint: paidMatch[1]!.trim(),
-        paymentStatus: 'paid',
-        confidence: 0.92,
-        missing: [],
-        summaryVi: `đánh dấu đã TT ${paidMatch[1]!.trim()}`,
-      });
-      const out = await runIntentTool(intent);
-      addToHistory(trimmed, out.text);
-      return out;
-    }
-
-    // ── 0e. Local: tạo mã SKU hàng loạt ──────────────────────────────────
-    if (looksLikeGenerateSkuMessage(trimmed)) {
-      const onlyMissing = !/ghi\s*đè|đổi\s*hết|tạo\s*lại|force|overwrite/i.test(trimmed);
-      const { generateSkusForProducts } = await import('./productService');
-      const { updated, skipped } = await generateSkusForProducts({
-        onlyMissing,
-        silent: true,
-      });
-      const lines =
-        updated.length === 0
-          ? ['ℹ️ Tất cả sản phẩm đã có mã SKU.']
-          : [
-              `✅ Đã gán **${updated.length}** mã SKU${onlyMissing ? ' (chỉ SP thiếu)' : ''}.`,
-              skipped ? `⏭️ Bỏ qua ${skipped} SP đã có SKU.` : '',
-              '',
-              '🏷️ **Chi tiết:**',
-              ...updated
-                .slice(0, 30)
-                .map((p, i) => `${i + 1}. **${p.name}** → \`${p.sku}\``),
-              updated.length > 30 ? `… và ${updated.length - 30} SP khác` : '',
-            ];
-      const text = lines.filter(Boolean).join('\n');
-      addToHistory(trimmed, text);
-      return { text, source: 'local' };
-    }
-
-    // ── 1. Structured paste (cash / sales / stock-in / order / multi-line) ─
-    // Single-line chat always continues to LLM below.
-    const cashTableMeta = parseRevenueCashTableDrafts(trimmed, 'text');
-    const salesTableMeta = parseSalesProductTableDrafts(trimmed, 'text');
-    const stockInTableMeta = parseStockInTableDrafts(trimmed, 'text');
-    const orderTableMeta = parseOrderTableDrafts(trimmed, 'text');
-    let bulkDrafts =
-      cashTableMeta.isTable && cashTableMeta.drafts.length
-        ? cashTableMeta.drafts
-        : salesTableMeta.isTable && salesTableMeta.drafts.length
-          ? salesTableMeta.drafts
-          : stockInTableMeta.isTable && stockInTableMeta.drafts.length
-            ? stockInTableMeta.drafts
-            : orderTableMeta.isTable && orderTableMeta.drafts.length
-              ? orderTableMeta.drafts
-              : null;
-    let bulkSkipped: string[] = cashTableMeta.isTable
-      ? cashTableMeta.skipped
-      : salesTableMeta.isTable
-        ? salesTableMeta.skipped
-        : stockInTableMeta.isTable
-          ? stockInTableMeta.skipped
-          : orderTableMeta.isTable
-            ? orderTableMeta.skipped
-            : [];
-
-    if (!bulkDrafts && looksLikeBulkLineList(trimmed)) {
-      const lineAttempt = parseLineListDrafts(trimmed, 'text');
-      // Policy A: only trust local parse when kind header/cue is explicit
-      if (lineAttempt.drafts.length >= 2 && isClearBulkPaste(trimmed, lineAttempt)) {
-        bulkDrafts = lineAttempt.drafts;
-        bulkSkipped = lineAttempt.skipped;
-      } else {
-        const llmBulk = await extractBulkDrafts(trimmed, 'text');
-        if (llmBulk?.drafts.length) {
-          const persisted = await persistBulkDrafts(llmBulk.drafts, lineAttempt.skipped);
+    // ── 1. Multi-line paste → LLM bulk ───────────────────────────────────
+    if (isMultiLinePaste(trimmed)) {
+      const llmBulk = await extractBulkDrafts(trimmed, 'text');
+      if (llmBulk?.drafts.length) {
+        try {
+          const persisted = await persistBulkDrafts(llmBulk.drafts, []);
           addToHistory(trimmed, persisted.text);
           return {
             text: persisted.text,
             source: llmBulk.llmSource,
             createdRecord: persisted.lastCreated,
           };
+        } catch (err) {
+          const errText = `❌ Lỗi lưu: ${err instanceof Error ? err.message : 'Unknown'}`;
+          addToHistory(trimmed, errText);
+          return { text: errText, source: 'local' };
         }
-        // Ambiguous unlabeled list + no LLM → do NOT guess expense
-        if (lineAttempt.drafts.length >= 2 && !lineAttempt.kindHint) {
-          const failAmbiguous =
-            '⚠️ Danh sách nhiều dòng chưa rõ loại (chi phí / doanh thu / sản phẩm). Thêm header ví dụ `thêm các sản phẩm:` hoặc `thêm chi phí:`, rồi gửi lại.';
-          addToHistory(trimmed, failAmbiguous);
-          return { text: failAmbiguous, source: 'local' };
-        }
-        const failText =
-          '⚠️ Không nhận diện được danh sách nhiều dòng. Thử định dạng: `Tên hàng 798.000₫` mỗi dòng.';
-        addToHistory(trimmed, failText);
-        return { text: failText, source: 'local' };
       }
     }
 
-    if (bulkDrafts?.length) {
-      const isOrderTablePaste = orderTableMeta.isTable && orderTableMeta.drafts.length > 0;
-      if (bulkDrafts.length >= 2 && !isOrderTablePaste) {
-        const lineMeta = parseLineListDrafts(trimmed, 'text');
-        if (lineMeta.drafts.length >= 2) bulkSkipped = lineMeta.skipped;
-      }
-      try {
-        if (
-          isOrderTablePaste ||
-          bulkDrafts.length >= 2 ||
-          (bulkDrafts[0]?.orderItems?.length ?? 0) > 0
-        ) {
-          const persisted = await persistBulkDrafts(bulkDrafts, bulkSkipped);
-          addToHistory(trimmed, persisted.text);
-          return {
-            text: persisted.text,
-            source: 'local',
-            createdRecord: persisted.lastCreated,
-          };
-        }
-
-        if (bulkDrafts.length === 1 && bulkDrafts[0]!.kind === 'revenue') {
-          const only = bulkDrafts[0]!;
-          if (
-            (only.shippingFee ?? 0) > 0 ||
-            (only.depositAmount ?? 0) > 0 ||
-            (only.orderItems?.length ?? 0) > 0
-          ) {
-            const persisted = await persistBulkDrafts([only], bulkSkipped);
-            addToHistory(trimmed, persisted.text);
-            return {
-              text: persisted.text,
-              source: 'local',
-              createdRecord: persisted.lastCreated,
-            };
-          }
-          const out = await runIntentTool(draftToCreateIntent(only));
-          addToHistory(trimmed, out.text);
-          return out;
-        }
-
-        const expenseDrafts = bulkDrafts.filter((d) => d.kind === 'expense');
-        const revenueDrafts = bulkDrafts.filter((d) => d.kind === 'revenue');
-        const productDrafts = bulkDrafts.filter((d) => d.kind === 'product');
-        const lines: string[] = [];
-        let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
-
-        if (productDrafts.length) {
-          const { created, failed } = await persistConfirmed(productDrafts);
-          productDrafts.forEach((draft, i) => {
-            const mark = created[i] ? '✅' : '⚠️';
-            lines.push(
-              `${mark} sản phẩm: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫`,
-            );
-          });
-          if (failed[0] && created.length === 0) lines.push(`❌ ${failed[0]}`);
-          if (created[0]) lastCreated = { kind: 'product', id: created[0].id };
-        }
-
-        if (expenseDrafts.length) {
-          const { created, failed } = await persistConfirmed(expenseDrafts);
-          expenseDrafts.forEach((draft, i) => {
-            const mark = created[i] ? '✅' : '⚠️';
-            lines.push(
-              `${mark} chi phí: **${draft.description}** — ${draft.amount.toLocaleString('vi-VN')}₫`,
-            );
-          });
-          if (failed[0] && created.length === 0) lines.push(`❌ ${failed[0]}`);
-          if (created[0]) lastCreated = { kind: created[0].kind, id: created[0].id };
-        }
-
-        for (const rd of revenueDrafts) {
-          const out = await runIntentTool(draftToCreateIntent(rd));
-          lines.push(out.text);
-          if (out.createdRecord) lastCreated = out.createdRecord;
-          if (getPending()?.awaitingEntityPick) {
-            const text = lines.join('\n\n');
-            addToHistory(trimmed, text);
-            return { text, source: 'local', createdRecord: lastCreated };
-          }
-        }
-
-        const text = lines.join('\n\n') || 'Không lưu được.';
-        addToHistory(trimmed, text);
-        return { text, source: 'local', createdRecord: lastCreated };
-      } catch (err) {
-        const errText = `❌ Lỗi lưu: ${err instanceof Error ? err.message : 'Unknown'}`;
-        addToHistory(trimmed, errText);
-        return { text: errText, source: 'local' };
-      }
-    }
-
-    // ── 1b. Help ──────────────────────────────────────────────────────────
-    const lower = trimmed.toLowerCase();
-    if (
-      lower === 'help' ||
-      lower === 'hướng dẫn' ||
-      lower === '?' ||
-      lower === 'cách dùng' ||
-      lower === 'giúp đỡ'
-    ) {
-      const helpText = `📋 **Mèo Lucky — hướng dẫn**
-
-**💸 Chi / 🧾 Thu**
-• \`cà phê 25k\` · \`nhập len 500k\`
-• \`bán cho Hoa 3 kẹp tóc giá 90k, cọc 30k, ship 11k ở Zalo\`
-• Paste: \`thêm chi phí:\` / \`thêm doanh thu:\` + mỗi dòng tên + tiền
-
-**🏷️ Sản phẩm · 👤 Khách · 📣 Kênh**
-• \`thêm các sản phẩm:\` + STT / Đơn giá
-• \`thêm SP Hello Kitty 50k\` · \`đổi giá …\` · \`đổi đơn vị thú thành con\`
-• \`thêm khách Hoa\` · \`thêm kênh Lazada\`
-
-**🔍 Tra cứu · ➡️ Điều hướng**
-• \`tổng quan\` · \`công nợ\` · \`top khách\` · \`theo kênh\`
-• \`mở chi phí\` · \`mở sản phẩm\` · \`mở cài đặt\`
-
-**✏️ Sửa / 🗑️ Xóa / 💳 Đơn**
-• \`đánh dấu đã thanh toán đơn DH-…\` · \`đổi đơn … sang hoàn thành\`
-• \`xóa chi phí …\` (gõ **xác nhận**)
-• \`đổi đơn vị thú thành con\` · \`tạo mã SKU cho tất cả sản phẩm\`
-
-**⚙️ Mật khẩu / API / sync:** \`mở cài đặt\`
-**📎 File:** ảnh / PDF / CSV / XLS → xem trước → Xác nhận.`;
-      addToHistory(trimmed, helpText);
-      return { text: helpText, source: 'local' };
-    }
-
-    // ── 2. LLM intent → tools (all normal chat messages) ─────────────────
+    // ── 2. LLM intent → tools ────────────────────────────────────────────
     const segments = splitMultiTx(trimmed);
     if (segments.length > 1) {
-      // One LLM call for all segments (parallel WebLLM freezes the machine)
       const multi = await extractMultiChatIntents(segments, financeCtx || undefined);
-      let intents = (multi?.intents ?? []).filter((i) => i.intent !== 'chat');
-      // Free models / Gemini often reply with a prose summary instead of JSON —
-      // fall back to local parsers so creates still persist.
-      if (!intents.some(isRunnableCreate)) {
-        const local = localCreateIntentsFromSegments(segments);
-        if (local.length) intents = local;
-      } else {
-        intents = preferLocalTaoDonIntents(segments, intents);
-      }
+      const intents = (multi?.intents ?? []).filter((i) => i.intent !== 'chat');
       const multiResults: string[] = [];
       let source: ChatReplySource = multi?.source ?? 'local';
       let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
@@ -1096,29 +787,6 @@ export const aiRouter = {
       }
     }
 
-    const priorityCmd = parsePriorityOrderCommand(trimmed);
-    if (priorityCmd) {
-      const out = await runIntentTool(priorityCmd);
-      addToHistory(trimmed, out.text);
-      return { text: out.text, source: 'local', createdRecord: out.createdRecord };
-    }
-
-    // Deterministic spoken orders — local before LLM (tạo đơn / ưu tiên cho khách / khách …)
-    if (segments.length === 1) {
-      const localSpoken = localCreateIntentsFromSegments([trimmed]);
-      const spokenOk =
-        localSpoken.length === 1 &&
-        isRunnableCreate(localSpoken[0]!) &&
-        (/^(?:tạo|thêm)\s+đơn\b/i.test(trimmed) ||
-          /^ưu\s*tiên(?:\s+cho)?\s+khách\s+\S+/i.test(trimmed) ||
-          /^khách\s+\S+/i.test(trimmed));
-      if (spokenOk) {
-        const out = await runIntentTool(localSpoken[0]!);
-        addToHistory(trimmed, out.text);
-        return { text: out.text, source: 'local', createdRecord: out.createdRecord };
-      }
-    }
-
     const extracted = await extractChatIntent(trimmed, financeCtx || undefined);
     if (extracted && extracted.intent.intent !== 'chat') {
       const intent = sanitizeIntentAgainstMessage(trimmed, extracted.intent);
@@ -1139,6 +807,7 @@ export const aiRouter = {
         intent.intent.startsWith('delete_')
       ) {
         const out = await runIntentTool(intent);
+        const lower = trimmed.toLowerCase();
         if (intent.intent === 'lookup' && /phân tích|so sánh|xu hướng|bất thường/.test(lower)) {
           const aiExtra = await generateChatReply(trimmed, financeCtx, history);
           if (aiExtra?.text) {
@@ -1149,26 +818,6 @@ export const aiRouter = {
         }
         addToHistory(trimmed, out.text);
         return { ...out, source: isCloudSource(extracted.source) ? extracted.source : out.source };
-      }
-    }
-
-    // Single-segment create that LLM classified as chat — try local draft once
-    if (segments.length === 1) {
-      const localOne = localCreateIntentsFromSegments([trimmed]);
-      if (localOne.some(isRunnableCreate)) {
-        const lines: string[] = [];
-        let lastCreated: { kind: 'expense' | 'revenue' | 'product'; id: string } | undefined;
-        for (const intent of localOne) {
-          if (!isRunnableCreate(intent)) continue;
-          const out = await runIntentTool(intent);
-          lines.push(out.text);
-          if (out.createdRecord) lastCreated = out.createdRecord;
-        }
-        if (lines.length) {
-          const text = lines.join('\n\n');
-          addToHistory(trimmed, text);
-          return { text, source: 'local', createdRecord: lastCreated };
-        }
       }
     }
 

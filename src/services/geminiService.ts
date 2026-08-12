@@ -1,22 +1,41 @@
 /**
  * Gemini Service — Cloud AI via @google/genai SDK.
  *
- * Default models prefer free-tier Flash-Lite / Flash (2.5), with fallbacks.
+ * Lists models from Gemini `models.list`, then picks flash (extract/OCR) or
+ * flash-lite (chat). Quota/404 hops to the other live model.
  */
 
 import { GoogleGenAI } from '@google/genai';
+import {
+  GEMINI_MODEL_SEED,
+  buildGeminiTaskModels,
+  resolveGeminiModels,
+} from './freeModelCatalog';
 
 let client: GoogleGenAI | null = null;
+let apiKeyStored: string | null = null;
 let configured = false;
-let activeModel = 'gemini-2.5-flash-lite';
 
-/** Prefer free-tier friendly models first (limit:0 on older 2.0-flash is common). */
-const MODEL_CANDIDATES = [
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash',
-] as const;
+export const GEMINI_FLASH = GEMINI_MODEL_SEED[0];
+export const GEMINI_FLASH_LITE = GEMINI_MODEL_SEED[1];
+
+export type GeminiTask = 'extract' | 'chat' | 'vision';
+
+const lastOkByTask: Partial<Record<GeminiTask, string>> = {};
+
+export function modelsForGeminiTask(task: GeminiTask, liveIds?: string[]): string[] {
+  const preferred = buildGeminiTaskModels(liveIds ?? [...GEMINI_MODEL_SEED], task);
+  const last = lastOkByTask[task];
+  if (last && preferred.includes(last)) {
+    return [last, ...preferred.filter((model) => model !== last)];
+  }
+  return preferred;
+}
+
+async function modelsForRequest(task: GeminiTask, forceRefresh = false): Promise<string[]> {
+  const live = await resolveGeminiModels(apiKeyStored ?? '', { forceRefresh });
+  return modelsForGeminiTask(task, live);
+}
 
 const SYSTEM_INSTRUCTION = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng.
 
@@ -144,32 +163,42 @@ async function generateWithFallback(
   ai: GoogleGenAI,
   parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>,
   withSystem: boolean,
+  task: GeminiTask,
 ): Promise<string> {
   let lastErr: unknown;
-  const models = [activeModel, ...MODEL_CANDIDATES.filter((m) => m !== activeModel)];
-
-  for (const model of models) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        ...(withSystem ? { config: { systemInstruction: SYSTEM_INSTRUCTION } } : {}),
-        contents: [{ role: 'user', parts }],
-      });
-      activeModel = model;
-      return response.text ?? '';
-    } catch (err) {
-      lastErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      // Hard free-tier exhaustion → stop hopping models so caller can fall back to WebLLM
-      if (/429|RESOURCE_EXHAUSTED|quota/i.test(msg) && /limit:\s*0|free_tier|retry in/i.test(msg)) {
-        throw err instanceof Error ? err : new Error(msg);
+  const tryList = async (models: string[], skip: Set<string>) => {
+    for (const model of models) {
+      if (skip.has(model)) continue;
+      skip.add(model);
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          ...(withSystem ? { config: { systemInstruction: SYSTEM_INSTRUCTION } } : {}),
+          contents: [{ role: 'user', parts }],
+        });
+        lastOkByTask[task] = model;
+        return response.text ?? '';
+      } catch (err) {
+        lastErr = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/429|RESOURCE_EXHAUSTED|quota|not found|NOT_FOUND|404/i.test(msg)) {
+          continue;
+        }
+        throw err;
       }
-      // Try next model on soft quota / not found
-      if (/429|RESOURCE_EXHAUSTED|quota|not found|NOT_FOUND|404/i.test(msg)) {
-        continue;
-      }
-      throw err;
     }
+    return null;
+  };
+
+  const tried = new Set<string>();
+  const first = await modelsForRequest(task, false);
+  const hit = await tryList(first, tried);
+  if (hit != null) return hit;
+
+  const refreshed = await modelsForRequest(task, true);
+  if (refreshed.join('|') !== first.join('|')) {
+    const again = await tryList(refreshed, tried);
+    if (again != null) return again;
   }
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
@@ -180,24 +209,36 @@ export const geminiService = {
   },
 
   get model(): string {
-    return activeModel;
+    return lastOkByTask.chat ?? GEMINI_FLASH_LITE;
   },
 
   configure(apiKey: string): void {
-    client = new GoogleGenAI({ apiKey });
+    const trimmed = apiKey.trim();
+    client = new GoogleGenAI({ apiKey: trimmed });
+    apiKeyStored = trimmed;
     configured = true;
+    void resolveGeminiModels(trimmed, { forceRefresh: true });
   },
 
   disconnect(): void {
     client = null;
+    apiKeyStored = null;
     configured = false;
   },
 
-  async generateContent(prompt: string): Promise<string> {
+  async generateContent(
+    prompt: string,
+    opts?: { task?: GeminiTask },
+  ): Promise<string> {
     if (!client) return fallback(prompt);
 
     try {
-      const text = await generateWithFallback(client, [{ text: prompt }], true);
+      const text = await generateWithFallback(
+        client,
+        [{ text: prompt }],
+        true,
+        opts?.task ?? 'chat',
+      );
       return text || '[Không có phản hồi]';
     } catch (err) {
       console.error('Gemini error:', err);
@@ -215,16 +256,23 @@ export const geminiService = {
     const testClient = key ? new GoogleGenAI({ apiKey: key }) : client;
     if (!testClient) return { ok: false, detail: 'Chưa có API key' };
 
+    const prevKey = apiKeyStored;
+    if (key) {
+      apiKeyStored = key;
+      await resolveGeminiModels(key, { forceRefresh: true });
+    }
+
     try {
       const text = (
         await generateWithFallback(
           testClient,
           [{ text: 'Trả lời đúng một từ: OK' }],
           false,
+          'chat',
         )
       ).trim();
       if (!text) return { ok: false, detail: 'Gemini không trả lời' };
-      return { ok: true, detail: `${text.slice(0, 40)} · model ${activeModel}` };
+      return { ok: true, detail: `${text.slice(0, 40)} · model ${lastOkByTask.chat ?? GEMINI_FLASH_LITE}` };
     } catch (err) {
       const detail = formatGeminiError(err);
       const quota = /429|hết hạn mức|quota|RESOURCE_EXHAUSTED/i.test(detail);
@@ -233,6 +281,8 @@ export const geminiService = {
         return { ok: true, detail: `Key hợp lệ · ${detail}`, quota: true };
       }
       return { ok: false, detail };
+    } finally {
+      if (key && !configured) apiKeyStored = prevKey;
     }
   },
 
@@ -247,6 +297,7 @@ export const geminiService = {
           { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
         ],
         false,
+        'vision',
       );
       return text || '[Không đọc được ảnh]';
     } catch (err) {

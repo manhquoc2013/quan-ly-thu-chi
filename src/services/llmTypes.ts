@@ -11,6 +11,9 @@ export type LlmSource = 'kilo' | 'openrouter' | 'siliconflow' | 'groq' | 'gemini
 /** Default priority order. User can reorder in Settings. */
 export const AI_PRIORITY_DEFAULT: LlmSource[] = ['kilo', 'openrouter', 'siliconflow', 'groq', 'gemini', 'local'];
 
+/** JSON extract (create/update/paste/slots): prefer stronger models, then free. */
+export const AI_EXTRACT_PRIORITY: LlmSource[] = ['groq', 'gemini', 'kilo', 'openrouter', 'siliconflow', 'local'];
+
 /** Source → human label (used in AIChatScreen & ChatPanel). */
 export const LLM_SOURCE_LABELS: Record<LlmSource, string> = {
   kilo: '🟢 Kilo Free',
@@ -41,4 +44,16 @@ export function mergeAiPriority(saved: LlmSource[] | null | undefined): LlmSourc
     out.push(src);
   }
   return out.length > 0 ? out : [...AI_PRIORITY_DEFAULT];
+}
+
+/**
+ * Extract cascade: Groq → Gemini → Kilo first, then remaining chat-order providers.
+ * Disabled/unconfigured providers are skipped at call time.
+ */
+export function mergeExtractPriority(saved: LlmSource[] | null | undefined): LlmSource[] {
+  const chatOrder = mergeAiPriority(saved);
+  const head = AI_EXTRACT_PRIORITY.slice(0, 3);
+  const tail = chatOrder.filter((src) => !head.includes(src));
+  const out = [...head.filter((src) => chatOrder.includes(src)), ...tail];
+  return out.length > 0 ? out : [...AI_EXTRACT_PRIORITY];
 }

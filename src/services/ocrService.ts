@@ -6,7 +6,7 @@
 import { createWorker } from 'tesseract.js';
 import * as pdfjs from 'pdfjs-dist';
 import { geminiService } from './geminiService';
-import { guessCategory } from './textDraftParser';
+import { guessCategory } from './categoryGuess';
 import { extractMoneyFromText } from './amountParser';
 import {
   newDraftId,

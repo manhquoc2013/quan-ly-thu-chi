@@ -1,5 +1,5 @@
 /**
- * LLM intent extractor — Gemini preferred, WebLLM fallback.
+ * LLM intent extractor — extract cascade (Groq → Gemini → Kilo); chat uses free cascade.
  * Returns structured ChatIntent JSON only.
  */
 
@@ -41,6 +41,7 @@ Schema:
   "paymentMethod": "cash"|"bank_transfer"|"credit_card"|"e_wallet"|null,
   "orderStatus": "new"|"confirmed"|"processing"|"completed"|"cancelled"|null,
   "priority": boolean|null,
+  "orderItems": [ { "name": string, "quantity": number, "unitPrice": number } ]|null,
   "targetHint": string|null,
   "query": string|null,
   "confidence": 0.0-1.0,
@@ -56,7 +57,7 @@ Schema:
 3) Sửa/đổi giá|tên|đơn vị|số tiền|mô tả + đối tượng đã có → update_*.
 4) Thêm/tạo SP (catalog, không phải bán) → create_product.
 5) Thêm/tạo khách → create_customer; thêm kênh → create_platform.
-6) Bán / khách mua / thu tiền hàng / đơn → create_revenue.
+6) Bán / khách mua / thu tiền hàng / đơn / "tạo đơn hàng" / "tạo đơn khách" → create_revenue.
 7) Shop chi / nhập hàng / tiêu → create_expense.
 8) Hỏi số liệu, liệt kê, tìm, báo cáo, tổng quan, công nợ, top KH/SP → lookup (query ngắn).
 9) "mở/vào chi phí|doanh thu|SP|khách|kênh|báo cáo|cài đặt|tổng quan" → navigate (query=tên màn hình hoặc route).
@@ -100,7 +101,7 @@ Schema:
 ## Doanh thu / đơn (create_revenue)
 Mẫu bán: "bán cho Hoa 3 kẹp 90k" · "bán kẹp 20k cho Dung" · "bán 2 cặp thú len 120k" · "em bán cho chị Lan …" (customerName=Lan, bỏ xưng hô).
 Khách chủ ngữ (KHÔNG expense): "Dung mua/lấy/đặt/order …" · "khách Hoa đặt …" · "hôm nay Dung mua … Shopee 60k".
-"tạo đơn khách …" · "ưu tiên cho khách X … giá …" → create_revenue (+ priority=true nếu có ưu tiên).
+"tạo đơn khách …" · "tạo đơn hàng khách …" · "thêm đơn hàng …" · "ưu tiên cho khách X … giá …" → create_revenue (+ priority=true nếu có ưu tiên). CẤM create_expense cho các cụm này.
 "khách Thu 3, SP giá 70k" → customerName="Thu 3"; quantity=1; amount=70000 (số sau tên KHÔNG phải SL trừ khi có đơn vị: "3 cái/con/…").
 "khách Thu 3 cái, SP giá 70k" → customerName=Thu; quantity=3; unitPrice=70000; amount=210000.
 Thu tiền: "Lan trả/chuyển/đưa/ck 80k" · "thu 50k từ Hùng" · "doanh thu 200k …" · "order/đơn … của Hà 90k" · "thêm doanh thu/ghi thu …".
@@ -127,7 +128,8 @@ Cụm "qua|ở|trên|tại|bên|kênh" + sàn → platformName, XÓA khỏi desc
 - "ưu tiên đơn DH-…" / "đánh dấu ưu tiên đơn …" → update_revenue; priority=true; targetHint.
 - "bỏ ưu tiên đơn DH-…" → update_revenue; priority=false; targetHint.
 - "tạo đơn … ưu tiên" / "ưu tiên cho khách X … giá …" / "ưu tiên khách X, SP giá …" → create_revenue; priority=true (KHÔNG phải update).
-- Header "tạo đơn" + nhiều dòng "khách …" / "ưu tiên cho khách …" → mỗi dòng 1 create_revenue (multi).
+- Header "tạo đơn" / "tạo đơn hàng" + nhiều dòng "khách …" / "ưu tiên cho khách …" → mỗi dòng 1 create_revenue (multi).
+- Nhiều món cùng đơn ("A giá Xk và B giá Yk") → 1 create_revenue + orderItems (không tách 2 khách).
 - "xóa/xoá chi phí nhậu" · "xóa đơn DH-…" · "xóa SP/khách/kênh …" → delete_*; targetHint bắt buộc.
 - Trạng thái đơn → update_order_status; orderStatus ∈ new|confirmed|processing|completed|cancelled.
   hoàn thành/đã xong/done→completed; hủy/huỷ→cancelled; xác nhận→confirmed; đang xử lý→processing; đơn mới→new.
@@ -141,7 +143,7 @@ Sản phẩm:
 - "sửa/đổi đơn vị các sản phẩm thú là con" · "đổi đơn vị thú thành con" → update_product; targetHint="thú"; unit="con" (hàng loạt).
 - "đổi đơn vị Hello Kitty thành con" → targetHint=Hello Kitty; unit=con.
 - "xóa sản phẩm …" → delete_product.
-- "tạo mã SKU cho tất cả sản phẩm" / "gán SKU tự động" → app xử lý local (KHÔNG bịa menu Cài đặt SKU); summaryVi="tạo sku hàng loạt".
+- "tạo mã SKU cho tất cả sản phẩm" / "gán SKU tự động" / "sinh SKU hàng loạt" → update_product; targetHint="SKU tất cả"; summaryVi="tạo sku hàng loạt" (KHÔNG navigate Cài đặt, KHÔNG chat).
 Khách: "thêm khách Hoa" / "thêm khách Hoa 0901234567" → create_customer (+ phone); "đổi SĐT khách Hoa thành 09…" → update_customer; "xóa khách Hoa" → delete_customer.
 Kênh: "thêm kênh Lazada" → create_platform; "tắt kênh X" → update_platform platformActive=false; đổi tên / xóa tương tự.
 PHÂN BIỆT: "thêm các sản phẩm:" + bảng giá = catalog (bulk); "mua Hello Kitty 50k" (shop) = expense; "bán Hello Kitty 50k" = revenue; "thêm SP Hello Kitty 50k" = create_product.
@@ -215,7 +217,7 @@ async function callLlm(
   prompt: string,
   localMode: 'raw' | 'chat' = 'raw',
 ): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
-  return callLlmCascade(prompt, localMode);
+  return callLlmCascade(prompt, localMode, 'extract');
 }
 
 export async function extractChatIntent(
@@ -269,7 +271,7 @@ Tin nhắn có ${segments.length} giao dịch RIÊNG (đã tách). Trả về Đ
 
 Quy tắc:
 - Phần có "bán/thu/khách … mua" hoặc "{Tên} đã trả/chuyển/đưa N cho SP" → create_revenue.
-- "tạo đơn khách …" mỗi dòng = 1 đơn; "A giá Xk và B giá Yk" = CÙNG đơn (nhiều món), KHÔNG tách thành 2 intent khác khách.
+- "tạo đơn khách …" / "tạo đơn hàng khách …" mỗi dòng = 1 đơn create_revenue (KHÔNG expense); "A giá Xk và B giá Yk" = CÙNG đơn (nhiều món + orderItems).
 - "ưu tiên cho khách X …" / "ưu tiên khách X, SP giá …" → create_revenue; priority=true.
 - "khách Thu 3, SP giá 70k" → customerName="Thu 3", quantity=1, amount=70000 (không lấy 3 làm SL).
 - "khách Thu 3 cái, SP giá 70k" → customerName=Thu, quantity=3, unitPrice=70000.
@@ -371,5 +373,7 @@ Gợi ý 1–2 câu lệnh mẫu khi user hỏi "làm sao".`,
     history ? `Lịch sử:\n${history.slice(0, 800)}` : '',
     `Người dùng: ${message.slice(0, 1500)}`,
   ].filter(Boolean);
-  return callLlm(parts.join('\n\n'), 'chat');
+  return callLlmCascade(parts.join('\n\n'), 'chat', 'chat');
 }
+
+export { EXTRACT_PROMPT };

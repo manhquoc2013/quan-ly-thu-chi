@@ -17,35 +17,6 @@ const PLATFORM_ALIASES: Record<string, string[]> = {
   'Trực tiếp': ['trực tiếp', 'offline', 'tại quán', 'tại shop'],
 };
 
-/** "{Tên} (đã) trả/chuyển/đưa N cho SP" = khách trả tiền hàng → revenue */
-function looksLikeCustomerPaid(lower: string): boolean {
-  // Avoid \b after Vietnamese letters (JS \w is ASCII-only → \b breaks on "trả")
-  return (
-    /(?:^|\s)(?:khách\s+)?[A-Za-zÀ-ỹ]{2,}(?:\s+[A-Za-zÀ-ỹ]{2,})?\s+(?:đã\s+)?(?:trả|chuyển|đưa|ck)(?:\s|$)/i.test(
-      lower,
-    ) && !/^(?:tôi|mình|em|shop)\b/i.test(lower.trim())
-  );
-}
-
-function looksLikeExpenseOnly(lower: string): boolean {
-  const expenseCue =
-    /\b(uống|ăn\s|cafe|cà phê|đổ xăng|bơm xăng|grab|chi\s|tiêu\s|nhập\s|mua\s)/i.test(lower);
-  const revenueCue =
-    /\b(bán(\s+cho)?|thu\s+\d|doanh thu|khách\s+\S+\s+(mua|lấy|đặt))\b/i.test(lower) ||
-    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower) ||
-    looksLikeCustomerPaid(lower);
-  const shopBuy = /^(?:tôi|mình|em|shop)?\s*(?:vừa\s+)?(?:mua|nhập|chi)\b/i.test(lower);
-  return (expenseCue && !revenueCue) || shopBuy;
-}
-
-function looksLikeRevenue(lower: string): boolean {
-  return (
-    /\b(bán(\s+cho)?|thu\s+\d|doanh thu)\b/i.test(lower) ||
-    /\b[A-Za-zÀ-ỹ]{2,}\s+(mua|lấy|đặt|order)\b/i.test(lower) ||
-    looksLikeCustomerPaid(lower)
-  );
-}
-
 /** Prefer "giá/hết/tổng … 90k" over bare numbers like "3" in "3 cái". */
 export function extractPrimaryAmountVnd(message: string): number | undefined {
   const labeled = message.match(
@@ -109,28 +80,11 @@ export function extractPaymentFromMessage(message: string): {
 }
 
 /**
- * Correct kind / amount / qty / entities / payment using only the user message.
+ * Strip hallucinated amount / qty / entities / payment. Kind is owned by the LLM.
  */
 export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent): ChatIntent {
   const lower = message.toLowerCase();
   let next: ChatIntent = { ...intent };
-
-  if (
-    (next.intent === 'create_revenue' || next.intent === 'chat') &&
-    looksLikeExpenseOnly(lower) &&
-    !looksLikeRevenue(lower)
-  ) {
-    next = {
-      ...next,
-      intent: 'create_expense',
-      customerName: undefined,
-      platformName: undefined,
-      quantity: undefined,
-      unitPrice: undefined,
-    };
-  } else if (next.intent === 'create_expense' && looksLikeRevenue(lower)) {
-    next = { ...next, intent: 'create_revenue' };
-  }
 
   if (next.intent === 'create_expense') {
     next = { ...next, customerName: undefined, platformName: undefined };
