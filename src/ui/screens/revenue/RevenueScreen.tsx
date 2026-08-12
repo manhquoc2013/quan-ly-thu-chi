@@ -6,6 +6,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
+import { useCustomerStore } from '@/store/customerStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { useMascotStore } from '@/store/mascotStore';
@@ -36,19 +37,27 @@ const PAYMENT_FILTER_OPTIONS = optionsFromLabels(PAYMENT_STATUS_LABELS, [
   { value: '', label: 'Tất cả thanh toán' },
 ]);
 
+const WALK_IN_LABEL = 'khách vãng lai';
+
 export function RevenueScreen() {
   const records = useRevenueStore((s) => s.records);
+  const customers = useCustomerStore((s) => s.customers);
   const filters = useRevenueStore((s) => s.filters);
   const setFilters = useRevenueStore((s) => s.setFilters);
 
   const filteredForSummary = useMemo(() => {
     let r = [...records];
     if (filters.search) {
-      const q = filters.search.toLowerCase();
+      const q = filters.search.toLowerCase().trim();
+      const matchingCustomerIds = new Set(
+        customers.filter((c) => c.name.toLowerCase().includes(q)).map((c) => c.id),
+      );
+      if (WALK_IN_LABEL.includes(q)) matchingCustomerIds.add('walk-in');
       r = r.filter(
         (x) =>
           x.orderCode.toLowerCase().includes(q) ||
-          (x.notes?.toLowerCase().includes(q) ?? false),
+          (x.notes?.toLowerCase().includes(q) ?? false) ||
+          matchingCustomerIds.has(x.customerId),
       );
     }
     if (filters.dateFrom) r = r.filter((x) => x.date >= filters.dateFrom);
@@ -56,7 +65,7 @@ export function RevenueScreen() {
     if (filters.orderStatus) r = r.filter((x) => x.orderStatus === filters.orderStatus);
     if (filters.paymentStatus) r = r.filter((x) => x.paymentStatus === filters.paymentStatus);
     return r;
-  }, [records, filters]);
+  }, [records, customers, filters]);
 
   const paidTotal = useMemo(() => sumPaidRevenue(filteredForSummary), [filteredForSummary]);
   const unpaidCount = useMemo(
@@ -198,7 +207,7 @@ export function RevenueScreen() {
           type="text"
           value={filters.search}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Tìm theo mã đơn, ghi chú..."
+          placeholder="Tìm theo mã đơn, tên khách, ghi chú..."
           className={
             'h-8 px-3 text-xs flex-1 min-w-[160px] max-w-[280px] ' +
             'bg-input-bg ' +

@@ -141,6 +141,35 @@ function ilikeOr(columns: string[], raw: string): string {
   return columns.map((c) => `${c}.ilike."${pat}"`).join(',');
 }
 
+const WALK_IN_LABEL = 'khách vãng lai';
+/** Local sentinel + cloud UUID for walk-in customer. */
+const WALK_IN_CUSTOMER_IDS = ['walk-in', '00000000-0000-4000-8000-000000000001'] as const;
+
+function localCustomerIdsMatchingSearch(q: string): Set<string> {
+  const ids = new Set(
+    useCustomerStore
+      .getState()
+      .customers.filter((c) => c.name.toLowerCase().includes(q))
+      .map((c) => c.id),
+  );
+  if (WALK_IN_LABEL.includes(q)) {
+    for (const id of WALK_IN_CUSTOMER_IDS) ids.add(id);
+  }
+  return ids;
+}
+
+function revenueMatchesSearch(
+  revenue: Revenue,
+  q: string,
+  customerIds: Set<string>,
+): boolean {
+  return (
+    revenue.orderCode.toLowerCase().includes(q) ||
+    (revenue.notes?.toLowerCase().includes(q) ?? false) ||
+    customerIds.has(revenue.customerId)
+  );
+}
+
 /* ── Local filters ───────────────────────────────────────────────────────── */
 
 function filterExpensesLocal(records: Expense[], filters: ExpenseListFilters): Expense[] {
@@ -166,11 +195,8 @@ function filterRevenuesLocal(records: Revenue[], filters: RevenueListFilters): R
   let result = [...records];
   const q = filters.search?.trim().toLowerCase();
   if (q) {
-    result = result.filter(
-      (x) =>
-        x.orderCode.toLowerCase().includes(q) ||
-        (x.notes?.toLowerCase().includes(q) ?? false),
-    );
+    const customerIds = localCustomerIdsMatchingSearch(q);
+    result = result.filter((x) => revenueMatchesSearch(x, q, customerIds));
   }
   if (filters.dateFrom) result = result.filter((x) => x.date >= filters.dateFrom!);
   if (filters.dateTo) result = result.filter((x) => x.date <= filters.dateTo!);
@@ -293,7 +319,22 @@ async function queryRevenuesCloud(
 
   const search = filters.search?.trim();
   if (search && escapeIlike(search)) {
-    q = q.or(ilikeOr(['order_code', 'notes'], search));
+    const orParts = [ilikeOr(['order_code', 'notes'], search)];
+    const namePat = `%${escapeIlike(search)}%`;
+    const custRes = await sb
+      .from('customers')
+      .select('id')
+      .eq('household_id', householdId)
+      .ilike('name', namePat);
+    if (custRes.error) throw new Error(custRes.error.message);
+    const customerIds = ((custRes.data ?? []) as Array<{ id: string }>).map((c) => c.id);
+    if (WALK_IN_LABEL.includes(search.toLowerCase())) {
+      customerIds.push(WALK_IN_CUSTOMER_IDS[1]);
+    }
+    if (customerIds.length > 0) {
+      orParts.push(`customer_id.in.(${customerIds.join(',')})`);
+    }
+    q = q.or(orParts.join(','));
   }
   if (filters.dateFrom) q = q.gte('date', filters.dateFrom);
   if (filters.dateTo) q = q.lte('date', filters.dateTo);
