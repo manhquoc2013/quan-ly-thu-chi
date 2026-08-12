@@ -19,6 +19,7 @@ let apiKey: string | null = null;
 let enabled = true;
 let configured = false;
 let lastModel: string = GROQ_CHAT_SEED[0];
+const lastOkByTask: Partial<Record<'extract' | 'chat', string>> = {};
 
 const envKey = (import.meta.env.VITE_GROQ_API_KEY as string | undefined)?.trim();
 if (envKey) {
@@ -36,8 +37,9 @@ async function modelsForRequest(
 ): Promise<string[]> {
   const live = await resolveGroqChatModels(apiKey ?? '', { forceRefresh });
   const ordered = buildGroqTaskModels(live, task);
-  if (lastModel && ordered.includes(lastModel)) {
-    return [lastModel, ...ordered.filter((id) => id !== lastModel)];
+  const last = lastOkByTask[task];
+  if (last && ordered.includes(last)) {
+    return [last, ...ordered.filter((id) => id !== last)];
   }
   return ordered;
 }
@@ -146,10 +148,13 @@ export const groqService = {
 
     const first = await modelsForRequest(task, false);
     const errors: string[] = [];
+    const tried = new Set<string>();
     for (const modelId of first) {
+      tried.add(modelId);
       const { text, error, fatal } = await requestModel(modelId, prompt);
       if (text) {
         lastModel = modelId;
+        lastOkByTask[task] = modelId;
         return { ok: true, text, model: modelId };
       }
       if (error) errors.push(`${modelId}: ${error}`);
@@ -159,9 +164,11 @@ export const groqService = {
     const refreshed = await modelsForRequest(task, true);
     if (refreshed.join('|') !== first.join('|')) {
       for (const modelId of refreshed) {
+        if (tried.has(modelId)) continue;
         const { text, error, fatal } = await requestModel(modelId, prompt);
         if (text) {
           lastModel = modelId;
+          lastOkByTask[task] = modelId;
           return { ok: true, text, model: modelId };
         }
         if (error) errors.push(`${modelId}: ${error}`);

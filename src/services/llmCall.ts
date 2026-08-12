@@ -14,7 +14,6 @@ import { siliconFlowService } from './siliconFlowService';
 import { webLLM } from './webLLM';
 import {
   type LlmSource,
-  AI_PRIORITY_DEFAULT,
   LLM_SOURCE_LABELS,
   mergeAiPriority,
   mergeExtractPriority,

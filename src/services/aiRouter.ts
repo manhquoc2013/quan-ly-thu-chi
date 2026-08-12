@@ -58,7 +58,14 @@ function isMultiLinePaste(message: string): boolean {
 }
 
 function isCloudSource(source: string | undefined): boolean {
-  return source === 'cloud' || source === 'kilo' || source === 'openrouter' || source === 'siliconflow' || source === 'gemini';
+  return (
+    source === 'cloud' ||
+    source === 'kilo' ||
+    source === 'openrouter' ||
+    source === 'siliconflow' ||
+    source === 'groq' ||
+    source === 'gemini'
+  );
 }
 
 export interface ChatAction {

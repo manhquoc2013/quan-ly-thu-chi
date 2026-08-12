@@ -42,6 +42,35 @@ describe('normalizeIntent', () => {
     expect(i!.amount).toBe(180000);
   });
 
+  it('maps leftover BAN_HANG JSON to create_revenue', () => {
+    const i = normalizeIntent({
+      action: 'BAN_HANG',
+      data: {
+        khach_hang: 'Hoa',
+        kenh_ban: 'Shopee',
+        don_hang: [{ ten_hang: 'kẹp tóc', so_luong: 3, gia_ban: 15000 }],
+      },
+    });
+    expect(i?.intent).toBe('create_revenue');
+    expect(i?.customerName).toBe('Hoa');
+    expect(i?.platformName).toBe('Shopee');
+    expect(i?.amount).toBe(45000);
+    expect(i?.description).toBe('kẹp tóc');
+  });
+
+  it('maps leftover CHI_PHI JSON to create_expense', () => {
+    const i = normalizeIntent({
+      action: 'CHI_PHI',
+      data: {
+        chi_tiet_chi: { danh_muc: 'Nhập hàng', so_tien: 2500000, ghi_chu: 'Nhập khô bò' },
+      },
+    });
+    expect(i?.intent).toBe('create_expense');
+    expect(i?.amount).toBe(2500000);
+    expect(i?.description).toBe('Nhập khô bò');
+    expect(i?.category).toBe('supplies');
+  });
+
   it('flags missing amount', () => {
     const i = fillMissingSlots({
       intent: 'create_expense',

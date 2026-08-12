@@ -1,5 +1,5 @@
 /**
- * Chat intent types — structured actions the LLM/regex produce for tools.
+ * Chat intent types — structured actions the LLM produces for tools.
  */
 
 import type {
@@ -107,9 +107,80 @@ export function emptyIntent(intent: ChatIntentKind = 'chat'): ChatIntent {
 }
 
 /** Normalize raw LLM JSON into ChatIntent */
+const LUCKY_EXPENSE_CATEGORY: Record<string, ExpenseCategory> = {
+  'Nhập hàng': 'supplies',
+  'Tiền nhà/Điện nước': 'utilities',
+  'Bao bì/Đóng gói': 'supplies',
+  'Chi khác': 'other',
+};
+
+/** Map leftover Mèo Lucky BAN_HANG/CHI_PHI JSON → ChatIntent fields. */
+function adaptLegacyLuckyJson(o: Record<string, unknown>): Record<string, unknown> | null {
+  const action = typeof o.action === 'string' ? o.action.trim().toUpperCase() : '';
+  if (!action) return null;
+  const data = o.data && typeof o.data === 'object' ? (o.data as Record<string, unknown>) : {};
+  if (action === 'BAN_HANG') {
+    const rows = Array.isArray(data.don_hang) ? data.don_hang : [];
+    const orderItems: Array<{ name: string; quantity: number; unitPrice: number }> = [];
+    for (const row of rows) {
+      if (!row || typeof row !== 'object') continue;
+      const it = row as Record<string, unknown>;
+      const name = typeof it.ten_hang === 'string' ? it.ten_hang.trim() : '';
+      const quantity = Math.max(1, Math.round(Number(it.so_luong) || 1));
+      const unitPrice = Math.round(Number(it.gia_ban) || 0);
+      if (!name || unitPrice < 0) continue;
+      orderItems.push({ name, quantity, unitPrice });
+    }
+    const amount = orderItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+    const first = orderItems[0];
+    return {
+      intent: 'create_revenue',
+      customerName: typeof data.khach_hang === 'string' ? data.khach_hang : null,
+      platformName: typeof data.kenh_ban === 'string' ? data.kenh_ban : null,
+      description: first?.name ?? null,
+      quantity: first && orderItems.length === 1 ? first.quantity : null,
+      unitPrice: first && orderItems.length === 1 ? first.unitPrice : null,
+      amount: amount || null,
+      orderItems: orderItems.length > 1 ? orderItems : null,
+      confidence: 0.75,
+      missing: [],
+      mascot_say: o.mascot_say,
+      mascot_emotion: o.mascot_emotion,
+    };
+  }
+  if (action === 'CHI_PHI') {
+    const chi =
+      data.chi_tiet_chi && typeof data.chi_tiet_chi === 'object'
+        ? (data.chi_tiet_chi as Record<string, unknown>)
+        : {};
+    const danhMuc = typeof chi.danh_muc === 'string' ? chi.danh_muc : '';
+    return {
+      intent: 'create_expense',
+      amount: chi.so_tien ?? null,
+      description: typeof chi.ghi_chu === 'string' ? chi.ghi_chu : null,
+      category: LUCKY_EXPENSE_CATEGORY[danhMuc] ?? null,
+      confidence: 0.75,
+      missing: [],
+      mascot_say: o.mascot_say,
+      mascot_emotion: o.mascot_emotion,
+    };
+  }
+  if (action === 'XEM_BAO_CAO') {
+    return { intent: 'lookup', query: 'tổng quan', confidence: 0.7, missing: [] };
+  }
+  if (action === 'TAN_GAU') {
+    return { intent: 'chat', confidence: 0.7, missing: [] };
+  }
+  return null;
+}
+
 export function normalizeIntent(raw: unknown): ChatIntent | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
+  if (typeof o.intent !== 'string' && typeof o.action === 'string') {
+    const adapted = adaptLegacyLuckyJson(o);
+    if (adapted) return normalizeIntent(adapted);
+  }
   const intent = String(o.intent ?? 'chat') as ChatIntentKind;
   const allowed: ChatIntentKind[] = [
     'create_expense',
