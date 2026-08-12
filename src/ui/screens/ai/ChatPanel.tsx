@@ -36,7 +36,7 @@ const WELCOME =
   'Xin chào! Gõ chi/thu để lưu ngay (vd: cà phê 25k). Đính kèm ảnh/PDF/CSV cần xác nhận. Có thể dùng mic hoặc hỏi phân tích.';
 
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
-  const { fabOpen, setFabOpen, requestRecordDetail } = useUIStore();
+  const { fabOpen, requestRecordDetail } = useUIStore();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'welcome', role: 'ai', text: WELCOME },

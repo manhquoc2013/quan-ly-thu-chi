@@ -23,15 +23,6 @@ import {
 } from "@/services/reportService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const COLORS = [
-  "#2563EB",
-  "#7C3AED",
-  "#16A34A",
-  "#D97706",
-  "#EC4899",
-  "#6B7280",
-];
-
 export function CustomerReport() {
   const { isDark } = useTheme();
   const revenues = useRevenueStore((s) => s.records);

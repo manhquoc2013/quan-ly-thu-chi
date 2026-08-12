@@ -33,7 +33,6 @@ import {
   ORDER_STATUS_LABELS,
   EXPENSE_CATEGORY_LABELS,
   PAYMENT_STATUS_LABELS,
-  type Expense,
   type ExpenseCategory,
   type OrderStatus,
   type Revenue,

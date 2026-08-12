@@ -192,11 +192,11 @@ export function SettingsScreen() {
   async function handleTestGemini(): Promise<void> {
     const trimmed = apiKey.trim(); if (!trimmed) { toast.error('Vui lòng nhập API key trước khi kiểm tra'); return; }
     setTesting(true);
-    try { geminiService.configure(trimmed); const result = await geminiService.testConnection(trimmed); if (result.ok) { setGeminiApiKey(trimmed); queueUserSettingsSync(); if (result.quota) toast.message('Key hợp lệ — tạm hết hạn mức free-tier', { description: 'Đợi ~30s rồi thử lại. Key đã được lưu.' }); else toast.success(`Gemini hoạt động tốt — ${result.detail}`); } else toast.error(`Kiểm tra thất bại: ${result.detail}`); }
+    try { geminiService.configure(trimmed); const result = await geminiService.testConnection(trimmed); if (result.ok) { setGeminiApiKey(trimmed); queueUserSettingsSync(); setGeminiQuota(!!result.quota); if (result.quota) toast.message('Key hợp lệ — tạm hết hạn mức free-tier', { description: 'Đợi ~30s rồi thử lại. Key đã được lưu.' }); else toast.success(`Gemini hoạt động tốt — ${result.detail}`); } else toast.error(`Kiểm tra thất bại: ${result.detail}`); }
     catch (err) { toast.error(`Kiểm tra thất bại: ${err instanceof Error ? err.message : 'Không kết nối được Gemini'}`); }
     finally { setTesting(false); }
   }
-  function handleClearGeminiKey(): void { setGeminiApiKey(null); geminiService.disconnect(); setApiKey(''); queueUserSettingsSync(); toast.message('Đã xóa Gemini API key'); }
+  function handleClearGeminiKey(): void { setGeminiApiKey(null); geminiService.disconnect(); setApiKey(''); setGeminiQuota(false); queueUserSettingsSync(); toast.message('Đã xóa Gemini API key'); }
   async function handleTestKilo(): Promise<void> {
     setTestingKilo(true);
     try { kiloService.setEnabled(true); const result = await kiloService.testConnection(); if (result.ok) toast.success(`Kilo Free OK — ${result.detail}`); else toast.error(`Kilo Free: ${result.detail}`); }
@@ -328,7 +328,7 @@ export function SettingsScreen() {
           </section>
 
           {([ 
-            { label: 'Groq AI', configured: groqConfigured, enable: enableGroq, setEnable: setEnableGroq, keyInput: groqKeyInput, setKeyInput: setGroqKeyInput, testing, setTesting: setTestingGroq, onSave: handleSaveGroqKey, onTest: handleTestGroq, onClear: handleClearGroqKey, link: 'https://console.groq.com/keys', linkLabel: 'Groq Console', desc: 'Tự lấy danh sách model chat từ Groq /models; tạo đơn ưu tiên model lớn (70B), chat ưu tiên instant — hết quota/404 thì đổi model.' },
+            { label: 'Groq AI', configured: groqConfigured, enable: enableGroq, setEnable: setEnableGroq, keyInput: groqKeyInput, setKeyInput: setGroqKeyInput, testing: testingGroq, setTesting: setTestingGroq, onSave: handleSaveGroqKey, onTest: handleTestGroq, onClear: handleClearGroqKey, link: 'https://console.groq.com/keys', linkLabel: 'Groq Console', desc: 'Tự lấy danh sách model chat từ Groq /models; tạo đơn ưu tiên model lớn (70B), chat ưu tiên instant — hết quota/404 thì đổi model.' },
             { label: 'OpenRouter', configured: openRouterConfigured, enable: enableOpenRouter, setEnable: setEnableOpenRouter, keyInput: openRouterKeyInput, setKeyInput: setOpenRouterKeyInput, testing: testingOpenRouter, setTesting: setTestingOpenRouter, onSave: handleSaveOpenRouterKey, onTest: handleTestOpenRouter, onClear: handleClearOpenRouterKey, link: 'https://openrouter.ai/keys', linkLabel: 'OpenRouter Keys', desc: 'Tự động lấy danh sách model free mới nhất từ OpenRouter (cập nhật định kỳ, có fallback). Rate limit: theo gói API key.' },
             { label: 'SiliconFlow', configured: siliconFlowConfigured, enable: enableSiliconFlow, setEnable: setEnableSiliconFlow, keyInput: siliconFlowKeyInput, setKeyInput: setSiliconFlowKeyInput, testing: testingSiliconFlow, setTesting: setTestingSiliconFlow, onSave: handleSaveSiliconFlowKey, onTest: handleTestSiliconFlow, onClear: handleClearSiliconFlowKey, link: 'https://cloud.siliconflow.com/account/ak', linkLabel: 'SiliconFlow API Keys', desc: 'Tự động lấy model chat free mới nhất từ SiliconFlow (cập nhật định kỳ; host .com/.cn tự chuyển). Rate limit: theo gói API key.' },
           ] as const).map((p) => (

@@ -117,10 +117,10 @@ async function tesseractOcr(base64: string, mime: string): Promise<DraftRecord |
 
     const money = extractMoneyFromText(text);
     const amount = money?.amountVnd ?? 0;
-    const dateMatch = text.match(/(\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4})/);
+    const dateMatch = text.match(/(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})/);
     let date = todayIso();
     if (dateMatch) {
-      const parts = dateMatch[1]!.split(/[\/.]/);
+      const parts = dateMatch[1]!.split(/[/.-]/);
       if (parts.length === 3) {
         let y = parts[2]!;
         if (y.length === 2) y = `20${y}`;

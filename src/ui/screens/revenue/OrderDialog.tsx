@@ -5,8 +5,7 @@
  * Auto-calculates: totalAmount = sum(items.total), finalAmount = totalAmount - discount.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type {
   Revenue,
   OrderItem,
@@ -33,7 +32,7 @@ import { X, Plus, Check } from 'lucide-react';
 import { createRevenue, updateRevenue, buildOrderCode } from '@/services/revenueService';
 import { createCustomer } from '@/services/customerService';
 import { createProduct, searchProducts } from '@/services/productService';
-import { getDefaultPlatformId, getActivePlatforms } from '@/services/platformService';
+import { getDefaultPlatformId } from '@/services/platformService';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useCustomerStore } from '@/store/customerStore';
 import { useProductStore } from '@/store/productStore';
@@ -130,7 +129,11 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
 
   const platformOptions = useMemo(
     () =>
-      getActivePlatforms().map((p) => ({ value: p.id, label: p.name })),
+      platforms
+        .filter((p) => p.active)
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+        .map((p) => ({ value: p.id, label: p.name })),
     [platforms],
   );
 

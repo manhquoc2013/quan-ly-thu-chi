@@ -40,7 +40,6 @@ export function ProductScreen() {
   const setSearchQuery = useProductStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
@@ -67,7 +66,7 @@ export function ProductScreen() {
   });
 
   useEffect(() => {
-    getAllProducts().finally(() => setBootstrapping(false));
+    void getAllProducts();
   }, []);
 
   const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);

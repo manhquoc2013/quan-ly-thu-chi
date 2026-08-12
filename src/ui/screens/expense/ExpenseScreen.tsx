@@ -33,7 +33,6 @@ export function ExpenseScreen() {
   const setFilters = useExpenseStore((s) => s.setFilters);
 
   const [searchInput, setSearchInput] = useState(filters.search);
-  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [peekExpenseId, setPeekExpenseId] = useState<string | null>(null);
@@ -81,7 +80,7 @@ export function ExpenseScreen() {
   });
 
   useEffect(() => {
-    getAllExpenses().finally(() => setBootstrapping(false));
+    void getAllExpenses();
   }, []);
 
   const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);

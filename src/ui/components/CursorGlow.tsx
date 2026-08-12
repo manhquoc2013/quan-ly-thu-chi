@@ -14,7 +14,9 @@ interface Particle {
 
 export function CursorGlow() {
   const { isDark } = useTheme();
- const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDarkRef = useRef(isDark);
+  isDarkRef.current = isDark;
 
   useEffect(() => {
     if ('ontouchstart' in window) return;
@@ -89,7 +91,7 @@ export function CursorGlow() {
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
            ctx.lineTo(b.x, b.y);
-            ctx.strokeStyle = isDark
+            ctx.strokeStyle = isDarkRef.current
               ? `hsla(${a.hue}, 70%, 65%, ${0.12 * (1 - dist / 50)})`
               : `hsla(${a.hue}, 60%, 40%, ${0.06 * (1 - dist / 50)})`;
            ctx.lineWidth = 0.5;

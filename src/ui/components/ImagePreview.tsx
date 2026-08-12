@@ -3,7 +3,6 @@
 // Click backdrop or press Escape to close.
 
 import { useEffect, useCallback } from 'react';
-import type { JSX } from 'react';
 
 export interface ImagePreviewProps {
   src: string;
@@ -37,14 +36,14 @@ export function ImagePreview({ src, alt, open, onClose, className = '' }: ImageP
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target === e.currentTarget) onClose();
     },
     [onClose],
   );
+
+  if (!open) return null;
 
   return (
     <div

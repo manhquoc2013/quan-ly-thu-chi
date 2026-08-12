@@ -13,7 +13,7 @@ export function useWebLLMLoad(opts?: { enabled?: boolean }) {
   const [status, setStatus] = useState('');
   const [done, setDone] = useState(false);
   const [hydrated, setHydrated] = useState(
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     useAuthStore.persist?.hasHydrated?.() ?? false,
   );
   const enableWebLLM = useAuthStore((s) => s.enableWebLLM);

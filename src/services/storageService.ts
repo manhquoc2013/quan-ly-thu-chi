@@ -10,37 +10,40 @@
 
 export type StoreName = 'expenses' | 'revenues' | 'customers' | 'settings';
 
+/** Every IDB/memory row is keyed by `id`. */
+export type StoredEntity = { id: string };
+
 const DB_NAME = 'quan-ly-thu-chi';
 const DB_VERSION = 1;
 
 // ── In-memory fallback ───────────────────────────────────────────────────────
 
 class MemoryStorage {
-  private stores = new Map<StoreName, Map<string, any>>();
+  private stores = new Map<StoreName, Map<string, StoredEntity>>();
 
-  private getStore(name: StoreName): Map<string, any> {
+  private getStore(name: StoreName): Map<string, StoredEntity> {
     if (!this.stores.has(name)) {
       this.stores.set(name, new Map());
     }
     return this.stores.get(name)!;
   }
 
-  async getAll(name: StoreName): Promise<any[]> {
+  async getAll(name: StoreName): Promise<StoredEntity[]> {
     const store = this.getStore(name);
     return [...store.values()];
   }
 
-  async getById(name: StoreName, id: string): Promise<any | undefined> {
+  async getById(name: StoreName, id: string): Promise<StoredEntity | undefined> {
     const store = this.getStore(name);
     return store.get(id);
   }
 
-  async putOne(name: StoreName, item: any): Promise<void> {
+  async putOne(name: StoreName, item: StoredEntity): Promise<void> {
     const store = this.getStore(name);
     store.set(item.id, item);
   }
 
-  async putAll(name: StoreName, items: any[]): Promise<void> {
+  async putAll(name: StoreName, items: StoredEntity[]): Promise<void> {
     const store = this.getStore(name);
     for (const item of items) {
       store.set(item.id, item);
@@ -87,25 +90,25 @@ async function initIdb(): Promise<IDBDatabase | null> {
 
 // ── IndexedDB implementation ─────────────────────────────────────────────────
 
-async function idbGetAll(db: IDBDatabase, name: StoreName): Promise<any[]> {
+async function idbGetAll(db: IDBDatabase, name: StoreName): Promise<StoredEntity[]> {
   const tx = db.transaction(name, 'readonly');
   const store = tx.objectStore(name);
-  return await store.getAll() as unknown as any[];
+  return (await store.getAll()) as unknown as StoredEntity[];
 }
 
-async function idbGetById(db: IDBDatabase, name: StoreName, id: string): Promise<any | undefined> {
+async function idbGetById(db: IDBDatabase, name: StoreName, id: string): Promise<StoredEntity | undefined> {
   const tx = db.transaction(name, 'readonly');
   const store = tx.objectStore(name);
-  return await store.get(id);
+  return (await store.get(id)) as unknown as StoredEntity | undefined;
 }
 
-async function idbPutOne(db: IDBDatabase, name: StoreName, item: any): Promise<void> {
+async function idbPutOne(db: IDBDatabase, name: StoreName, item: StoredEntity): Promise<void> {
   const tx = db.transaction(name, 'readwrite');
   const store = tx.objectStore(name);
   await store.put(item);
 }
 
-async function idbPutAll(db: IDBDatabase, name: StoreName, items: any[]): Promise<void> {
+async function idbPutAll(db: IDBDatabase, name: StoreName, items: StoredEntity[]): Promise<void> {
   const tx = db.transaction(name, 'readwrite');
   const store = tx.objectStore(name);
   for (const item of items) {
@@ -153,7 +156,7 @@ export const storageService = {
   /**
    * Read all items from a store.
    */
-  async getAll(name: StoreName): Promise<any[]> {
+  async getAll(name: StoreName): Promise<StoredEntity[]> {
     const { db, memory } = await resolveStore(name);
     if (db) {
       return idbGetAll(db, name);
@@ -167,7 +170,7 @@ export const storageService = {
   /**
    * Read a single item by its primary key.
    */
-  async getById(name: StoreName, id: string): Promise<any | undefined> {
+  async getById(name: StoreName, id: string): Promise<StoredEntity | undefined> {
     const { db, memory } = await resolveStore(name);
     if (db) {
       return idbGetById(db, name, id);
@@ -181,7 +184,7 @@ export const storageService = {
   /**
    * Upsert a single item (insert or update by primary key).
    */
-  async putOne(name: StoreName, item: any): Promise<void> {
+  async putOne(name: StoreName, item: StoredEntity): Promise<void> {
     const { db, memory } = await resolveStore(name);
     if (db) {
       return idbPutOne(db, name, item);
@@ -194,7 +197,7 @@ export const storageService = {
   /**
    * Upsert multiple items at once.
    */
-  async putAll(name: StoreName, items: any[]): Promise<void> {
+  async putAll(name: StoreName, items: StoredEntity[]): Promise<void> {
     const { db, memory } = await resolveStore(name);
     if (db) {
       return idbPutAll(db, name, items);

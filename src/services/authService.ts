@@ -94,8 +94,8 @@ function isLegacySingleObject(raw: unknown): raw is { email: string; passwordHas
     !Array.isArray(raw) &&
     'email' in raw &&
     'passwordHash' in raw &&
-    typeof (raw as any).email === 'string' &&
-    typeof (raw as any).passwordHash === 'string' &&
+    typeof (raw as { email?: unknown }).email === 'string' &&
+    typeof (raw as { passwordHash?: unknown }).passwordHash === 'string' &&
     'profile' in raw
   );
 }
@@ -124,9 +124,9 @@ function getAllUsersMap(): UserMap {
     if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
       // Ensure every entry has hasPassword + tokenSecret (forward-compat for future writes)
       const normalizedMap: UserMap = {};
-      for (const [key, val] of Object.entries(parsed as Record<string, any>)) {
+      for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
         if (val && typeof val === 'object' && 'email' in val && 'passwordHash' in val && 'profile' in val) {
-          const v = val as any;
+          const v = val as StoredCredentials;
           normalizedMap[key] = {
             email: v.email,
             passwordHash: v.passwordHash,
@@ -155,7 +155,7 @@ function getAllUsersMap(): UserMap {
 export function generateOTP(): string {
   const arr = new Uint8Array(4);
   crypto.getRandomValues(arr);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+   
   const num = arr[0]! * 256 ** 3 + arr[1]! * 256 ** 2 + arr[2]! * 256 + arr[3]!;
   return String(num % 1_000_000).padStart(6, '0');
 }

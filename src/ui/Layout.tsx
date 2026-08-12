@@ -20,8 +20,6 @@ import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { CommandPalette } from '@/ui/components/CommandPalette';
 import { useWebLLMLoad } from '@/ui/components/WebLLMLoader';
 import { bootstrapAppData } from '@/services/bootstrap';
-import { webLLM } from '@/services/webLLM';
-import { kiloService } from '@/services/kiloService';
 import { pendingCount } from '@/services/syncOutbox';
 import { flushOutbox } from '@/services/syncEngine';
 import { useTheme } from '@/hooks/useTheme';
@@ -60,7 +58,6 @@ export function Layout() {
   const [clock, setClock] = useState('');
   const [syncState, setSyncState] = useState<'synced' | 'syncing' | 'offline' | 'pending'>('synced');
   const [pending, setPending] = useState(0);
-  const [dataReady, setDataReady] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const { mode, isDark, cycleTheme: toggleDark } = useTheme();
   const [chatClosing, setChatClosing] = useState(false);
@@ -113,8 +110,8 @@ export function Layout() {
   useEffect(() => {
     let c = false;
     setSyncState(navigator.onLine ? 'syncing' : 'offline');
-    bootstrapAppData().then(() => { if (!c) { setDataReady(true); setSyncState('synced'); } })
-      .catch(() => { if (!c) { setDataReady(true); setSyncState('synced'); } });
+    bootstrapAppData().then(() => { if (!c) setSyncState('synced'); })
+      .catch(() => { if (!c) setSyncState('synced'); });
     return () => { c = true; };
   }, []);
 
@@ -159,7 +156,9 @@ export function Layout() {
           failed === 1 ? '1 thay đổi không đồng bộ được' : `${failed} thay đổi không đồng bộ được`,
         );
       }
-    } catch { }
+    } catch (err) {
+      console.warn('Sync flush failed', err);
+    }
     setSyncing(false); setShowBell(false);
   };
   const isActive = (route: string) => route === '/' ? location.pathname === '/' : location.pathname.startsWith(route);

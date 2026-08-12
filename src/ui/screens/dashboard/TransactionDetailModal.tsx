@@ -124,22 +124,22 @@ export function TransactionDetailModal(props: TransactionDetailModalProps) {
   // Initialize local state when record changes
   useEffect(() => {
     if (!open) return;
-    if (props.type === 'expense' && 'record' in props) {
-      const r = (props as { type: 'expense'; record: Expense }).record;
+    if (props.type === 'expense') {
+      const r = props.record;
       setExpenseLocal({
         paymentMethod: r.paymentMethod,
         notes: r.notes ?? '',
         supplier: r.supplier ?? '',
       });
-    } else if (props.type === 'revenue' && 'record' in props) {
-      const r = (props as { type: 'revenue'; record: Revenue }).record;
+    } else {
+      const r = props.record;
       setRevenueLocal({
         orderStatus: r.orderStatus,
         deliveryStatus: r.deliveryStatus,
         notes: r.notes ?? '',
       });
     }
-  }, [open, props.type, props.record?.id]);
+  }, [open, props.type, props.record]);
 
   // ── Expense handlers ──────────────────────────────────────────────────────
 

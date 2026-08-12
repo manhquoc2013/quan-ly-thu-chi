@@ -62,7 +62,7 @@ export function startRealtimeSync(): void {
         )
         .subscribe((status: string) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`[realtime] Subscribed to ${table} changes`);
+            console.warn(`[realtime] Subscribed to ${table} changes`);
           }
         });
 

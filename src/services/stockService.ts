@@ -175,7 +175,7 @@ export function parseStockQtyFromDescription(text: string): {
     ) || /^(\d{1,5})\s*[×x]\s*(.+)$/i.exec(t);
   if (m) {
     const quantity = Math.max(1, parseInt(m[1]!, 10) || 1);
-    let productName = m[2]!
+    const productName = m[2]!
       .replace(/^(?:cái|con|chiếc|bộ|cặp|set|hộp)\s+/i, '')
       .replace(/\s+/g, ' ')
       .trim();

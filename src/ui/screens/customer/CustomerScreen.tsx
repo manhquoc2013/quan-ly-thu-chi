@@ -38,7 +38,6 @@ export function CustomerScreen() {
   const setSearchQuery = useCustomerStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
@@ -64,7 +63,7 @@ export function CustomerScreen() {
   });
 
   useEffect(() => {
-    getAllCustomers().finally(() => setBootstrapping(false));
+    void getAllCustomers();
   }, []);
 
   const recordDetailRequest = useUIStore((s) => s.recordDetailRequest);

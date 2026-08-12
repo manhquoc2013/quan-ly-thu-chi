@@ -31,7 +31,7 @@ export function FormTextarea({
         className,
       )}
       aria-invalid={props['aria-invalid']}
-      {...(props as any)}
+      {...props}
     />
   );
 }

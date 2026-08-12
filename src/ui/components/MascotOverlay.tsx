@@ -870,10 +870,6 @@ function pickWeighted(weights: ActivityProfile['weights']): keyof ActivityProfil
   return 'walk';
 }
 
-function fallDuration(distY: number) {
-  return clamp(550 + Math.abs(distY) * 4.5, 1200, 2800);
-}
-
 /** Duration so N stride-cycles cover the distance at a constant speed. */
 function locoPlan(distX: number, cycleDur: number, stride: number) {
   const cycles = Math.max(2, Math.round(Math.abs(distX) / stride));
@@ -1076,7 +1072,6 @@ export function MascotOverlay() {
   const [facingRight, setFacingRight] = useState(true);
   const [chuteOpen, setChuteOpen] = useState(false);
   const [ropeOn, setRopeOn] = useState(false);
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1245,7 +1240,6 @@ export function MascotOverlay() {
     setChuteOpen(false);
     const gY = groundY();
     const plats = scanPlatforms(gY);
-    setPlatforms(plats);
     let sy = y;
     if (currentPlatform(plats, x, y + H) || isOnGround(y, gY)) {
       sy = isOnGround(y, gY) ? gY : y;
@@ -1501,7 +1495,6 @@ export function MascotOverlay() {
     const from = posRef.current;
     const gY = groundY();
     const plats = scanPlatforms(gY);
-    setPlatforms(plats);
     // Never stroll through empty air / card voids
     if (isFloating(from.x, from.y, plats, gY)) {
       let landY = findSurface(plats, from.x, from.y + H, gY);
@@ -1934,7 +1927,6 @@ export function MascotOverlay() {
         scheduled = 0;
         const gY = groundY();
         const plats = scanPlatforms(gY);
-        setPlatforms(plats);
         reactSupportRef.current(plats, gY);
       });
     };
@@ -1967,7 +1959,6 @@ export function MascotOverlay() {
       }
       const gY = groundY();
       const plats = scanPlatforms(gY);
-      setPlatforms(plats);
       const cur = posRef.current;
       // Floating in void → hop down; chute only if tall
       if (isFloating(cur.x, cur.y, plats, gY)) {
@@ -2063,7 +2054,7 @@ export function MascotOverlay() {
         doLoco(clamp(cur.x + dir * span, range.lo, range.hi), 'walk');
       }
     }, rand(profile.delay[0], profile.delay[1]));
-  }, [profile, doClimb, doDescend, doJump, doCrawl, doAttack, doLoco, doFall, doBallistic, clearRope]);
+  }, [profile, doClimb, doDescend, doJump, doCrawl, doAttack, doLoco, doBallistic, clearRope]);
 
   useEffect(() => {
     scheduleRef.current = schedule;
@@ -2101,7 +2092,7 @@ export function MascotOverlay() {
     return () => clearTimeout(idleTimer);
   }, []);
 
-  const cycleActivity = () => {
+  const cycleActivity = useCallback(() => {
     const now = Date.now();
     if (now - lastClick.current < 400) {
       const next: Record<MascotActivity, MascotActivity> = { low: 'medium', medium: 'high', high: 'low' };
@@ -2112,7 +2103,7 @@ export function MascotOverlay() {
       );
     }
     lastClick.current = now;
-  };
+  }, [activity, setActivity]);
 
   /** Poke / knock — physical hops & flinches, not CSS spin loops. */
   const playTapReaction = useCallback(() => {
@@ -2162,7 +2153,7 @@ export function MascotOverlay() {
     doBallistic(dir * rand(0.08, 0.18), -rand(0.2, 0.35), false, {
       interact: true, vibe: 'hop', noChute: true, silent: true,
     });
-  }, [activity, setActivity, doBallistic]);
+  }, [doBallistic, cycleActivity]);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();

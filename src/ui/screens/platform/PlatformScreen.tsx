@@ -37,7 +37,6 @@ export function PlatformScreen() {
   const setSearchQuery = usePlatformStore((s) => s.setSearchQuery);
   const revenues = useRevenueStore((s) => s.records);
 
-  const [bootstrapping, setBootstrapping] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<OrderPlatform | null>(null);
   const [detailPlatform, setDetailPlatform] = useState<OrderPlatform | null>(null);
@@ -63,7 +62,7 @@ export function PlatformScreen() {
   });
 
   useEffect(() => {
-    getAllPlatforms().finally(() => setBootstrapping(false));
+    void getAllPlatforms();
   }, []);
 
   const usage = useMemo(() => {

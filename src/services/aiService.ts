@@ -10,13 +10,13 @@
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-let _isConfigured = false;
+const isConfigured = false;
 
 /**
  * Check whether the AI service is configured and ready.
  */
 export function isAiConfigured(): boolean {
-  return _isConfigured;
+  return isConfigured;
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ export const aiService = {
    * In production, this would use ML or prompt-based analysis.
    * @param data - Array of expense records to analyze.
    */
-  async analyzeExpenses(_data: Array<Record<string, any>>): Promise<AiResult> {
+  async analyzeExpenses(_data: Array<Record<string, unknown>>): Promise<AiResult> {
     return { success: false, reason: 'AI service not yet configured' };
   },
 

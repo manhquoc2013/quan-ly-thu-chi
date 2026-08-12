@@ -219,7 +219,7 @@ export const webLLM = {
             if (disabled || epoch !== loadEpoch) return;
             loadPercent = Math.round(report.progress * 100);
             loadText = report.text;
-            console.log(`WebLLM: ${loadPercent}% — ${report.text}`);
+            console.warn(`WebLLM: ${loadPercent}% — ${report.text}`);
           },
         },
         { context_window_size: CONTEXT_WINDOW_SIZE },

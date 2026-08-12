@@ -170,8 +170,6 @@ function rowToDraft(
 
 function parseAmountCell(raw: unknown): number {
   if (typeof raw === 'number' && Number.isFinite(raw)) return Math.round(raw);
-  const s = String(raw ?? '').replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
-  // If Vietnamese thousands 50.000 → after removing dots empty decimal logic:
   const digits = String(raw ?? '').replace(/[^\d]/g, '');
   const n = Number(digits);
   return Number.isFinite(n) ? n : 0;
@@ -190,7 +188,7 @@ function normalizeDateCell(raw: unknown): string | null {
   }
   const s = String(raw).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+  const m = s.match(/^(\d{1,2})[/](\d{1,2})[/](\d{4})$/) ?? s.match(/^(\d{1,2})[.](\d{1,2})[.](\d{4})$/);
   if (m) {
     return `${m[3]}-${m[2]!.padStart(2, '0')}-${m[1]!.padStart(2, '0')}`;
   }

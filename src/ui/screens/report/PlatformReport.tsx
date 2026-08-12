@@ -5,7 +5,6 @@ import { useRevenueStore } from "@/store/revenueStore";
 import { usePlatformStore } from "@/store/platformStore";
 import { useReportStore } from "@/store/reportStore";
 import { formatCurrency } from "@/utils/currency";
-import { formatAxisVnd } from "@/utils/chartFormat";
 import { isDateInRange } from "@/utils/date";
 import { getRevenueByPlatform } from "@/services/reportService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

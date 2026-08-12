@@ -29,7 +29,7 @@ export function FormInput({
         className,
       )}
       aria-invalid={props['aria-invalid']}
-      {...(props as any)}
+      {...props}
     />
   );
 }
