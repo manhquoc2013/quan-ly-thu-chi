@@ -371,9 +371,8 @@ export function Layout() {
       <MascotOverlay />
       {(fabOpen || chatClosing) && (
         <>
-          <div className="fixed inset-0 z-50" onClick={closeChat} />
           <div className={`fixed z-50 right-4 md:right-6 w-[calc(100vw-2rem)] max-w-[400px] h-[520px] max-h-[calc(100vh-8rem)] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden bottom-[calc(var(--dimens-statusBarHeight)+var(--dimens-fabSize)+0.75rem)] ${chatClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
-            <ChatPanel />
+            <ChatPanel onClose={closeChat} />
           </div>
         </>
       )}

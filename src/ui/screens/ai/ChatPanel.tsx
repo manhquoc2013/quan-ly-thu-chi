@@ -35,8 +35,8 @@ interface ChatMessage {
 const WELCOME =
   'Xin chào! Gõ chi/thu để lưu ngay (vd: cà phê 25k). Đính kèm ảnh/PDF/CSV cần xác nhận. Có thể dùng mic hoặc hỏi phân tích.';
 
-export function ChatPanel() {
-  const { fabOpen, toggleFab, setFabOpen, requestRecordDetail } = useUIStore();
+export function ChatPanel({ onClose }: { onClose?: () => void }) {
+  const { fabOpen, setFabOpen, requestRecordDetail } = useUIStore();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'welcome', role: 'ai', text: WELCOME },
@@ -138,7 +138,7 @@ export function ChatPanel() {
         },
       ]);
       if (result.navigateTo) {
-        setFabOpen(false);
+        onClose?.();
         navigate(result.navigateTo);
       }
       if (result.text.startsWith('✅') || result.text.includes('✅')) {
@@ -244,7 +244,7 @@ export function ChatPanel() {
   }
 
   function openCreatedDetail(rec: { kind: 'expense' | 'revenue' | 'product'; id: string }) {
-    setFabOpen(false);
+    onClose?.();
     if (rec.kind === 'product') {
       navigate('/products');
       return;
@@ -304,7 +304,7 @@ export function ChatPanel() {
               <History size={14} />
             </button>
             <button
-              onClick={toggleFab}
+              onClick={onClose}
               className="flex items-center justify-center size-7 rounded-field text-text-muted hover:bg-surface-hover"
               aria-label="Đóng chat"
             >
