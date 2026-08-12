@@ -13,6 +13,8 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
 import { cacheSet } from '@/services/cacheManager';
+import { filterRevenues } from '@/services/revenueFilters';
+import { useCustomerStore } from '@/store/customerStore';
 
 const CACHE_KEY = 'revenues';
 
@@ -100,46 +102,9 @@ function applyFiltersAndSort(
   filters: RevenueFilters,
   sort: RevenueSortConfig,
 ): Revenue[] {
-  let result = [...records];
+  const customers = useCustomerStore.getState().customers;
+  const result = filterRevenues(records, filters, customers, { includeItemNames: true });
 
-  // Search (order code, notes, item names)
-  if (filters.search) {
-    const q = filters.search.toLowerCase();
-    result = result.filter(
-      (r) =>
-        r.orderCode.toLowerCase().includes(q) ||
-        r.notes?.toLowerCase().includes(q) ||
-        r.items.some((i) => i.name.toLowerCase().includes(q)),
-    );
-  }
-
-  // Date range
-  if (filters.dateFrom) {
-    result = result.filter((r) => r.date >= filters.dateFrom);
-  }
-  if (filters.dateTo) {
-    result = result.filter((r) => r.date <= filters.dateTo);
-  }
-
-  // Order status
-  if (filters.orderStatus) {
-    result = result.filter((r) => r.orderStatus === filters.orderStatus);
-  }
-
-  if (filters.paymentStatus) {
-    result = result.filter((r) => r.paymentStatus === filters.paymentStatus);
-  }
-
-  // Customer ID
-  if (filters.customerId) {
-    result = result.filter((r) => r.customerId === filters.customerId);
-  }
-
-  if (filters.priorityOnly) {
-    result = result.filter((r) => r.priority === true);
-  }
-
-  // Sort — priority orders always first, then configured column
   const { sortBy, sortDir } = sort;
   const dir = sortDir === 'asc' ? 1 : -1;
   result.sort((a, b) => {

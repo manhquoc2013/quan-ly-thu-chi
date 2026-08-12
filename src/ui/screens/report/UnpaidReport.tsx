@@ -1,8 +1,10 @@
 /** UnpaidReport — công nợ with order date in report dateRange */
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useRevenueStore } from "@/store/revenueStore";
 import { useCustomerStore } from "@/store/customerStore";
 import { useReportStore } from "@/store/reportStore";
+import { useUIStore } from "@/store/uiStore";
 import { formatCurrency } from "@/utils/currency";
 import { isDateInRange } from "@/utils/date";
 import {
@@ -16,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { ORDER_STATUS_LABELS } from "@/models";
 
 export function UnpaidReport() {
+  const navigate = useNavigate();
+  const requestRecordDetail = useUIStore((s) => s.requestRecordDetail);
   const revenues = useRevenueStore((s) => s.records);
   const customers = useCustomerStore((s) => s.customers);
   const { from, to } = useReportStore((s) => s.dateRange);
@@ -25,11 +29,16 @@ export function UnpaidReport() {
       revenues
         .filter((r) => isUnpaidReceivable(r) && isDateInRange(r.date, from, to))
         .slice()
-        .sort((a, b) => b.date.localeCompare(a.date)),
+        .sort((a, b) => getRemainingBalance(b) - getRemainingBalance(a)),
     [revenues, from, to],
   );
 
   const total = useMemo(() => sumUnpaidReceivable(unpaid), [unpaid]);
+
+  const openRevenue = (id: string) => {
+    navigate("/revenue");
+    window.setTimeout(() => requestRecordDetail("revenue", id), 80);
+  };
 
   return (
     <div className="space-y-[var(--s-lg)]">
@@ -71,35 +80,41 @@ export function UnpaidReport() {
                       r.notes?.replace(/^Khách:\s*/i, "") ||
                       "—";
                 return (
-                  <li key={r.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-mono font-semibold text-accent-fg">
-                        {r.orderCode}
-                      </p>
-                      <p className="text-xs text-text-primary truncate">
-                        {customer}
-                      </p>
-                      <p className="text-[11px] text-text-muted">
-                        {r.date} · {ORDER_STATUS_LABELS[r.orderStatus]}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold tabular-nums">
-                        {formatCurrency(getRemainingBalance(r))}
-                      </p>
-                      {getDepositAmount(r) > 0 && (
-                        <p className="text-[10px] text-text-muted">
-                          Đã cọc {formatCurrency(getDepositAmount(r))} /{" "}
-                          {formatCurrency(r.finalAmount)}
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors"
+                      onClick={() => openRevenue(r.id)}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-mono font-semibold text-accent-fg">
+                          {r.orderCode}
                         </p>
-                      )}
-                      <Badge
-                        variant="outline"
-                        className="bg-warning-bg text-warning-fg border-transparent text-[10px]"
-                      >
-                        Chưa thanh toán
-                      </Badge>
-                    </div>
+                        <p className="text-xs text-text-primary truncate">
+                          {customer}
+                        </p>
+                        <p className="text-[11px] text-text-muted">
+                          {r.date} · {ORDER_STATUS_LABELS[r.orderStatus]}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatCurrency(getRemainingBalance(r))}
+                        </p>
+                        {getDepositAmount(r) > 0 && (
+                          <p className="text-[10px] text-text-muted">
+                            Đã cọc {formatCurrency(getDepositAmount(r))} /{" "}
+                            {formatCurrency(r.finalAmount)}
+                          </p>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className="bg-warning-bg text-warning-fg border-transparent text-[10px]"
+                        >
+                          Chưa thanh toán
+                        </Badge>
+                      </div>
+                    </button>
                   </li>
                 );
               })}

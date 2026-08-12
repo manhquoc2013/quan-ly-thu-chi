@@ -38,6 +38,12 @@ import {
   type RevenueItemRow,
   type RevenueRow,
 } from './supabaseMappers';
+import {
+  filterRevenues,
+  sortRevenuesDefault,
+  WALK_IN_CUSTOMER_IDS,
+  WALK_IN_LABEL,
+} from './revenueFilters';
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -141,35 +147,6 @@ function ilikeOr(columns: string[], raw: string): string {
   return columns.map((c) => `${c}.ilike."${pat}"`).join(',');
 }
 
-const WALK_IN_LABEL = 'khách vãng lai';
-/** Local sentinel + cloud UUID for walk-in customer. */
-const WALK_IN_CUSTOMER_IDS = ['walk-in', '00000000-0000-4000-8000-000000000001'] as const;
-
-function localCustomerIdsMatchingSearch(q: string): Set<string> {
-  const ids = new Set(
-    useCustomerStore
-      .getState()
-      .customers.filter((c) => c.name.toLowerCase().includes(q))
-      .map((c) => c.id),
-  );
-  if (WALK_IN_LABEL.includes(q)) {
-    for (const id of WALK_IN_CUSTOMER_IDS) ids.add(id);
-  }
-  return ids;
-}
-
-function revenueMatchesSearch(
-  revenue: Revenue,
-  q: string,
-  customerIds: Set<string>,
-): boolean {
-  return (
-    revenue.orderCode.toLowerCase().includes(q) ||
-    (revenue.notes?.toLowerCase().includes(q) ?? false) ||
-    customerIds.has(revenue.customerId)
-  );
-}
-
 /* ── Local filters ───────────────────────────────────────────────────────── */
 
 function filterExpensesLocal(records: Expense[], filters: ExpenseListFilters): Expense[] {
@@ -192,32 +169,8 @@ function filterExpensesLocal(records: Expense[], filters: ExpenseListFilters): E
 }
 
 function filterRevenuesLocal(records: Revenue[], filters: RevenueListFilters): Revenue[] {
-  let result = [...records];
-  const q = filters.search?.trim().toLowerCase();
-  if (q) {
-    const customerIds = localCustomerIdsMatchingSearch(q);
-    result = result.filter((x) => revenueMatchesSearch(x, q, customerIds));
-  }
-  if (filters.dateFrom) result = result.filter((x) => x.date >= filters.dateFrom!);
-  if (filters.dateTo) result = result.filter((x) => x.date <= filters.dateTo!);
-  if (filters.orderStatus) result = result.filter((x) => x.orderStatus === filters.orderStatus);
-  if (filters.paymentStatus) {
-    result = result.filter((x) => x.paymentStatus === filters.paymentStatus);
-  }
-  if (filters.customerId) result = result.filter((x) => x.customerId === filters.customerId);
-  if (filters.priorityOnly) result = result.filter((x) => x.priority === true);
-  result.sort((a, b) => {
-    const pa = a.priority ? 1 : 0;
-    const pb = b.priority ? 1 : 0;
-    if (pa !== pb) return pb - pa;
-    if (pa && pb) {
-      const at = a.priorityAt ?? '';
-      const bt = b.priorityAt ?? '';
-      if (at !== bt) return bt.localeCompare(at);
-    }
-    return b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt);
-  });
-  return result;
+  const customers = useCustomerStore.getState().customers;
+  return sortRevenuesDefault(filterRevenues(records, filters, customers));
 }
 
 function filterProductsLocal(records: Product[], filters: SearchListFilters): Product[] {
@@ -308,6 +261,56 @@ async function queryRevenuesCloud(
 ): Promise<ListPageResult<Revenue>> {
   const sb = getSupabase();
   const { from, to } = rangeBounds(params.page, params.pageSize);
+  const search = filters.search?.trim();
+
+  // Prefer RPC (join customer name) when searching; fall back to 2-query path.
+  if (search && escapeIlike(search)) {
+    try {
+      const rpc = await sb.rpc('search_revenues_page', {
+        p_household_id: householdId,
+        p_search: search,
+        p_date_from: filters.dateFrom ?? null,
+        p_date_to: filters.dateTo ?? null,
+        p_order_status: filters.orderStatus ?? null,
+        p_payment_status: filters.paymentStatus ?? null,
+        p_customer_id: filters.customerId ?? null,
+        p_priority_only: filters.priorityOnly ?? false,
+        p_offset: from,
+        p_limit: params.pageSize,
+      });
+      if (!rpc.error && rpc.data) {
+        type RpcRow = RevenueRow & { total_count?: number | string };
+        const rows = (rpc.data as RpcRow[]) ?? [];
+        const total = rows.length > 0 ? Number(rows[0]!.total_count ?? rows.length) : 0;
+        const ids = rows.map((r) => r.id);
+        const itemsByRevenue = new Map<string, RevenueItemRow[]>();
+        if (ids.length > 0) {
+          const itemsRes = await sb
+            .from('revenue_items')
+            .select('*')
+            .eq('household_id', householdId)
+            .in('revenue_id', ids);
+          if (itemsRes.error) throw new Error(itemsRes.error.message);
+          for (const item of (itemsRes.data ?? []) as RevenueItemRow[]) {
+            const list = itemsByRevenue.get(item.revenue_id) ?? [];
+            list.push(item);
+            itemsByRevenue.set(item.revenue_id, list);
+          }
+        }
+        const items = rows.map((row) => mapRevenue(row, itemsByRevenue.get(row.id) ?? []));
+        return {
+          items,
+          total,
+          page: params.page,
+          pageSize: params.pageSize,
+          source: 'cloud',
+        };
+      }
+    } catch {
+      // fall through to legacy path
+    }
+  }
+
   let q = sb
     .from('revenues')
     .select('*', { count: 'exact' })
@@ -317,7 +320,6 @@ async function queryRevenuesCloud(
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
 
-  const search = filters.search?.trim();
   if (search && escapeIlike(search)) {
     const orParts = [ilikeOr(['order_code', 'notes'], search)];
     const namePat = `%${escapeIlike(search)}%`;
@@ -483,6 +485,15 @@ async function withHybrid<T>(
   return local();
 }
 
+async function localRecords<T>(
+  storeItems: T[],
+  cacheKey: string,
+  cacheGetFn: typeof cacheGet,
+): Promise<T[]> {
+  if (storeItems.length > 0) return storeItems;
+  return (await cacheGetFn<T[]>(cacheKey)) ?? [];
+}
+
 export async function queryExpensesPage(
   params: PageParams,
   filters: ExpenseListFilters = {},
@@ -491,8 +502,7 @@ export async function queryExpensesPage(
     'expenses',
     (hid) => queryExpensesCloud(hid, params, filters),
     async () => {
-      const cached = (await cacheGet<Expense[]>('expenses')) ?? [];
-      const all = cached.length > 0 ? cached : useExpenseStore.getState().records;
+      const all = await localRecords(useExpenseStore.getState().records, 'expenses', cacheGet);
       return slicePage(filterExpensesLocal(all, filters), params.page, params.pageSize);
     },
   );
@@ -506,8 +516,7 @@ export async function queryRevenuesPage(
     'revenues',
     (hid) => queryRevenuesCloud(hid, params, filters),
     async () => {
-      const cached = (await cacheGet<Revenue[]>('revenues')) ?? [];
-      const all = cached.length > 0 ? cached : useRevenueStore.getState().records;
+      const all = await localRecords(useRevenueStore.getState().records, 'revenues', cacheGet);
       return slicePage(filterRevenuesLocal(all, filters), params.page, params.pageSize);
     },
   );
@@ -521,8 +530,7 @@ export async function queryProductsPage(
     'products',
     (hid) => queryProductsCloud(hid, params, filters),
     async () => {
-      const cached = (await cacheGet<Product[]>('products')) ?? [];
-      const all = cached.length > 0 ? cached : useProductStore.getState().products;
+      const all = await localRecords(useProductStore.getState().products, 'products', cacheGet);
       return slicePage(filterProductsLocal(all, filters), params.page, params.pageSize);
     },
   );
@@ -536,8 +544,7 @@ export async function queryCustomersPage(
     'customers',
     (hid) => queryCustomersCloud(hid, params, filters),
     async () => {
-      const cached = (await cacheGet<Customer[]>('customers')) ?? [];
-      const all = cached.length > 0 ? cached : useCustomerStore.getState().customers;
+      const all = await localRecords(useCustomerStore.getState().customers, 'customers', cacheGet);
       return slicePage(filterCustomersLocal(all, filters), params.page, params.pageSize);
     },
   );
@@ -551,8 +558,11 @@ export async function queryPlatformsPage(
     'platforms',
     (hid) => queryPlatformsCloud(hid, params, filters),
     async () => {
-      const cached = (await cacheGet<OrderPlatform[]>('orderPlatforms')) ?? [];
-      const all = cached.length > 0 ? cached : usePlatformStore.getState().platforms;
+      const all = await localRecords(
+        usePlatformStore.getState().platforms,
+        'orderPlatforms',
+        cacheGet,
+      );
       return slicePage(filterPlatformsLocal(all, filters), params.page, params.pageSize);
     },
   );

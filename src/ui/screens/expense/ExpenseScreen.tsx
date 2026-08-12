@@ -75,6 +75,7 @@ export function ExpenseScreen() {
     entity: 'expenses',
     filters: listFilters,
     filterKey,
+    debounceMs: 0,
     fetchPage: ({ page: p, pageSize: ps, filters: f }) =>
       queryExpensesPage({ page: p, pageSize: ps }, f),
   });
@@ -155,10 +156,10 @@ export function ExpenseScreen() {
     <div className="flex flex-col w-full min-w-0 bg-background">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] min-h-10 px-[var(--s-md)] py-[var(--s-xs)] bg-surface border-b border-border">
         <input
-          type="text"
+          type="search"
           value={searchInput}
           onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Tìm kiếm..."
+          placeholder="Tìm mô tả, NCC, tag..."
           className="bg-input-bg border border-input-border rounded-field px-2 py-1 text-xs flex-1 min-w-[140px] max-w-[300px] focus:outline-none focus:ring-2 focus:ring-input-focus-ring"
           aria-label="Tìm kiếm chi phí"
         />

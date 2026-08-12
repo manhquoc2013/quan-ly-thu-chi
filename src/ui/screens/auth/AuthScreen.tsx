@@ -1,9 +1,8 @@
 /**
- * AuthScreen — Supabase email/password with modern glass-morphism design.
+ * AuthScreen — Supabase email/password with ink navy + soft sand brand surface.
  */
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +20,7 @@ import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip'
 import { APP_VERSION_LABEL } from '@/appVersion';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PRODUCT_NAME = 'Quản Lý Tài Chính';
 
 type FieldName = 'email' | 'password' | 'confirmPassword' | 'storeName';
 
@@ -183,52 +183,52 @@ export function AuthScreen() {
     }
   }
 
+  const headline = mode === 'in' ? 'Đăng nhập để tiếp tục' : 'Tạo tài khoản cửa hàng';
+  const support =
+    mode === 'in'
+      ? 'Theo dõi thu chi, đơn hàng và tồn kho trên một nơi yên tĩnh.'
+      : 'Vài bước ngắn để bắt đầu quản lý tài chính cửa hàng của bạn.';
+
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
-      style={{ background: '#0a1628' }}
-    >
+    <div className="auth-surface relative flex min-h-full items-center justify-center overflow-y-auto overflow-x-hidden py-10">
       <div
-        className="absolute inset-[-4%] z-0 bg-cover bg-center animate-[auth-bg-drift_18s_ease-in-out_infinite_alternate]"
-        style={{ backgroundImage: `url(${bgUrl})`, imageRendering: 'auto' }}
+        className="auth-bg absolute inset-[-6%] z-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${bgUrl})` }}
         aria-hidden
       />
       <div
-        className="absolute inset-0 z-0"
+        className="auth-veil absolute inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 70% 55% at 50% 42%, rgba(8,20,40,0.28) 0%, rgba(8,20,40,0.68) 72%, rgba(6,14,28,0.86) 100%)',
+            'radial-gradient(ellipse 75% 60% at 50% 38%, rgba(10,26,46,0.35) 0%, rgba(10,26,46,0.72) 58%, rgba(6,16,28,0.92) 100%), linear-gradient(165deg, rgba(47,122,109,0.18) 0%, transparent 42%)',
         }}
         aria-hidden
       />
 
-      <div className="relative z-10 w-full max-w-md px-4 animate-[dialog-in_0.5s_ease_forwards]">
-        <div className="text-center mb-7">
+      <div className="relative z-10 w-full max-w-md px-5">
+        <header className="auth-rise mb-8 text-center">
           <img
             src={`${import.meta.env.BASE_URL}logo.svg`}
             alt=""
-            width={80}
-            height={80}
-            className="mx-auto size-20 rounded-2xl shadow-lg mb-4"
+            width={72}
+            height={72}
+            className="mx-auto mb-5 size-[4.5rem] rounded-2xl shadow-[0_12px_32px_rgba(6,16,28,0.45)]"
           />
-          <h1 data-mascot-platform className="text-2xl font-bold text-white drop-shadow-md">
-            {mode === 'in' ? 'Quản Lý Tài Chính' : 'Tạo tài khoản mới'}
-          </h1>
-          <p className="text-sm text-slate-200/85 mt-1.5 drop-shadow">
-            {mode === 'in'
-              ? 'Đăng nhập để quản lý thu chi của bạn'
-              : 'Bắt đầu theo dõi tài chính ngay hôm nay'}
-          </p>
-        </div>
+          <p className="auth-brand text-[2rem] sm:text-[2.35rem]">{PRODUCT_NAME}</p>
+          <h1 className="auth-headline mt-3 text-lg sm:text-xl">{headline}</h1>
+          <p className="auth-support mx-auto mt-2 max-w-sm text-sm leading-relaxed">{support}</p>
+        </header>
 
         <TooltipProvider>
-        <Card className="backdrop-blur-xl bg-white/90 border-white/30 rounded-2xl shadow-2xl shadow-black/25">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-1">
+          <div className="auth-panel auth-rise-delay rounded-2xl px-5 py-6 sm:px-6">
+            <div className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-[var(--auth-text)]">
               {mode === 'in' ? 'Đăng nhập' : 'Đăng ký'}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-text-muted hover:text-text-primary transition-colors">
+                  <button
+                    type="button"
+                    className="text-[var(--auth-text-muted)] transition-colors hover:text-[var(--auth-sea)]"
+                  >
                     <Info size={14} />
                   </button>
                 </TooltipTrigger>
@@ -236,9 +236,8 @@ export function AuthScreen() {
                   Cần kết nối mạng cho lần đăng nhập đầu tiên. Sau đó có thể dùng offline.
                 </TooltipContent>
               </Tooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </div>
+
             <form className="space-y-4" onSubmit={handleSubmit} noValidate>
               {mode === 'up' && (
                 <div className="space-y-1.5">
@@ -326,7 +325,7 @@ export function AuthScreen() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--auth-text-muted)] transition-colors hover:text-[var(--auth-text)]"
                     onClick={() => setShowPassword((v) => !v)}
                     tabIndex={-1}
                     aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
@@ -366,7 +365,7 @@ export function AuthScreen() {
                     />
                     <button
                       type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--auth-text-muted)] transition-colors hover:text-[var(--auth-text)]"
                       onClick={() => setShowConfirmPassword((v) => !v)}
                       tabIndex={-1}
                       aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
@@ -380,19 +379,21 @@ export function AuthScreen() {
                 </div>
               )}
 
-              <Button type="submit" data-mascot-platform className="w-full h-11 gap-2" disabled={loading}>
+              <Button type="submit" data-mascot-platform className="auth-cta h-11 w-full gap-2" disabled={loading}>
                 {loading ? (
                   <Loader2 size={16} className="animate-spin" />
+                ) : mode === 'in' ? (
+                  <LogIn size={16} />
                 ) : (
-                  mode === 'in' ? <LogIn size={16} /> : <UserPlus size={16} />
+                  <UserPlus size={16} />
                 )}
                 {mode === 'in' ? 'Đăng nhập' : 'Đăng ký'}
               </Button>
 
-              <div className="text-center pt-2">
+              <div className="pt-1 text-center">
                 <button
                   type="button"
-                  className="text-xs text-text-muted hover:text-accent-fg transition-colors"
+                  className="text-xs text-[var(--auth-text-muted)] transition-colors hover:text-[var(--auth-sea)]"
                   disabled={loading}
                   onClick={() => {
                     setMode((m) => (m === 'in' ? 'up' : 'in'));
@@ -400,27 +401,17 @@ export function AuthScreen() {
                     resetTips();
                   }}
                 >
-                  {mode === 'in'
-                    ? 'Chưa có tài khoản? Đăng ký'
-                    : 'Đã có tài khoản? Đăng nhập'}
+                  {mode === 'in' ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'}
                 </button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
         </TooltipProvider>
 
-        <p className="text-center text-[10px] text-slate-300/80 mt-6 drop-shadow">
-          © 2026 Quản Lý Tài Chính · {APP_VERSION_LABEL}
+        <p className="auth-support mt-7 text-center text-[10px]">
+          © 2026 {PRODUCT_NAME} · {APP_VERSION_LABEL}
         </p>
       </div>
-
-      <style>{`
-        @keyframes auth-bg-drift {
-          0% { transform: translate(0, 0); }
-          100% { transform: translate(-1.5%, 1%); }
-        }
-      `}</style>
 
       <MascotOverlay />
     </div>

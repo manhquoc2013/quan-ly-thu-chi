@@ -7,11 +7,10 @@
  */
 
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
-import { getAllExpenses } from './expenseService';
-import { getAllRevenues } from './revenueService';
 import { notifyListInvalidated } from './listQuery';
 import { notify } from '@/utils/notify';
 import { useNotificationStore } from '@/store/notificationStore';
+import { getActiveHouseholdId, hydrateStoresFromCloud, isCloudSyncActive } from './cloudSync';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const activeChannels: RealtimeChannel[] = [];
@@ -26,6 +25,26 @@ function changeVerb(event: string): string {
     case 'UPDATE': return 'cập nhật';
     case 'DELETE': return 'xóa';
     default: return 'thay đổi';
+  }
+}
+
+async function refreshFromRemote(table: 'expenses' | 'revenues'): Promise<void> {
+  if (isCloudSyncActive()) {
+    const hid = getActiveHouseholdId();
+    if (hid) {
+      await hydrateStoresFromCloud(hid);
+      notifyListInvalidated(table);
+      return;
+    }
+  }
+  if (table === 'expenses') {
+    const { getAllExpenses } = await import('./expenseService');
+    await getAllExpenses();
+    notifyListInvalidated('expenses');
+  } else {
+    const { getAllRevenues } = await import('./revenueService');
+    await getAllRevenues();
+    notifyListInvalidated('revenues');
   }
 }
 
@@ -49,15 +68,7 @@ export function startRealtimeSync(): void {
             notify.message(msg);
             useNotificationStore.getState().addNotification('realtime', 'Đồng bộ thời gian thực', msg);
 
-            if (table === 'expenses') {
-              getAllExpenses()
-                .then(() => notifyListInvalidated('expenses'))
-                .catch(() => {});
-            } else {
-              getAllRevenues()
-                .then(() => notifyListInvalidated('revenues'))
-                .catch(() => {});
-            }
+            void refreshFromRemote(table).catch(() => {});
           },
         )
         .subscribe((status: string) => {

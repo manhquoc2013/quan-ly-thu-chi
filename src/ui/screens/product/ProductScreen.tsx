@@ -10,6 +10,7 @@ import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { getAllProducts, deleteProduct, generateSkusForProducts } from '@/services/productService';
 import { notifyListInvalidated, queryProductsPage } from '@/services/listQuery';
+import { buildProductLineCountById } from '@/services/usageMaps';
 import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency } from '@/utils/currency';
 import { toast } from 'sonner';
@@ -81,16 +82,7 @@ export function ProductScreen() {
     clearRecordDetailRequest();
   }, [recordDetailRequest, products, items, clearRecordDetailRequest]);
 
-  const usageCount = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of revenues) {
-      for (const it of r.items) {
-        if (!it.productId) continue;
-        map.set(it.productId, (map.get(it.productId) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [revenues]);
+  const usageCount = useMemo(() => buildProductLineCountById(revenues), [revenues]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;

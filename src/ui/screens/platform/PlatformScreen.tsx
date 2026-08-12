@@ -10,6 +10,7 @@ import { usePlatformStore } from '@/store/platformStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { getAllPlatforms, deletePlatform } from '@/services/platformService';
 import { notifyListInvalidated, queryPlatformsPage } from '@/services/listQuery';
+import { buildOrderCountByPlatform } from '@/services/usageMaps';
 import { usePagedList } from '@/hooks/usePagedList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -65,14 +66,7 @@ export function PlatformScreen() {
     void getAllPlatforms();
   }, []);
 
-  const usage = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of revenues) {
-      if (!r.platformId) continue;
-      map.set(r.platformId, (map.get(r.platformId) ?? 0) + 1);
-    }
-    return map;
-  }, [revenues]);
+  const usage = useMemo(() => buildOrderCountByPlatform(revenues), [revenues]);
 
   const canDelete = (p: OrderPlatform) =>
     p.id !== PLATFORM_DIRECT_ID && (usage.get(p.id) ?? 0) === 0;

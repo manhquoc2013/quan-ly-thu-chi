@@ -105,7 +105,9 @@ export async function intakeFromText(
   message: string,
   source: 'text' | 'voice' = 'text',
 ): Promise<IntakeResult | null> {
-  const bulk = await extractBulkDrafts(message, source);
+  const bulk = message.includes('\n')
+    ? await extractBulkDrafts(message, source)
+    : null;
   let resolved = bulk?.drafts?.length ? bulk.drafts : [];
   if (!resolved.length) {
     const extracted = await extractChatIntent(message);

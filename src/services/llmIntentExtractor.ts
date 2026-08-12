@@ -234,8 +234,9 @@ export async function extractChatIntent(
   if (!res) return null;
   const parsed = normalizeIntent(extractJsonObject(res.text));
   if (!parsed) return { intent: emptyIntent('chat'), source: res.source };
+  const softAmount = res.source !== 'local';
   return {
-    intent: sanitizeIntentAgainstMessage(message, parsed),
+    intent: sanitizeIntentAgainstMessage(message, parsed, { softAmount }),
     source: res.source,
   };
 }
@@ -313,11 +314,17 @@ JSON:`;
       if (alone && alone.intent.intent !== 'chat') intents.push(alone.intent);
       continue;
     }
-    intents.push(sanitizeIntentAgainstMessage(seg, normalized));
+    const softAmount = res.source !== 'local';
+    intents.push(sanitizeIntentAgainstMessage(seg, normalized, { softAmount }));
   }
 
   return intents.length ? { intents, source: res.source } : null;
 }
+
+/** Short merge-only prompt — avoid full EXTRACT_PROMPT on slot-fill replies. */
+const MERGE_PROMPT = `Bạn gộp câu trả lời bổ sung vào intent đang chờ (slot-fill app Quản lý thu chi).
+CHỈ trả 1 JSON object intent đã gộp — giữ field cũ, cập nhật từ reply, cập nhật missing[].
+amount/unitPrice luôn VND số nguyên (25k→25000, 0đ được phép). Không markdown, không giải thích.`;
 
 /** Merge pending intent with user clarify reply via LLM when possible */
 export async function mergeIntentWithLlm(
@@ -325,7 +332,7 @@ export async function mergeIntentWithLlm(
   reply: string,
   financeContext?: string,
 ): Promise<ChatIntent | null> {
-  const ctx = financeContext ? `\nNgữ cảnh:\n${financeContext.slice(0, 800)}` : '';
+  const ctx = financeContext ? `\nNgữ cảnh ngắn:\n${financeContext.slice(0, 400)}` : '';
   const pendingCompact = JSON.stringify({
     intent: pending.intent,
     amount: pending.amount,
@@ -342,15 +349,18 @@ export async function mergeIntentWithLlm(
     missing: pending.missing,
     summaryVi: pending.summaryVi,
   });
-  const prompt = `${EXTRACT_PROMPT}${ctx}
+  const missing = (pending.missing ?? []).join(', ') || '(none)';
+  const prompt = `${MERGE_PROMPT}${ctx}
 
-Đang chờ bổ sung cho intent sau (JSON):
+Intent đang chờ:
 ${pendingCompact}
 
-Người dùng trả lời bổ sung:
+Missing slots: ${missing}
+
+Người dùng trả lời:
 """${reply.slice(0, 500)}"""
 
-Trả về JSON intent ĐÃ GỘP (giữ field cũ, cập nhật field mới, cập nhật missing). JSON:`;
+JSON đã gộp:`;
 
   const res = await callLlm(prompt);
   if (!res) return null;

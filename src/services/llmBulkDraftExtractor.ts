@@ -185,10 +185,36 @@ export function normalizeBulkExtract(
   return drafts;
 }
 
+/**
+ * Cheap gate before bulk LLM: needs multiple non-empty lines that look like a
+ * table / list paste (tabs, pipes, CSV, money rows, or multi "tạo đơn"/khách).
+ */
+export function looksLikeBulkTable(message: string): boolean {
+  if (!message.includes('\n')) return false;
+  const lines = message
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (lines.length < 2) return false;
+  if (lines.filter((l) => l.includes('\t')).length >= 2) return true;
+  if (lines.filter((l) => (l.match(/\|/g) ?? []).length >= 2).length >= 2) return true;
+  if (lines.filter((l) => (l.match(/,/g) ?? []).length >= 2).length >= 2) return true;
+  const moneyRe = /(\d[\d.,]*)\s*(?:k|nghìn|ngàn|tr|triệu|m|đ|₫|vnd)\b/i;
+  if (lines.filter((l) => moneyRe.test(l)).length >= 2) return true;
+  if (
+    lines.filter((l) => /tạo\s*đơn|ưu\s*tiên\s+(?:cho\s+)?khách|^khách\s+\S+/i.test(l))
+      .length >= 2
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export async function extractBulkDrafts(
   message: string,
   source: DraftSource = 'text',
 ): Promise<{ drafts: DraftRecord[]; llmSource: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
+  if (!looksLikeBulkTable(message)) return null;
   const prompt = `${BULK_PROMPT}\n\nTin nhắn:\n"""${message.slice(0, 6000)}"""\n\nJSON:`;
   const res = await callLlm(prompt);
   if (!res) return null;

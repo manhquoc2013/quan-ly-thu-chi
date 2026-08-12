@@ -10,6 +10,7 @@ import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { getAllCustomers, deleteCustomer } from '@/services/customerService';
 import { notifyListInvalidated, queryCustomersPage } from '@/services/listQuery';
+import { buildOrderCountByCustomer } from '@/services/usageMaps';
 import { usePagedList } from '@/hooks/usePagedList';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,14 +79,7 @@ export function CustomerScreen() {
     clearRecordDetailRequest();
   }, [recordDetailRequest, customers, items, clearRecordDetailRequest]);
 
-  const orderCountByCustomer = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of revenues) {
-      if (!r.customerId || r.customerId === 'walk-in') continue;
-      map.set(r.customerId, (map.get(r.customerId) ?? 0) + 1);
-    }
-    return map;
-  }, [revenues]);
+  const orderCountByCustomer = useMemo(() => buildOrderCountByCustomer(revenues), [revenues]);
 
   const handleAdd = useCallback(() => {
     setEditing(null);

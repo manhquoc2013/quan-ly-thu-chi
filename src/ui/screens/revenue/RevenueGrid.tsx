@@ -23,13 +23,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Package, Star } from 'lucide-react';
+import { Pencil, Trash2, Square, CheckSquare, CheckCircle2, Package, Star, Printer } from 'lucide-react';
 import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkBar';
 import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 import { updateRevenue } from '@/services/revenueService';
 import { useMascotStore } from '@/store/mascotStore';
 import { cn } from '@/utils/cn';
 import { TableHScroll } from '@/ui/components/TableHScroll';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 /* Desktop row: fixed tracks so content can exceed narrow viewports → TableHScroll. */
 const REVENUE_MIN_WIDTH = 1270;
@@ -43,6 +44,7 @@ export interface RevenueGridProps {
   onRowClick?: (row: Revenue) => void;
   onEdit?: (row: Revenue) => void;
   onDelete?: (row: Revenue) => void;
+  onPrint?: (row: Revenue) => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: OrderStatus) => void;
   onPriorityChange?: (row: Revenue, priority: boolean) => void;
@@ -87,10 +89,12 @@ export function RevenueGrid({
   onRowClick,
   onEdit,
   onDelete,
+  onPrint,
   onBulkDelete,
   onBulkStatusChange,
   onPriorityChange,
 }: RevenueGridProps) {
+  const isMobile = useIsMobile();
   const customers = useCustomerStore((s) => s.customers);
   const platforms = usePlatformStore((s) => s.platforms);
   const [confirmDelete, setConfirmDelete] = useState<Revenue | null>(null);
@@ -173,8 +177,8 @@ export function RevenueGrid({
 
   return (
     <div className="flex flex-col w-full min-w-0 max-w-full" aria-label="Danh sách đơn hàng">
-      {/* ── Mobile cards ───────────────────────────────────────────── */}
-      <ul className="md:hidden flex flex-col gap-2 p-2 list-none m-0">
+      {isMobile ? (
+      <ul className="flex flex-col gap-2 p-2 list-none m-0">
         {records.length === 0 && (
           <li className="px-3 py-8 text-center text-xs text-text-muted">Chưa có đơn hàng</li>
         )}
@@ -290,6 +294,11 @@ export function RevenueGrid({
                   className="flex items-center justify-end gap-1.5 mt-3 pt-2 border-t border-border-subtle"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  {onPrint ? (
+                    <Button variant="outline" size="xs" onClick={() => onPrint(row)}>
+                      <Printer size={12} /> In
+                    </Button>
+                  ) : null}
                   <Button variant="outline" size="xs" onClick={() => onEdit?.(row)}>
                     <Pencil size={12} /> Sửa
                   </Button>
@@ -302,9 +311,8 @@ export function RevenueGrid({
           );
         })}
       </ul>
-
-      {/* Desktop — scroll X only inside TableHScroll; page shell never scrolls X. */}
-      <div className="hidden md:block w-full min-w-0 max-w-full">
+      ) : (
+      <div className="w-full min-w-0 max-w-full">
         <TableHScroll minWidth={REVENUE_MIN_WIDTH}>
           <div
             role="row"
@@ -428,6 +436,11 @@ export function RevenueGrid({
                   className="flex items-center justify-center gap-1.5 min-w-0"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  {onPrint ? (
+                    <Button variant="outline" size="xs" onClick={() => onPrint(row)} aria-label="In phiếu">
+                      <Printer size={12} />
+                    </Button>
+                  ) : null}
                   <Button variant="outline" size="xs" onClick={() => onEdit?.(row)}>
                     <Pencil size={12} /> Sửa
                   </Button>
@@ -440,6 +453,7 @@ export function RevenueGrid({
           })}
         </TableHScroll>
       </div>
+      )}
 
       {selectedIds.size > 0 && (
         <div className="shrink-0" style={{ height: SELECTION_BAR_HEIGHT }} aria-hidden />

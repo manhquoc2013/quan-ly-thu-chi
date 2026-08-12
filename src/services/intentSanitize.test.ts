@@ -181,6 +181,27 @@ describe('extractPrimaryAmountVnd', () => {
   });
 });
 
+describe('softAmount keeps cloud LLM amount', () => {
+  it('does not overwrite positive cloud amount with regex', () => {
+    const intent: ChatIntent = {
+      ...emptyIntent('create_revenue'),
+      amount: 88000,
+      description: 'kẹp tóc',
+      quantity: 1,
+      customerName: 'Hoa',
+      confidence: 0.92,
+      missing: [],
+    };
+    const out = sanitizeIntentAgainstMessage(
+      'bán cho hoa kẹp tóc giá 90k',
+      intent,
+      { softAmount: true },
+    );
+    expect(out.amount).toBe(88000);
+    expect(out.customerName?.toLowerCase()).toBe('hoa');
+  });
+});
+
 describe('LLM-only routing contracts', () => {
   it('EXTRACT_PROMPT maps tạo đơn hàng khách to create_revenue', () => {
     expect(EXTRACT_PROMPT).toMatch(/tạo đơn hàng khách/i);

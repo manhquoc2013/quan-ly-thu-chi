@@ -93,6 +93,13 @@ export interface PendingChatState {
   updatedAt: number;
 }
 
+/** Expire stuck slot-fill / confirm state after 30 minutes. */
+export const PENDING_TTL_MS = 30 * 60 * 1000;
+
+export function isPendingExpired(state: PendingChatState, now = Date.now()): boolean {
+  return now - state.updatedAt > PENDING_TTL_MS;
+}
+
 const CATEGORIES = new Set(Object.keys(EXPENSE_CATEGORY_LABELS));
 const ORDER_STATUSES = new Set([
   'new',
@@ -675,6 +682,34 @@ export function isZeroMoneyReply(message: string): boolean {
   return /không\s*cần\s*(số\s*)?tiền|giá\s*(tiền\s*)?(là\s*)?0\b|^(0\s*(đ|₫|đồng|vnd)?)$|số\s*tiền\s*(là\s*)?0\b/i.test(
     lower,
   );
+}
+
+/**
+ * Slot-fill replies that can merge locally (skip LLM): money, zero, short name/qty,
+ * cancel/confirm. Ambiguous or long replies should still go through mergeIntentWithLlm.
+ */
+export function isLocalClarifyReply(base: ChatIntent, reply: string): boolean {
+  const t = reply.trim();
+  if (!t || /\n/.test(t) || isNewLedgerRequest(t)) return false;
+  if (isZeroMoneyReply(t) || isCancelMessage(t) || isConfirmMessage(t)) return true;
+  if (base.missing.includes('quantity') && /^\d{1,4}$/.test(t)) return true;
+  if (
+    base.missing.includes('amount') &&
+    t.length <= 40 &&
+    /(\d[\d.,]*)\s*(k|nghìn|ngàn|tr|triệu|m|đ|₫|đồng|vnd)?/i.test(t)
+  ) {
+    return true;
+  }
+  if (
+    t.length >= 2 &&
+    t.length <= 60 &&
+    base.missing.some((s) =>
+      ['customerName', 'description', 'targetHint', 'query'].includes(s),
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function isConfirmMessage(message: string): boolean {

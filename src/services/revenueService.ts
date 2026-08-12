@@ -436,3 +436,112 @@ export async function deleteRevenues(ids: string[], opts?: NotifyOpts): Promise<
   const n = ids.length;
   notify.success(n > 1 ? `Đã xóa ${n} đơn hàng` : 'Đã xóa đơn hàng', opts);
 }
+
+/**
+ * Batch-update many revenues with the same patch (one cache read/write + one invalidate).
+ * Best for status-only bulk actions; still runs per-row stock/shipping side-effects.
+ */
+export async function updateRevenuesBatch(
+  ids: string[],
+  patch: Partial<Omit<Revenue, 'id' | 'createdAt' | 'updatedAt'>>,
+  opts?: NotifyOpts,
+): Promise<Revenue[]> {
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length === 0) return [];
+
+  const existing = (await cacheGet<Revenue[]>(CACHE_KEY)) ?? [];
+  const byId = new Map(existing.map((r) => [r.id, r]));
+  const updatedList: Revenue[] = [];
+  const nextAll = [...existing];
+
+  for (const id of uniqueIds) {
+    const idx = nextAll.findIndex((r) => r.id === id);
+    if (idx === -1) continue;
+    const prev = nextAll[idx]!;
+
+    let rowPatch = { ...patch };
+    if (rowPatch.priority === true) {
+      rowPatch = {
+        ...rowPatch,
+        priority: true,
+        priorityAt: rowPatch.priorityAt ?? prev.priorityAt ?? new Date().toISOString(),
+      };
+    } else if (rowPatch.priority === false) {
+      rowPatch = { ...rowPatch, priority: false, priorityAt: undefined };
+    }
+
+    const merged = {
+      ...prev,
+      ...rowPatch,
+      id: prev.id,
+      date: (rowPatch.date ?? prev.date)!,
+      updatedAt: new Date().toISOString(),
+    };
+    if (rowPatch.priority === false) {
+      delete (merged as { priorityAt?: string }).priorityAt;
+      merged.priority = false;
+    }
+
+    const totals = computeOrderTotals(
+      merged.items,
+      merged.discount,
+      merged.shippingFee,
+      merged.shippingPayer,
+    );
+    merged.totalAmount = totals.totalAmount;
+    merged.finalAmount = totals.finalAmount;
+    merged.shippingFee = totals.shippingFee || undefined;
+    merged.shippingPayer = totals.shippingPayer;
+
+    const payStatus =
+      rowPatch.paymentStatus === 'unpaid'
+        ? 'unpaid'
+        : (rowPatch.paymentStatus ?? merged.paymentStatus);
+    const pay = normalizeDepositPaymentOnWrite({
+      finalAmount: merged.finalAmount,
+      paymentStatus: payStatus,
+      paidAt:
+        payStatus === 'unpaid'
+          ? undefined
+          : rowPatch.paidAt !== undefined
+            ? rowPatch.paidAt
+            : merged.paidAt,
+      paidAmount:
+        payStatus === 'unpaid'
+          ? undefined
+          : rowPatch.paidAmount !== undefined
+            ? rowPatch.paidAmount
+            : merged.paidAmount,
+      depositAmount:
+        rowPatch.depositAmount !== undefined ? rowPatch.depositAmount : merged.depositAmount,
+      depositedAt:
+        rowPatch.depositedAt !== undefined ? rowPatch.depositedAt : merged.depositedAt,
+      fallbackDate: merged.date,
+    });
+
+    let updated: Revenue = { ...merged, ...pay };
+    const expenseId = await syncShippingExpense(updated, prev.shippingExpenseId);
+    updated = { ...updated, shippingExpenseId: expenseId };
+    const stockApplied = await syncOrderStock(prev, updated, { silent: true });
+    updated = { ...updated, stockApplied };
+
+    nextAll[idx] = updated;
+    updatedList.push(updated);
+    byId.set(id, updated);
+  }
+
+  await cacheSet(CACHE_KEY, nextAll);
+  useRevenueStore.getState().setRecords(nextAll);
+
+  for (const row of updatedList) {
+    await pushRevenueCloud(row);
+  }
+  notifyListInvalidated('revenues');
+  notify.success(
+    updatedList.length > 1
+      ? `Đã cập nhật ${updatedList.length} đơn hàng`
+      : `Đã cập nhật đơn ${updatedList[0]?.orderCode ?? ''}`,
+    opts,
+  );
+  return updatedList;
+}

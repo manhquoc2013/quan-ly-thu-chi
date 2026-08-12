@@ -79,10 +79,22 @@ export function extractPaymentFromMessage(message: string): {
   return { paymentStatus, paymentMethod };
 }
 
+export type SanitizeIntentOpts = {
+  /**
+   * Cloud/high-confidence: keep LLM amount when already set; still strip
+   * clear hallucinations (platform/customer). Local/WebLLM keeps full regex overwrite.
+   */
+  softAmount?: boolean;
+};
+
 /**
  * Strip hallucinated amount / qty / entities / payment. Kind is owned by the LLM.
  */
-export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent): ChatIntent {
+export function sanitizeIntentAgainstMessage(
+  message: string,
+  intent: ChatIntent,
+  opts?: SanitizeIntentOpts,
+): ChatIntent {
   const lower = message.toLowerCase();
   let next: ChatIntent = { ...intent };
 
@@ -121,7 +133,20 @@ export function sanitizeIntentAgainstMessage(message: string, intent: ChatIntent
   } else {
     const amount = extractPrimaryAmountVnd(message);
     if (amount != null) {
-      if (
+      const trustLlmAmount =
+        opts?.softAmount && typeof next.amount === 'number' && next.amount > 0;
+      if (trustLlmAmount) {
+        if (
+          next.intent === 'create_revenue' &&
+          (next.quantity ?? 1) > 1 &&
+          next.unitPrice == null
+        ) {
+          next = {
+            ...next,
+            unitPrice: Math.round(next.amount! / (next.quantity ?? 1)),
+          };
+        }
+      } else if (
         next.intent === 'create_revenue' &&
         (next.quantity ?? 1) > 1 &&
         /\d{1,4}\s*(?:cái|chiếc|con|bộ|cặp|set|bó)\b/i.test(message) &&

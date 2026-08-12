@@ -1,18 +1,23 @@
 /**
  * RevenueScreen — Main order management screen.
- * List UI uses hybrid paged query; summary metrics still use full local store.
+ * List UI uses hybrid paged query; summary metrics use shared revenueFilters.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { useCustomerStore } from '@/store/customerStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { useMascotStore } from '@/store/mascotStore';
-import { getAllRevenues, deleteRevenues, updateRevenue } from '@/services/revenueService';
+import {
+  getAllRevenues,
+  deleteRevenues,
+  updateRevenuesBatch,
+} from '@/services/revenueService';
 import { getAllCustomers } from '@/services/customerService';
 import { notifyListInvalidated, queryRevenuesPage } from '@/services/listQuery';
+import { filterRevenues } from '@/services/revenueFilters';
 import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency } from '@/utils/currency';
 import { sumPaidRevenue } from '@/utils/revenueMetrics';
@@ -20,6 +25,7 @@ import { Plus, Star } from 'lucide-react';
 import { RevenueGrid } from './RevenueGrid';
 import { OrderDialog } from './OrderDialog';
 import { OrderRowCard } from './OrderRowCard';
+import { OrderBillDialog } from './OrderBillDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -37,35 +43,32 @@ const PAYMENT_FILTER_OPTIONS = optionsFromLabels(PAYMENT_STATUS_LABELS, [
   { value: '', label: 'Tất cả thanh toán' },
 ]);
 
-const WALK_IN_LABEL = 'khách vãng lai';
-
 export function RevenueScreen() {
   const records = useRevenueStore((s) => s.records);
   const customers = useCustomerStore((s) => s.customers);
   const filters = useRevenueStore((s) => s.filters);
   const setFilters = useRevenueStore((s) => s.setFilters);
 
-  const filteredForSummary = useMemo(() => {
-    let r = [...records];
-    if (filters.search) {
-      const q = filters.search.toLowerCase().trim();
-      const matchingCustomerIds = new Set(
-        customers.filter((c) => c.name.toLowerCase().includes(q)).map((c) => c.id),
-      );
-      if (WALK_IN_LABEL.includes(q)) matchingCustomerIds.add('walk-in');
-      r = r.filter(
-        (x) =>
-          x.orderCode.toLowerCase().includes(q) ||
-          (x.notes?.toLowerCase().includes(q) ?? false) ||
-          matchingCustomerIds.has(x.customerId),
-      );
-    }
-    if (filters.dateFrom) r = r.filter((x) => x.date >= filters.dateFrom);
-    if (filters.dateTo) r = r.filter((x) => x.date <= filters.dateTo);
-    if (filters.orderStatus) r = r.filter((x) => x.orderStatus === filters.orderStatus);
-    if (filters.paymentStatus) r = r.filter((x) => x.paymentStatus === filters.paymentStatus);
-    return r;
-  }, [records, customers, filters]);
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filteredForSummary = useMemo(
+    () =>
+      filterRevenues(
+        records,
+        {
+          search: filters.search,
+          dateFrom: filters.dateFrom || undefined,
+          dateTo: filters.dateTo || undefined,
+          orderStatus: filters.orderStatus,
+          paymentStatus: filters.paymentStatus,
+          customerId: filters.customerId,
+          priorityOnly: filters.priorityOnly || undefined,
+        },
+        customers,
+      ),
+    [records, customers, filters],
+  );
 
   const paidTotal = useMemo(() => sumPaidRevenue(filteredForSummary), [filteredForSummary]);
   const unpaidCount = useMemo(
@@ -117,6 +120,7 @@ export function RevenueScreen() {
     entity: 'revenues',
     filters: listFilters,
     filterKey,
+    debounceMs: 0,
     fetchPage: ({ page: p, pageSize: ps, filters: f }) =>
       queryRevenuesPage({ page: p, pageSize: ps }, f),
   });
@@ -124,6 +128,7 @@ export function RevenueScreen() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRevenue, setEditingRevenue] = useState<Revenue | null>(null);
   const [detailRevenueId, setDetailRevenueId] = useState<string | null>(null);
+  const [billRevenue, setBillRevenue] = useState<Revenue | null>(null);
 
   const detailRevenue = useMemo(() => {
     if (!detailRevenueId) return null;
@@ -134,10 +139,45 @@ export function RevenueScreen() {
     );
   }, [records, items, detailRevenueId]);
 
+  const hasActiveFilters = !!(
+    searchInput ||
+    filters.search ||
+    filters.dateFrom ||
+    filters.dateTo ||
+    filters.orderStatus ||
+    filters.paymentStatus ||
+    filters.priorityOnly ||
+    filters.customerId
+  );
+
   const handleSearch = useCallback(
-    (value: string) => setFilters({ search: value }),
+    (value: string) => {
+      setSearchInput(value);
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = setTimeout(() => setFilters({ search: value }), 300);
+    },
     [setFilters],
   );
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchInput('');
+    setFilters({
+      search: '',
+      dateFrom: '',
+      dateTo: '',
+      orderStatus: undefined,
+      paymentStatus: undefined,
+      customerId: undefined,
+      priorityOnly: false,
+    });
+  }, [setFilters]);
+
   const handleDateFrom = useCallback(
     (value: string) => setFilters({ dateFrom: value }),
     [setFilters],
@@ -204,8 +244,8 @@ export function RevenueScreen() {
     <div className="flex flex-col bg-background w-full min-w-0 max-w-full overflow-x-clip">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface min-w-0">
         <input
-          type="text"
-          value={filters.search}
+          type="search"
+          value={searchInput}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Tìm theo mã đơn, tên khách, ghi chú..."
           className={
@@ -298,6 +338,27 @@ export function RevenueScreen() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : total === 0 && !loading ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-text-muted">
+            <Plus size={32} className="opacity-30" />
+            <p className="text-sm font-medium">
+              {hasActiveFilters ? 'Không khớp bộ lọc' : 'Chưa có đơn hàng'}
+            </p>
+            <p className="text-xs">
+              {hasActiveFilters
+                ? 'Thử xóa bộ lọc hoặc đổi từ khóa tìm kiếm.'
+                : 'Nhấp "Thêm đơn hàng" để bắt đầu.'}
+            </p>
+            {hasActiveFilters ? (
+              <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                Xóa bộ lọc
+              </Button>
+            ) : (
+              <Button variant="default" size="sm" onClick={handleCreateClick}>
+                <Plus size={14} /> Thêm đơn hàng
+              </Button>
+            )}
+          </div>
         ) : (
           <>
             <div className="relative">
@@ -307,16 +368,14 @@ export function RevenueScreen() {
                 onRowClick={handleRowClick}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onPrint={(row) => setBillRevenue(row)}
                 onBulkDelete={async (ids: string[]) => {
                   await deleteRevenues(ids);
                   notifyListInvalidated('revenues');
                   useMascotStore.getState().speak(`Đã xóa ${ids.length} đơn hàng 🧹`, 'warning');
                 }}
                 onBulkStatusChange={async (ids: string[], status) => {
-                  for (const id of ids) {
-                    await updateRevenue(id, { orderStatus: status });
-                  }
-                  notifyListInvalidated('revenues');
+                  await updateRevenuesBatch(ids, { orderStatus: status });
                   const label = ORDER_STATUS_LABELS[status] ?? status;
                   useMascotStore
                     .getState()
@@ -360,7 +419,13 @@ export function RevenueScreen() {
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-y-auto px-6 py-4 max-h-[calc(85vh-8rem)]">
-            {detailRevenue && <OrderRowCard row={detailRevenue} readOnly />}
+            {detailRevenue && (
+              <OrderRowCard
+                row={detailRevenue}
+                readOnly
+                onPrint={() => setBillRevenue(detailRevenue)}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -378,6 +443,12 @@ export function RevenueScreen() {
               isEdit ? 'idle' : 'celebrate',
             );
         }}
+      />
+
+      <OrderBillDialog
+        open={billRevenue !== null}
+        revenue={billRevenue}
+        onClose={() => setBillRevenue(null)}
       />
     </div>
   );

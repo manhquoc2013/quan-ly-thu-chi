@@ -9,7 +9,6 @@
  *   const { text, source, action } = await aiRouter.sendMessage('Phân tích chi phí');
  */
 
-import { callLlmCascade } from './llmCall';
 import { geminiService } from './geminiService';
 import { kiloService } from './kiloService';
 import { webLLM } from './webLLM';
@@ -27,8 +26,9 @@ import {
   clarifyQuestion,
   isCancelMessage,
   isConfirmMessage,
+  isLocalClarifyReply,
   isNewLedgerRequest,
-  isZeroMoneyReply,
+  isPendingExpired,
   mergeClarifyReply,
   mergeIntent,
   parseEntityPickIndex,
@@ -48,7 +48,6 @@ import {
 } from './chatTools';
 import { formatEntityPickMessage } from './entityResolve';
 import { splitMultiTx } from './splitMultiTx';
-import { sanitizeIntentAgainstMessage } from './intentSanitize';
 import { notifyListInvalidated } from './listQuery';
 
 export type ChatReplySource = 'local' | 'cloud' | 'kilo' | 'openrouter' | 'siliconflow' | 'groq' | 'gemini' | 'tesseract';
@@ -332,7 +331,13 @@ const pendingByThread = new Map<string, PendingChatState>();
 
 function getPending(): PendingChatState | undefined {
   if (!activeThreadId) return undefined;
-  return pendingByThread.get(activeThreadId);
+  const state = pendingByThread.get(activeThreadId);
+  if (!state) return undefined;
+  if (isPendingExpired(state)) {
+    pendingByThread.delete(activeThreadId);
+    return undefined;
+  }
+  return state;
 }
 
 function setPending(state: PendingChatState | null): void {
@@ -690,16 +695,11 @@ export const aiRouter = {
       if (isNewLedgerRequest(trimmed)) {
         setPending(null);
       } else {
-        let merged =
-          (await mergeIntentWithLlm(pending.intent, trimmed, financeCtx)) ??
-          mergeClarifyReply(pending.intent, trimmed);
-        // Local zero-money reply beats LLM that keeps inventing expense amount slots.
-        if (
-          isZeroMoneyReply(trimmed) &&
-          pending.intent.missing.includes('amount')
-        ) {
-          merged = mergeClarifyReply(pending.intent, trimmed);
-        }
+        // Local-first: money/name/qty/zero → skip LLM merge cascade.
+        let merged = isLocalClarifyReply(pending.intent, trimmed)
+          ? mergeClarifyReply(pending.intent, trimmed)
+          : (await mergeIntentWithLlm(pending.intent, trimmed, financeCtx)) ??
+            mergeClarifyReply(pending.intent, trimmed);
         merged = mergeIntent(pending.intent, merged);
 
         if (
@@ -796,7 +796,8 @@ export const aiRouter = {
 
     const extracted = await extractChatIntent(trimmed, financeCtx || undefined);
     if (extracted && extracted.intent.intent !== 'chat') {
-      const intent = sanitizeIntentAgainstMessage(trimmed, extracted.intent);
+      // Already sanitized inside extractChatIntent — keep one boundary.
+      const intent = extracted.intent;
 
       if (intent.missing.length > 0) {
         setPending({ intent, updatedAt: Date.now() });
@@ -830,6 +831,7 @@ export const aiRouter = {
 
     // ── 3. Free chat / analysis ───────────────────────────────────────────
     // Do not summarize multi-tx bookkeeping as chat — already tried creates above.
+    // generateChatReply already runs the full chat cascade — do not call it again.
     const ai = await generateChatReply(trimmed, financeCtx, history);
     if (ai?.text) {
       const { cleanText, action } = parseAiAction(ai.text);
@@ -843,28 +845,6 @@ export const aiRouter = {
       }
       addToHistory(trimmed, cleanText);
       return { text: cleanText, source: ai.source };
-    }
-
-    // Legacy provider path as last resort
-    const parts: string[] = [];
-    if (financeCtx) parts.push(financeCtx);
-    if (history) parts.push(`Lịch sử chat:\n${history}`);
-    parts.push(`Người dùng: ${trimmed}`);
-    const fullContext = parts.join('\n\n');
-
-    const cascaded = await callLlmCascade(fullContext, 'chat');
-    if (cascaded?.text) {
-      const { cleanText, action } = parseAiAction(cascaded.text);
-      if (action) {
-        const result = await this.executeAction(action);
-        const text = result.success
-          ? `${cleanText ? `${cleanText}\n\n` : ''}✅ ${result.message}`
-          : `${cleanText ? `${cleanText}\n\n` : ''}❌ ${result.message}`;
-        addToHistory(trimmed, text);
-        return { text, source: cascaded.source };
-      }
-      addToHistory(trimmed, cleanText);
-      return { text: cleanText, source: cascaded.source };
     }
 
     if (!webLLM.isDisabled && !webLLM.isLoaded && !webLLM.isLoading) {

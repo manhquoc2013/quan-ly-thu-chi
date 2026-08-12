@@ -8,6 +8,9 @@ import {
   draftToCreateIntent,
   isCancelMessage,
   isConfirmMessage,
+  isLocalClarifyReply,
+  isPendingExpired,
+  PENDING_TTL_MS,
 } from './chatIntent';
 import type { DraftRecord } from './draftTypes';
 
@@ -139,6 +142,32 @@ describe('mergeClarifyReply', () => {
     base.missing = ['customerName'];
     const merged = mergeClarifyReply(base, 'Hoa');
     expect(merged.customerName?.toLowerCase()).toBe('hoa');
+  });
+});
+
+describe('isLocalClarifyReply + pending TTL', () => {
+  it('matches money / name / zero without needing LLM', () => {
+    const base = fillMissingSlots({
+      intent: 'create_expense',
+      description: 'cà phê',
+      confidence: 0.7,
+      missing: [],
+    });
+    expect(isLocalClarifyReply(base, '25k')).toBe(true);
+    expect(isLocalClarifyReply(base, '0đ')).toBe(true);
+    base.missing = ['customerName'];
+    expect(isLocalClarifyReply(base, 'Hoa')).toBe(true);
+    expect(isLocalClarifyReply(base, 'tạo đơn khách Lan mua 2 kẹp 50k')).toBe(false);
+  });
+
+  it('expires pending after 30 minutes', () => {
+    const now = Date.now();
+    expect(
+      isPendingExpired({ intent: fillMissingSlots({ intent: 'chat', confidence: 0, missing: [] }), updatedAt: now - PENDING_TTL_MS - 1 }, now),
+    ).toBe(true);
+    expect(
+      isPendingExpired({ intent: fillMissingSlots({ intent: 'chat', confidence: 0, missing: [] }), updatedAt: now - 1000 }, now),
+    ).toBe(false);
   });
 });
 

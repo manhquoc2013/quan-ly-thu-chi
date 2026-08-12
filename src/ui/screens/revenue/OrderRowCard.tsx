@@ -9,7 +9,7 @@ import { formatCurrency } from '@/utils/currency';
 import { todayISO } from '@/utils/date';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote, Star } from 'lucide-react';
+import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote, Star, Printer } from 'lucide-react';
 import { useCustomerStore } from '@/store/customerStore';
 import { updateRevenue } from '@/services/revenueService';
 import { notify } from '@/utils/notify';
@@ -24,6 +24,7 @@ export interface OrderRowCardProps {
   /** Hide mark-paid / status action buttons (detail peek) */
   readOnly?: boolean;
   onStatusChange?: (id: string, status: OrderStatus) => void;
+  onPrint?: () => void;
 }
 
 const QUICK_STATUS_OPTIONS: Array<{ status: OrderStatus; label: string; icon: ReactNode }> = [
@@ -47,7 +48,7 @@ function statusBadgeClass(status: OrderStatus): string {
   }
 }
 
-export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRowCardProps) {
+export function OrderRowCard({ row, readOnly = false, onStatusChange, onPrint }: OrderRowCardProps) {
   const customers = useCustomerStore((s) => s.customers);
 
   const customerName =
@@ -213,6 +214,12 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange }: OrderRow
           <span className="text-text-muted truncate max-w-full">Ghi chú: {row.notes}</span>
         )}
       </div>
+
+      {onPrint ? (
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={onPrint}>
+          <Printer size={12} /> In phiếu
+        </Button>
+      ) : null}
 
       {!readOnly ? (
         <div className="pt-2 border-t border-border-subtle space-y-3">
