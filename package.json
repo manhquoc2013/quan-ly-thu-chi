@@ -1,7 +1,7 @@
 {
   "name": "quan-ly-thu-chi",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.7.0",
   "type": "module",
   "homepage": "https://manhquoc2013.github.io/quan-ly-thu-chi",
   "scripts": {

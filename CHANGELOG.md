@@ -6,6 +6,31 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [1.7.0] — 2026-08-12
+
+🔗 [So sánh với v1.6.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.6.0...v1.7.0)
+
+### Thêm mới
+- Chat hoàn toàn qua LLM: tạo đơn / chi phí / SKU / điều hướng / paste bảng — bỏ parser regex (`textDraftParser`, table parsers)
+- Cascade tách nhiệm vụ: extract (tạo đơn/chi/paste) Groq → Gemini → Kilo; chat theo thứ tự user (Kilo Free trước)
+- Gemini / Groq tự lấy danh sách model (`models.list` / `/models`) và đổi model khi 429/404 (Flash cho extract/OCR, Flash-Lite / instant cho chat)
+
+### Sửa lỗi
+- `"tạo đơn hàng khách …"` không còn bị nhận nhầm chi phí
+- Gemini không còn ép schema `BAN_HANG` đè extract JSON
+- Groq sticky model theo task (extract ≠ chat); badge nguồn hiện đúng Groq
+- `ImagePreview` gọi hook trước early return; Groq test dùng đúng state loading
+
+### Thay đổi
+- `guessCategory` tách sang `categoryGuess.ts` (OCR / CSV / bulk)
+- ESLint sạch (`npm run lint`); tắt metric complexity/max-depth/max-params
+- `eqeqeq` cho phép `== null`
+
+### Tài liệu
+- CHANGELOG.md, RELEASE.md
+
+---
+
 ## [1.6.0] — 2026-08-10
 
 🔗 [So sánh với v1.5.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.5.0...v1.6.0)
