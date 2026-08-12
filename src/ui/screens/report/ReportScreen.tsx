@@ -146,149 +146,122 @@ export function ReportScreen() {
   const currentTabs = useMemo(() => tabsForGroup(group), [group]);
 
   return (
-    <div className="flex flex-col gap-[var(--s-md)] min-w-0 w-full">
-      <div className="sticky top-0 z-10 -mx-1 px-1 pt-0.5 pb-2 bg-background/95 backdrop-blur-sm border-b border-border-subtle/60">
-        <div className="flex flex-col gap-2 min-w-0">
-          <div className="min-w-0 flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-text-primary">Báo cáo</h2>
-              <p className="text-xs text-text-muted">Theo kỳ đã chọn</p>
-            </div>
-            <button
-              type="button"
-              className={`text-[11px] shrink-0 mt-1 transition-colors ${
-                activePreset === "all"
-                  ? "text-text-primary font-medium"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-              onClick={applyAllTime}
-            >
-              Tất cả
-            </button>
+    <div className="flex flex-col gap-3 min-w-0 w-full">
+      {/* Title + period in one compact sticky block */}
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-background/95 backdrop-blur-sm border-b border-border-subtle/60 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-text-primary leading-tight">Báo cáo</h2>
+            <p className="text-[11px] text-text-muted leading-tight">Theo kỳ đã chọn</p>
           </div>
-          <div className="flex flex-wrap items-center gap-0.5 bg-surface-hover rounded-lg p-0.5 w-full sm:w-fit max-w-full">
-            {PRESETS.map((p) => (
+
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-0.5 bg-surface-hover rounded-lg p-0.5 max-w-full">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`h-7 px-2.5 text-[11px] rounded-md font-medium transition-all shrink-0 ${
+                    activePreset === p.id
+                      ? "bg-white dark:bg-surface text-text-primary shadow-sm"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                  onClick={() => applyPreset(p.id)}
+                >
+                  {p.label}
+                </button>
+              ))}
               <button
-                key={p.id}
                 type="button"
                 className={`h-7 px-2.5 text-[11px] rounded-md font-medium transition-all shrink-0 ${
-                  activePreset === p.id
+                  activePreset === "all"
                     ? "bg-white dark:bg-surface text-text-primary shadow-sm"
                     : "text-text-muted hover:text-text-secondary"
                 }`}
-                onClick={() => applyPreset(p.id)}
+                onClick={applyAllTime}
               >
-                {p.label}
+                Tất cả
               </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <DatePicker
-              value={dateRange.from}
-              onChange={(from) => {
-                setActivePreset("");
-                setDateRange({
-                  from,
-                  to: dateRange.to && dateRange.to < from ? from : dateRange.to,
-                });
-              }}
-              placeholder="Từ ngày"
-              className="w-[min(140px,100%)] h-8"
-              aria-label="Từ ngày"
-            />
-            <span className="text-xs text-text-muted shrink-0">→</span>
-            <DatePicker
-              value={dateRange.to}
-              onChange={(to) => {
-                setActivePreset("");
-                setDateRange({
-                  from: dateRange.from && dateRange.from > to ? to : dateRange.from,
-                  to,
-                });
-              }}
-              placeholder="Đến ngày"
-              className="w-[min(140px,100%)] h-8"
-              aria-label="Đến ngày"
-            />
-            <span className="hidden sm:inline text-[11px] text-text-muted truncate min-w-0">
-              {dateRange.from} → {dateRange.to}
+            </div>
+
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <DatePicker
+                value={dateRange.from}
+                onChange={(from) => {
+                  setActivePreset("");
+                  setDateRange({
+                    from,
+                    to: dateRange.to && dateRange.to < from ? from : dateRange.to,
+                  });
+                }}
+                placeholder="Từ ngày"
+                className="w-[128px] h-7"
+                aria-label="Từ ngày"
+              />
+              <span className="text-[11px] text-text-muted">→</span>
+              <DatePicker
+                value={dateRange.to}
+                onChange={(to) => {
+                  setActivePreset("");
+                  setDateRange({
+                    from: dateRange.from && dateRange.from > to ? to : dateRange.from,
+                    to,
+                  });
+                }}
+                placeholder="Đến ngày"
+                className="w-[128px] h-7"
+                aria-label="Đến ngày"
+              />
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Mobile: group selector then sub-tabs */}
-      <div className="md:hidden flex flex-col gap-2 min-w-0">
-        <div className="flex gap-1 bg-surface-hover rounded-lg p-0.5 w-full">
-          {GROUPS.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              className={`flex-1 h-8 text-xs rounded-md font-medium transition-all ${
-                group === g.id
-                  ? "bg-white dark:bg-surface text-text-primary shadow-sm"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-              onClick={() => selectGroup(g.id)}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <Tabs
-          value={reportType}
-          onValueChange={(v) => setReportTab(v as ReportTab)}
-          className="min-w-0 w-full"
-        >
-          <div className="w-full max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 -mx-0.5 px-0.5">
-            <TabsList className="inline-flex w-max min-w-full h-auto flex-nowrap justify-start gap-0.5">
-              {currentTabs.map((s) => (
-                <TabsTrigger
-                  key={s.value}
-                  value={s.value}
-                  className="flex flex-none shrink-0 items-center gap-1.5 px-2.5"
-                >
-                  <s.icon size={14} className="shrink-0" />
-                  <span className="whitespace-nowrap">{s.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        {/* Group + tabs: one row on desktop, stacked on narrow */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+          <div
+            className="flex gap-0.5 bg-surface-hover rounded-lg p-0.5 shrink-0 w-full sm:w-auto"
+            role="tablist"
+            aria-label="Nhóm báo cáo"
+          >
+            {GROUPS.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={group === g.id}
+                className={`flex-1 sm:flex-none h-8 px-3 text-xs rounded-md font-medium transition-all ${
+                  group === g.id
+                    ? "bg-white dark:bg-surface text-text-primary shadow-sm"
+                    : "text-text-muted hover:text-text-secondary"
+                }`}
+                onClick={() => selectGroup(g.id)}
+              >
+                {g.label}
+              </button>
+            ))}
           </div>
-        </Tabs>
-      </div>
 
-      {/* Desktop: both groups labeled */}
-      <div className="hidden md:flex flex-col gap-2 min-w-0">
-        <Tabs
-          value={reportType}
-          onValueChange={(v) => navigateTab(v as ReportTab)}
-          className="min-w-0 w-full"
-        >
-          {GROUPS.map((g) => {
-            const tabs = tabsForGroup(g.id);
-            return (
-              <div key={g.id} className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-text-muted mb-1 px-0.5">
-                  {g.label}
-                </p>
-                <div className="w-full max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain pb-0.5 -mx-0.5 px-0.5 mb-1">
-                  <TabsList className="inline-flex w-max min-w-0 h-auto flex-nowrap justify-start gap-0.5">
-                    {tabs.map((s) => (
-                      <TabsTrigger
-                        key={s.value}
-                        value={s.value}
-                        className="flex flex-none shrink-0 items-center gap-1.5 px-2.5"
-                      >
-                        <s.icon size={14} className="shrink-0" />
-                        <span className="whitespace-nowrap">{s.label}</span>
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
-              </div>
-            );
-          })}
-        </Tabs>
+          <Tabs
+            value={reportType}
+            onValueChange={(v) => navigateTab(v as ReportTab)}
+            className="min-w-0 flex-1"
+          >
+            <div className="w-full max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain -mx-0.5 px-0.5">
+              <TabsList className="inline-flex w-max min-w-0 h-auto flex-nowrap justify-start gap-0.5">
+                {currentTabs.map((s) => (
+                  <TabsTrigger
+                    key={s.value}
+                    value={s.value}
+                    className="flex flex-none shrink-0 items-center gap-1.5 px-2.5 h-8"
+                  >
+                    <s.icon size={14} className="shrink-0" />
+                    <span className="whitespace-nowrap">{s.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+          </Tabs>
+        </div>
       </div>
 
       <div className="min-w-0 w-full">

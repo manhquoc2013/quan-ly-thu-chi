@@ -3,10 +3,25 @@
  */
 
 import type { Customer, OrderStatus, PaymentStatus, Revenue } from '@/models';
-import { WALK_IN_CUSTOMER_ID } from '@/services/ledgerRepository';
+import {
+  isWalkInCustomerId,
+  normalizeCustomerId,
+  WALK_IN_CUSTOMER_ID,
+  WALK_IN_LOCAL_ID,
+} from '@/services/walkIn';
 
 export const WALK_IN_LABEL = 'khách vãng lai';
-export const WALK_IN_CUSTOMER_IDS = ['walk-in', WALK_IN_CUSTOMER_ID] as const;
+export const WALK_IN_CUSTOMER_IDS = [WALK_IN_LOCAL_ID, WALK_IN_CUSTOMER_ID] as const;
+
+/** Aliases that mean walk-in when query is a substring of these (min length 3). */
+const WALK_IN_ALIASES = [
+  'khách vãng lai',
+  'khach vang lai',
+  'vãng lai',
+  'vang lai',
+  'walk-in',
+  'walk in',
+] as const;
 
 export interface RevenueFilterInput {
   search?: string;
@@ -18,6 +33,14 @@ export interface RevenueFilterInput {
   priorityOnly?: boolean;
 }
 
+export { isWalkInCustomerId, normalizeCustomerId };
+
+export function matchesWalkInSearch(query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (q.length < 3) return false;
+  return WALK_IN_ALIASES.some((alias) => alias.includes(q) || q.includes(alias));
+}
+
 export function customerIdsMatchingSearch(
   query: string,
   customers: Array<Pick<Customer, 'id' | 'name'>>,
@@ -26,7 +49,7 @@ export function customerIdsMatchingSearch(
   const ids = new Set(
     customers.filter((c) => c.name.toLowerCase().includes(q)).map((c) => c.id),
   );
-  if (q && WALK_IN_LABEL.includes(q)) {
+  if (matchesWalkInSearch(q)) {
     for (const id of WALK_IN_CUSTOMER_IDS) ids.add(id);
   }
   return ids;
@@ -43,6 +66,12 @@ export function matchRevenueSearch(
   if (revenue.orderCode.toLowerCase().includes(q)) return true;
   if (revenue.notes?.toLowerCase().includes(q)) return true;
   if (customerIds.has(revenue.customerId)) return true;
+  if (
+    matchesWalkInSearch(q) &&
+    isWalkInCustomerId(revenue.customerId)
+  ) {
+    return true;
+  }
   if (opts?.includeItemNames && revenue.items.some((i) => i.name.toLowerCase().includes(q))) {
     return true;
   }

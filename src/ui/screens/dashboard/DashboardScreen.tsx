@@ -23,6 +23,7 @@ import { useUIStore } from '@/store/uiStore';
 import { formatCurrency } from '@/utils/currency';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { buildDashboardSnapshot } from '@/services/dashboardSnapshot';
+import { isWalkInCustomerId } from '@/services/walkIn';
 import { useTheme } from '@/hooks/useTheme';
 import { formatAxisVnd, chartTooltipFormatter } from '@/utils/chartFormat';
 import {
@@ -51,7 +52,7 @@ function statusTone(status: OrderStatus): string {
 }
 
 function customerLabel(order: Revenue, customers: { id: string; name: string }[]): string {
-  if (order.customerId === 'walk-in') return 'Khách vãng lai';
+  if (isWalkInCustomerId(order.customerId)) return 'Khách vãng lai';
   const name = customers.find((c) => c.id === order.customerId)?.name;
   if (name) return name;
   const fromNotes = order.notes?.replace(/^Khách:\s*/i, '').trim();

@@ -10,6 +10,7 @@ import {
 } from './chatIntent';
 import { sanitizeIntentAgainstMessage } from './intentSanitize';
 import { callLlmCascade, canUseCloudLlm } from './llmCall';
+import { MASCOT_SAY_GUIDE } from './mascotLines';
 
 const EXTRACT_PROMPT = `Bạn là "Mèo Lucky" — trợ lý vận hành app "Quản lý thu chi" (tiếng Việt, cửa hàng nhỏ / bán online).
 Nhiệm vụ: ĐỌC tin nhắn → chọn ĐÚNG 1 intent → điền field JSON. CHỈ trả 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích ngoài JSON.
@@ -47,7 +48,7 @@ Schema:
   "confidence": 0.0-1.0,
   "missing": string[],
   "summaryVi": string,
-  "mascot_say": "1 câu ngắn Lucky (khen nhỏ / nhắc to / mừng thu)",
+  "mascot_say": "${MASCOT_SAY_GUIDE}",
   "mascot_emotion": "happy"|"sad"|"warning"|"celebrate"|"thinking"
 }
 

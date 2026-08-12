@@ -24,7 +24,8 @@ import {
 } from './supabaseMappers';
 
 /** Replaces local sentinel `walk-in` (Postgres `customer_id` is uuid FK). */
-export const WALK_IN_CUSTOMER_ID = '00000000-0000-4000-8000-000000000001';
+export { WALK_IN_CUSTOMER_ID } from './walkIn';
+import { WALK_IN_CUSTOMER_ID } from './walkIn';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -41,41 +42,72 @@ function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
 }
 
+const PAGE = 1000;
+
+async function fetchAllRows<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const out: T[] = [];
+  let from = 0;
+  for (;;) {
+    const to = from + PAGE - 1;
+    const { data, error } = await fetchPage(from, to);
+    throwIfError(error);
+    const chunk = data ?? [];
+    out.push(...chunk);
+    if (chunk.length < PAGE) break;
+    from += PAGE;
+  }
+  return out;
+}
+
 export async function loadLedger(householdId: string): Promise<LedgerSnapshot> {
   const sb = getSupabase();
 
-  const [expensesRes, customersRes, productsRes, platformsRes, revenuesRes, itemsRes] =
-    await Promise.all([
-      sb.from('expenses').select('*').eq('household_id', householdId).order('date', { ascending: false }),
-      sb.from('customers').select('*').eq('household_id', householdId),
-      sb.from('products').select('*').eq('household_id', householdId),
-      sb.from('order_platforms').select('*').eq('household_id', householdId),
-      sb.from('revenues').select('*').eq('household_id', householdId).order('date', { ascending: false }),
-      sb.from('revenue_items').select('*').eq('household_id', householdId),
-    ]);
-
-  throwIfError(expensesRes.error);
-  throwIfError(customersRes.error);
-  throwIfError(productsRes.error);
-  throwIfError(platformsRes.error);
-  throwIfError(revenuesRes.error);
-  throwIfError(itemsRes.error);
+  const [expenses, customers, products, platforms, revenues, items] = await Promise.all([
+    fetchAllRows<ExpenseRow>((from, to) =>
+      sb
+        .from('expenses')
+        .select('*')
+        .eq('household_id', householdId)
+        .order('date', { ascending: false })
+        .range(from, to),
+    ),
+    fetchAllRows<CustomerRow>((from, to) =>
+      sb.from('customers').select('*').eq('household_id', householdId).range(from, to),
+    ),
+    fetchAllRows<ProductRow>((from, to) =>
+      sb.from('products').select('*').eq('household_id', householdId).range(from, to),
+    ),
+    fetchAllRows<PlatformRow>((from, to) =>
+      sb.from('order_platforms').select('*').eq('household_id', householdId).range(from, to),
+    ),
+    fetchAllRows<RevenueRow>((from, to) =>
+      sb
+        .from('revenues')
+        .select('*')
+        .eq('household_id', householdId)
+        .order('date', { ascending: false })
+        .range(from, to),
+    ),
+    fetchAllRows<RevenueItemRow>((from, to) =>
+      sb.from('revenue_items').select('*').eq('household_id', householdId).range(from, to),
+    ),
+  ]);
 
   const itemsByRevenue = new Map<string, RevenueItemRow[]>();
-  for (const item of (itemsRes.data ?? []) as RevenueItemRow[]) {
+  for (const item of items) {
     const list = itemsByRevenue.get(item.revenue_id) ?? [];
     list.push(item);
     itemsByRevenue.set(item.revenue_id, list);
   }
 
   return {
-    expenses: ((expensesRes.data ?? []) as ExpenseRow[]).map(mapExpense),
-    customers: ((customersRes.data ?? []) as CustomerRow[]).map(mapCustomer),
-    products: ((productsRes.data ?? []) as ProductRow[]).map(mapProduct),
-    platforms: ((platformsRes.data ?? []) as PlatformRow[]).map(mapPlatform),
-    revenues: ((revenuesRes.data ?? []) as RevenueRow[]).map((row) =>
-      mapRevenue(row, itemsByRevenue.get(row.id) ?? []),
-    ),
+    expenses: expenses.map(mapExpense),
+    customers: customers.map(mapCustomer),
+    products: products.map(mapProduct),
+    platforms: platforms.map(mapPlatform),
+    revenues: revenues.map((row) => mapRevenue(row, itemsByRevenue.get(row.id) ?? [])),
   };
 }
 

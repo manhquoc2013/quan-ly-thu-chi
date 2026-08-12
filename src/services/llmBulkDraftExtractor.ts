@@ -12,6 +12,7 @@ import {
   type DraftSource,
 } from './draftTypes';
 import { guessCategory } from './categoryGuess';
+import { MASCOT_SAY_GUIDE } from './mascotLines';
 
 const BULK_PROMPT = `Bạn là "Mèo Lucky" — Trợ lý thu ngân, trích xuất DANH SÁCH từ paste nhiều dòng / bảng.
 CHỈ trả về 1 object JSON hợp lệ, KHÔNG markdown, KHÔNG giải thích.
@@ -32,7 +33,7 @@ Schema:
       "orderItems": [ { "name": string, "quantity": number, "unitPrice": number } ]|null
     }
   ],
-  "mascot_say": "1 câu ngắn Lucky nhận xét tổng quan danh sách",
+  "mascot_say": "${MASCOT_SAY_GUIDE}",
   "mascot_emotion": "happy"|"thinking"|"warning"|"celebrate"
 }
 

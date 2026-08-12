@@ -9,6 +9,7 @@ import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/models';
 import { formatCurrency } from '@/utils/currency';
 import { hasDeposit, paymentSummaryLabel } from '@/utils/revenueMetrics';
 import { shippingLabel } from '@/utils/orderTotals';
+import { isWalkInCustomerId } from '@/services/walkIn';
 import { useCustomerStore } from '@/store/customerStore';
 import { usePlatformStore } from '@/store/platformStore';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import { SELECTION_BAR_HEIGHT, StickyBulkBar } from '@/ui/components/StickyBulkB
 import { LIST_ROW_ANIM, listRowStyle } from '@/ui/components/listRowAnim';
 import { updateRevenue } from '@/services/revenueService';
 import { useMascotStore } from '@/store/mascotStore';
+import { CRUD_LINES } from '@/services/mascotLines';
 import { cn } from '@/utils/cn';
 import { TableHScroll } from '@/ui/components/TableHScroll';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -74,7 +76,7 @@ function paymentBadgeClass(paid: boolean): string {
 }
 
 function customerLabel(row: Revenue, customers: Array<{ id: string; name: string }>): string {
-  if (row.customerId === 'walk-in') return 'Khách vãng lai';
+  if (isWalkInCustomerId(row.customerId)) return 'Khách vãng lai';
   return (
     customers.find((c) => c.id === row.customerId)?.name ||
     row.notes?.replace(/^Khách:\s*/i, '') ||
@@ -117,7 +119,7 @@ export function RevenueGrid({
       useMascotStore
         .getState()
         .speak(
-          next ? `Ưu tiên ${row.orderCode}! ⭐` : `Bỏ ưu tiên ${row.orderCode}`,
+          next ? CRUD_LINES.priorityOn(row.orderCode) : CRUD_LINES.priorityOff(row.orderCode),
           next ? 'celebrate' : 'idle',
         );
       onPriorityChange?.(row, next);

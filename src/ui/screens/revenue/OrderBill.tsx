@@ -22,16 +22,24 @@ export interface OrderBillProps {
   store: OrderBillStoreInfo;
   /** Extra class for on-screen preview card */
   className?: string;
+  /** When true, marks the DOM node used by @media print */
+  forPrint?: boolean;
 }
 
-export function OrderBill({ revenue, customerName, store, className = '' }: OrderBillProps) {
+export function OrderBill({
+  revenue,
+  customerName,
+  store,
+  className = '',
+  forPrint = false,
+}: OrderBillProps) {
   const deposit = getDepositAmount(revenue);
   const remaining = getRemainingBalance(revenue);
   const ship = revenue.shippingFee ?? 0;
 
   return (
     <article
-      id="order-bill-print-root"
+      id={forPrint ? 'order-bill-print-root' : undefined}
       className={`order-bill ${className}`.trim()}
       aria-label={`Phiếu đơn ${revenue.orderCode}`}
     >

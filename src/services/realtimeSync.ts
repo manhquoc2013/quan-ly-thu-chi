@@ -14,6 +14,8 @@ import { getActiveHouseholdId, hydrateStoresFromCloud, isCloudSyncActive } from 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const activeChannels: RealtimeChannel[] = [];
+let hydrateTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingTables = new Set<'expenses' | 'revenues'>();
 
 function tableLabel(table: string): string {
   return table === 'expenses' ? 'chi phí' : 'đơn hàng';
@@ -28,24 +30,36 @@ function changeVerb(event: string): string {
   }
 }
 
-async function refreshFromRemote(table: 'expenses' | 'revenues'): Promise<void> {
+async function refreshFromRemote(tables: Set<'expenses' | 'revenues'>): Promise<void> {
   if (isCloudSyncActive()) {
     const hid = getActiveHouseholdId();
     if (hid) {
       await hydrateStoresFromCloud(hid);
-      notifyListInvalidated(table);
+      for (const table of tables) notifyListInvalidated(table);
       return;
     }
   }
-  if (table === 'expenses') {
+  if (tables.has('expenses')) {
     const { getAllExpenses } = await import('./expenseService');
     await getAllExpenses();
     notifyListInvalidated('expenses');
-  } else {
+  }
+  if (tables.has('revenues')) {
     const { getAllRevenues } = await import('./revenueService');
     await getAllRevenues();
     notifyListInvalidated('revenues');
   }
+}
+
+function scheduleRefresh(table: 'expenses' | 'revenues'): void {
+  pendingTables.add(table);
+  if (hydrateTimer) clearTimeout(hydrateTimer);
+  hydrateTimer = setTimeout(() => {
+    const batch = pendingTables;
+    pendingTables = new Set();
+    hydrateTimer = null;
+    void refreshFromRemote(batch).catch(() => {});
+  }, 600);
 }
 
 export function startRealtimeSync(): void {
@@ -67,8 +81,7 @@ export function startRealtimeSync(): void {
             const msg = `Có ${verb} ${label} từ thiết bị khác — đang đồng bộ...`;
             notify.message(msg);
             useNotificationStore.getState().addNotification('realtime', 'Đồng bộ thời gian thực', msg);
-
-            void refreshFromRemote(table).catch(() => {});
+            scheduleRefresh(table);
           },
         )
         .subscribe((status: string) => {
@@ -85,6 +98,11 @@ export function startRealtimeSync(): void {
 }
 
 export function stopRealtimeSync(): void {
+  if (hydrateTimer) {
+    clearTimeout(hydrateTimer);
+    hydrateTimer = null;
+  }
+  pendingTables = new Set();
   for (const ch of activeChannels) {
     try {
       supabaseRemoveChannel(ch);
@@ -96,6 +114,5 @@ export function stopRealtimeSync(): void {
 }
 
 function supabaseRemoveChannel(channel: RealtimeChannel): void {
-  // Supabase v2: channel.unsubscribe() returns the channel
   (channel as { unsubscribe?: () => void }).unsubscribe?.();
 }

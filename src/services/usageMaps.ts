@@ -3,6 +3,7 @@
  */
 
 import type { Revenue } from '@/models';
+import { isWalkInCustomerId } from '@/services/walkIn';
 
 export function buildProductLineCountById(revenues: Revenue[]): Map<string, number> {
   const map = new Map<string, number>();
@@ -33,7 +34,7 @@ export function buildOrderCountByCustomer(revenues: Revenue[]): Map<string, numb
   const map = new Map<string, number>();
   for (const order of revenues) {
     if (order.orderStatus === 'cancelled') continue;
-    if (!order.customerId || order.customerId === 'walk-in') continue;
+    if (!order.customerId || isWalkInCustomerId(order.customerId)) continue;
     map.set(order.customerId, (map.get(order.customerId) ?? 0) + 1);
   }
   return map;

@@ -5,6 +5,15 @@
  */
 import { useMascotStore } from '@/store/mascotStore';
 import type { MascotActivity } from '@/store/mascotStore';
+import {
+  ACTIVITY_LINES,
+  HARD_LAND_LINES,
+  IDLE_LINES,
+  LAND_LINES,
+  TAP_LINES,
+  pickLine,
+  type LandVibe,
+} from '@/services/mascotLines';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
@@ -993,7 +1002,10 @@ function SpeechBubble({ text, side }: { text: string; side: BubbleSide }) {
             <path d="M17 6 Q18 17 6 17" fill="none" stroke={BUBBLE_STROKE} strokeWidth="1.7" strokeLinecap="round" />
           </svg>
 
-          <p className="relative z-[2] m-0 text-xs font-medium text-[#5C3A1E] text-center leading-snug break-words whitespace-normal">
+          <p
+            className="relative z-[2] m-0 text-xs font-medium text-[#5C3A1E] text-center leading-snug break-words whitespace-normal"
+            style={{ fontFamily: 'Figtree, "Be Vietnam Pro", system-ui, sans-serif' }}
+          >
             {text}
           </p>
 
@@ -1158,20 +1170,9 @@ export function MascotOverlay() {
     window.setTimeout(() => setBodyFx('none'), 420);
   }, []);
 
-  type LandVibe = 'climb' | 'soft' | 'scroll' | 'hop' | 'chute' | 'toss' | 'grapple';
   const speakLand = useCallback((kind: LandVibe) => {
-    const lines: Record<LandVibe, string[]> = {
-      climb: ['Tới rồi!', 'Ngồi đây nè!', 'Hihi~', 'Cao ghê!', 'Ổn áp!'],
-      grapple: ['Móc!', 'Leo nào!', 'Ném dây!', 'Bám chắc!'],
-      soft: ['Êm ru!', 'Đáp!', 'Nhẹ nhàng~', 'Ổn áp!'],
-      chute: ['Dù êm!', 'Hạ cánh!', 'Nhẹ nhàng~', 'Tới đất!'],
-      scroll: ['Ối!', 'Nền chạy mất!', 'Hu hu…'],
-      hop: ['Nhảy cái!', 'Hehe~', 'Êm!'],
-      toss: ['Whee!', 'Bay mất tiêu!', 'Đừng ném mạnh!'],
-    };
     const emotion = kind === 'scroll' ? 'warning' : kind === 'toss' ? 'celebrate' : 'happy';
-    const pool = lines[kind];
-    useMascotStore.getState().speak(pool[Math.floor(Math.random() * pool.length)]!, emotion);
+    useMascotStore.getState().speak(pickLine(LAND_LINES[kind]), emotion);
   }, []);
 
   /**
@@ -1824,10 +1825,7 @@ export function MascotOverlay() {
           setBodyFx('tumble');
           easeSpinTo(facingRef.current ? 78 : -78, 520);
           if (!opts?.silent) {
-            useMascotStore.getState().speak(
-              ['Hu hu…', 'Mèo xỉu!', 'Ơ… đau quá!', 'Chết giả thôi!'][Math.floor(Math.random() * 4)]!,
-              'sad',
-            );
+            useMascotStore.getState().speak(pickLine(HARD_LAND_LINES), 'sad');
           }
           setTimeout(() => {
             settleIdle(x, y);
@@ -2063,18 +2061,6 @@ export function MascotOverlay() {
   }, [schedule]);
 
   useEffect(() => {
-    const phrases = [
-      'Hôm nay bán được gì chưa? 🛒',
-      'Nhớ ghi chép chi tiêu nhé! ✍️',
-      'Mèo đang canh khoản chi nè... 👀',
-      'Có đơn hàng mới không ta? 📦',
-      'Lợi nhuận tháng này ổn không? 💰',
-      'Mèo thích đếm tiền lắm! 🪙',
-      'Đói bụng quá, có ai cho mèo ăn không? 🐟',
-      'Chăm chỉ ghi sổ nhé, đừng lười! 📝',
-      'Hôm nay là một ngày tốt lành! ☀️',
-      'Mèo Lucky luôn ở đây canh khoản thu chi! 🐱',
-    ];
     let idleTimer: ReturnType<typeof setTimeout>;
     let lastSpeak = Date.now();
     const tickIdle = () => {
@@ -2083,7 +2069,7 @@ export function MascotOverlay() {
         return;
       }
       if (Date.now() - lastSpeak > 20000) {
-        useMascotStore.getState().speak(phrases[Math.floor(Math.random() * phrases.length)]!, 'idle');
+        useMascotStore.getState().speak(pickLine(IDLE_LINES), 'idle');
         lastSpeak = Date.now();
       }
       idleTimer = setTimeout(tickIdle, 5000);
@@ -2097,10 +2083,7 @@ export function MascotOverlay() {
     if (now - lastClick.current < 400) {
       const next: Record<MascotActivity, MascotActivity> = { low: 'medium', medium: 'high', high: 'low' };
       setActivity(next[activity]);
-      useMascotStore.getState().speak(
-        next[activity] === 'high' ? 'Full năng lượng!' : next[activity] === 'low' ? 'Mèo lười một chút…' : 'Vừa vừa thôi!',
-        'celebrate',
-      );
+      useMascotStore.getState().speak(ACTIVITY_LINES[next[activity]], 'celebrate');
     }
     lastClick.current = now;
   }, [activity, setActivity]);
@@ -2114,22 +2097,19 @@ export function MascotOverlay() {
 
     type Tap = {
       emotion: 'happy' | 'sad' | 'warning' | 'celebrate' | 'thinking';
-      phrases: string[];
+      phrases: readonly string[];
       kind: 'flinch' | 'hop' | 'knock' | 'playDead';
     };
     const pool: Tap[] = [
-      { emotion: 'warning', phrases: ['Á!', 'Ui!', 'Hức!', 'Chọc mèo à?'], kind: 'flinch' },
-      { emotion: 'happy', phrases: ['Nyaa~!', 'Bay nào!', 'Nhảy cái!'], kind: 'hop' },
-      { emotion: 'warning', phrases: ['Gào!', 'Cào cái!', 'Đừng đụng!'], kind: 'knock' },
-      { emotion: 'thinking', phrases: ['Úp mặt…', 'Trốn tí!', 'Ngại quá…'], kind: 'flinch' },
-      { emotion: 'celebrate', phrases: ['Whee~', 'Tung tóe!', 'Bay hơi!'], kind: 'hop' },
-      { emotion: 'sad', phrases: ['Chết giả!', 'Đừng chọc nữa~', 'Hu hu…'], kind: 'playDead' },
+      { emotion: 'warning', phrases: TAP_LINES.flinch, kind: 'flinch' },
+      { emotion: 'happy', phrases: TAP_LINES.hop, kind: 'hop' },
+      { emotion: 'warning', phrases: TAP_LINES.knock, kind: 'knock' },
+      { emotion: 'thinking', phrases: TAP_LINES.shy, kind: 'flinch' },
+      { emotion: 'celebrate', phrases: TAP_LINES.cheer, kind: 'hop' },
+      { emotion: 'sad', phrases: TAP_LINES.playDead, kind: 'playDead' },
     ];
     const tap = combo >= 4 ? pool[5]! : pool[Math.floor(Math.random() * (pool.length - 1))]!;
-    useMascotStore.getState().speak(
-      tap.phrases[Math.floor(Math.random() * tap.phrases.length)]!,
-      tap.emotion,
-    );
+    useMascotStore.getState().speak(pickLine(tap.phrases), tap.emotion);
 
     const dir = facingRef.current ? 1 : -1;
     if (tap.kind === 'playDead') {

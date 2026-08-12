@@ -10,6 +10,7 @@ import { EXPENSE_CATEGORY_LABELS } from '@/models';
 import { useExpenseStore } from '@/store/expenseStore';
 import { useUIStore } from '@/store/uiStore';
 import { useMascotStore } from '@/store/mascotStore';
+import { CRUD_LINES } from '@/services/mascotLines';
 import { getAllExpenses, deleteExpenses } from '@/services/expenseService';
 import { notifyListInvalidated, queryExpensesPage } from '@/services/listQuery';
 import { usePagedList } from '@/hooks/usePagedList';
@@ -89,9 +90,18 @@ export function ExpenseScreen() {
 
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'expense') return;
-    const row = records.find((r) => r.id === recordDetailRequest.id);
-    if (row) setPeekExpenseId(row.id);
-    clearRecordDetailRequest();
+    const id = recordDetailRequest.id;
+    const row = records.find((r) => r.id === id);
+    if (row) {
+      setPeekExpenseId(row.id);
+      clearRecordDetailRequest();
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const still = useUIStore.getState().recordDetailRequest;
+      if (still?.kind === 'expense' && still.id === id) clearRecordDetailRequest();
+    }, 8_000);
+    return () => window.clearTimeout(t);
   }, [recordDetailRequest, records, clearRecordDetailRequest]);
 
   const editExpense = useMemo(() => {
@@ -239,12 +249,12 @@ export function ExpenseScreen() {
                   onDelete={async (expense: Expense) => {
                     await deleteExpenses([expense.id]);
                     notifyListInvalidated('expenses');
-                    useMascotStore.getState().speak('Đã xóa một khoản chi 🗑️', 'sad');
+                    useMascotStore.getState().speak(CRUD_LINES.expenseDeleted, 'sad');
                   }}
                   onBulkDelete={async (ids: string[]) => {
                     await deleteExpenses(ids);
                     notifyListInvalidated('expenses');
-                    useMascotStore.getState().speak(`Đã xóa ${ids.length} khoản chi 🧹`, 'warning');
+                    useMascotStore.getState().speak(CRUD_LINES.expensesDeleted(ids.length), 'warning');
                   }}
                   peekExpenseId={peekExpenseId}
                   onPeekConsumed={() => setPeekExpenseId(null)}
@@ -273,7 +283,7 @@ export function ExpenseScreen() {
             useMascotStore
               .getState()
               .speak(
-                isEdit ? 'Đã cập nhật chi phí ✏️' : 'Đã thêm chi phí mới! 💸',
+                isEdit ? CRUD_LINES.expenseUpdated : CRUD_LINES.expenseCreated,
                 isEdit ? 'idle' : 'happy',
               );
           }}

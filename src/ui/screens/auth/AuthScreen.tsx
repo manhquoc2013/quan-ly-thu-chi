@@ -16,6 +16,7 @@ import { upsertProfile } from '@/services/profileService';
 import { useAuthStore } from '@/store/authStore';
 import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { useMascotStore } from '@/store/mascotStore';
+import { AUTH_GREET } from '@/services/mascotLines';
 import { FieldErrorTip, useFieldErrorTips } from '@/ui/components/FieldErrorTip';
 import { APP_VERSION_LABEL } from '@/appVersion';
 
@@ -55,7 +56,7 @@ export function AuthScreen() {
   useEffect(() => {
     const t = window.setTimeout(() => {
       useMascotStore.getState().speak(
-        mode === 'in' ? 'Chào bạn! Đăng nhập nào~' : 'Tạo tài khoản mới đi!',
+        mode === 'in' ? AUTH_GREET.signIn : AUTH_GREET.signUp,
         'happy',
       );
     }, 600);

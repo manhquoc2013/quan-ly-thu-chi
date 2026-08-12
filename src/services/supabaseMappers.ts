@@ -17,6 +17,7 @@ import type {
   Revenue,
   ShippingPayer,
 } from '@/models';
+import { normalizeCustomerId } from './walkIn';
 
 export interface ExpenseRow {
   id: string;
@@ -237,11 +238,12 @@ export function mapOrderItem(row: RevenueItemRow): OrderItem {
 
 export function mapRevenue(row: RevenueRow, items: RevenueItemRow[]): Revenue {
   const sorted = [...items].sort((a, b) => a.sort_index - b.sort_index);
+  const customerId = normalizeCustomerId(row.customer_id);
   return {
     id: row.id,
     date: row.date,
     orderCode: row.order_code,
-    customerId: row.customer_id,
+    customerId,
     items: sorted.map(mapOrderItem),
     totalAmount: Number(row.total_amount),
     discount: Number(row.discount),

@@ -13,6 +13,7 @@ import { geminiService } from './geminiService';
 import { kiloService } from './kiloService';
 import { webLLM } from './webLLM';
 import { useMascotStore } from '@/store/mascotStore';
+import { CRUD_LINES } from './mascotLines';
 import type { ExpenseCategory } from '@/models';
 import {
   buildFinanceContext,
@@ -786,8 +787,8 @@ export const aiRouter = {
           const say =
             okCount === 1
               ? plainChatText(multiResults.find((l) => l.startsWith('✅')) ?? text).slice(0, 140)
-              : `Đã xử lý ${okCount} đơn/khoản từ chat! 🎉`;
-          useMascotStore.getState().speak(say || `Đã xử lý ${okCount} mục! 🎉`, 'celebrate');
+              : CRUD_LINES.bulkDone(okCount);
+          useMascotStore.getState().speak(say || CRUD_LINES.bulkDone(okCount), 'celebrate');
         }
         addToHistory(trimmed, text);
         return { text, source, createdRecord: lastCreated };

@@ -10,6 +10,7 @@ import { useCustomerStore } from '@/store/customerStore';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useUIStore } from '@/store/uiStore';
 import { useMascotStore } from '@/store/mascotStore';
+import { CRUD_LINES } from '@/services/mascotLines';
 import {
   getAllRevenues,
   deleteRevenues,
@@ -207,7 +208,7 @@ export function RevenueScreen() {
   const handleDelete = useCallback(async (row: Revenue) => {
     await deleteRevenues([row.id]);
     notifyListInvalidated('revenues');
-    useMascotStore.getState().speak('Đã xóa một đơn hàng 🗑️', 'sad');
+    useMascotStore.getState().speak(CRUD_LINES.orderDeleted, 'sad');
     setDetailRevenueId((prev) => (prev === row.id ? null : prev));
   }, []);
 
@@ -221,13 +222,22 @@ export function RevenueScreen() {
 
   useEffect(() => {
     if (!recordDetailRequest || recordDetailRequest.kind !== 'revenue') return;
-    if (
-      records.some((r) => r.id === recordDetailRequest.id) ||
-      items.some((r) => r.id === recordDetailRequest.id)
-    ) {
-      setDetailRevenueId(recordDetailRequest.id);
+    const id = recordDetailRequest.id;
+    const found =
+      records.some((r) => r.id === id) || items.some((r) => r.id === id);
+    if (found) {
+      setDetailRevenueId(id);
+      clearRecordDetailRequest();
+      return;
     }
-    clearRecordDetailRequest();
+    // Keep request until data arrives; give up after ~8s so it cannot stick forever.
+    const t = window.setTimeout(() => {
+      const still = useUIStore.getState().recordDetailRequest;
+      if (still?.kind === 'revenue' && still.id === id) {
+        clearRecordDetailRequest();
+      }
+    }, 8_000);
+    return () => window.clearTimeout(t);
   }, [recordDetailRequest, records, items, clearRecordDetailRequest]);
 
   const handleCreateClick = useCallback(() => {
@@ -372,14 +382,14 @@ export function RevenueScreen() {
                 onBulkDelete={async (ids: string[]) => {
                   await deleteRevenues(ids);
                   notifyListInvalidated('revenues');
-                  useMascotStore.getState().speak(`Đã xóa ${ids.length} đơn hàng 🧹`, 'warning');
+                  useMascotStore.getState().speak(CRUD_LINES.ordersDeleted(ids.length), 'warning');
                 }}
                 onBulkStatusChange={async (ids: string[], status) => {
                   await updateRevenuesBatch(ids, { orderStatus: status });
                   const label = ORDER_STATUS_LABELS[status] ?? status;
                   useMascotStore
                     .getState()
-                    .speak(`Đã cập nhật ${ids.length} đơn → ${label} ✅`, 'happy');
+                    .speak(CRUD_LINES.ordersStatus(ids.length, label), 'happy');
                 }}
                 onPriorityChange={() => {
                   notifyListInvalidated('revenues');
@@ -423,7 +433,10 @@ export function RevenueScreen() {
               <OrderRowCard
                 row={detailRevenue}
                 readOnly
-                onPrint={() => setBillRevenue(detailRevenue)}
+                onPrint={() => {
+                  setBillRevenue(detailRevenue);
+                  setDetailRevenueId(null);
+                }}
               />
             )}
           </div>
@@ -439,7 +452,7 @@ export function RevenueScreen() {
           useMascotStore
             .getState()
             .speak(
-              isEdit ? 'Đã cập nhật đơn hàng ✏️' : 'Có đơn hàng mới! 🎉',
+              isEdit ? CRUD_LINES.orderUpdated : CRUD_LINES.orderCreated,
               isEdit ? 'idle' : 'celebrate',
             );
         }}

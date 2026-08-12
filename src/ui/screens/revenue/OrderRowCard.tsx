@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Play, Package, X, User, CreditCard, Truck, Banknote, Star, Printer } from 'lucide-react';
 import { useCustomerStore } from '@/store/customerStore';
 import { updateRevenue } from '@/services/revenueService';
+import { isWalkInCustomerId } from '@/services/walkIn';
 import { notify } from '@/utils/notify';
 import {
   getRemainingBalance,
@@ -51,12 +52,11 @@ function statusBadgeClass(status: OrderStatus): string {
 export function OrderRowCard({ row, readOnly = false, onStatusChange, onPrint }: OrderRowCardProps) {
   const customers = useCustomerStore((s) => s.customers);
 
-  const customerName =
-    row.customerId === 'walk-in'
-      ? 'Khách vãng lai'
-      : customers.find((c) => c.id === row.customerId)?.name ||
-        row.notes?.replace(/^Khách:\s*/i, '') ||
-        '—';
+  const customerName = isWalkInCustomerId(row.customerId)
+    ? 'Khách vãng lai'
+    : customers.find((c) => c.id === row.customerId)?.name ||
+      row.notes?.replace(/^Khách:\s*/i, '') ||
+      '—';
 
   const handleQuickStatus = async (status: OrderStatus) => {
     await updateRevenue(row.id, { orderStatus: status });
