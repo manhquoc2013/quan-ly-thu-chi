@@ -6,6 +6,34 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.0.0] — 2026-08-13
+
+🔗 [So sánh với v1.7.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.7.0...v2.0.0)
+
+### Thêm mới
+- Dashboard tập trung: KPI tháng, hàng đợi “Cần xử lý”, sản phẩm cần làm, deep-link mở đơn
+- Báo cáo: tổng quan, nhóm Tài chính / Vận hành, Top khách–sản phẩm, công nợ sắp xếp / deep-link
+- In hóa đơn A6 (xem trước + in; portal body để `@media print` không bị dialog transform)
+- Tìm đơn theo tên khách (local + cloud RPC `search_revenues_page`, walk-in ilike)
+- Brand Auth / Onboarding: ink navy + soft sand; typography Be Vietnam Pro + Figtree
+- `mascotLines.ts` — thoại Lucky thống nhất (idle / CRUD / auth / tap)
+
+### Thay đổi
+- List doanh thu / chi phí: filter dùng chung, debounce tìm kiếm, empty vs không khớp
+- Realtime hydrate cloud (debounce); `loadLedger` phân trang 1000; `updateRevenuesBatch`
+- LLM: slot-fill local-first, bỏ bulk cascade thừa, `mascot_say` ngắn ≤12 từ
+- Header Báo cáo gọn: kỳ + DatePicker + switch nhóm / một hàng tab
+
+### Sửa lỗi
+- In bill trong dialog Radix; race deep-link chi tiết đơn; normalize walk-in id
+- Hydrate PostgREST không còn cắt silent ở 1000 dòng
+
+### Tài liệu / Ops
+- Migration: `20260812110000_search_revenues_page.sql`, `20260812120000_search_revenues_walkin_ilike.sql` (cần apply trên Supabase)
+- CHANGELOG.md, RELEASE.md
+
+---
+
 ## [1.7.0] — 2026-08-12
 
 🔗 [So sánh với v1.6.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.6.0...v1.7.0)
