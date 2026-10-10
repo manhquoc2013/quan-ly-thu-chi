@@ -17,6 +17,7 @@ import {
 } from '@/services/mascotLines';
 import type { VisemeShape } from '@/services/speechService';
 import { LucyControlDeck } from './LucyControlDeck';
+import { lucyAudio } from '@/services/lucyAudio';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
@@ -278,6 +279,15 @@ const PART_STYLES = `
 @keyframes focusHaloPulse{0%,100%{transform:scale(1) translateY(0);opacity:0.85}50%{transform:scale(1.08) translateY(-2px);opacity:1}}
 @keyframes head-talking{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.2px) rotate(-1deg)}50%{transform:translateY(0.4px) rotate(1deg)}75%{transform:translateY(-0.6px) rotate(-0.5deg)}}
 @keyframes purrFloat{0%{opacity:1;transform:translateY(0) scale(0.8)}50%{transform:translateY(-18px) scale(1.1)}100%{opacity:0;transform:translateY(-36px) scale(1)}}
+@keyframes eyes-dizzy{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes lleg-held{0%,100%{transform:rotate(-6deg) translateY(2px)}50%{transform:rotate(10deg) translateY(4px)}}
+@keyframes rleg-held{0%,100%{transform:rotate(8deg) translateY(2px)}50%{transform:rotate(-8deg) translateY(4px)}}
+@keyframes larm-held{0%,100%{transform:rotate(-16deg) translateY(1px)}50%{transform:rotate(12deg) translateY(3px)}}
+@keyframes rarm-held{0%,100%{transform:rotate(16deg) translateY(1px)}50%{transform:rotate(-12deg) translateY(3px)}}
+@keyframes tail-held{0%,100%{transform:rotate(-28deg) translateY(2px)}50%{transform:rotate(-14deg)}}
+@keyframes tail-pulled{0%,100%{transform:rotate(-55deg) scaleX(1.2) translateY(4px)}}
+@keyframes cheek-pinch-l{0%,100%{transform:translate(0,0)}50%{transform:translate(-6px,1px) scale(1.15,0.9)}}
+@keyframes cheek-pinch-r{0%,100%{transform:translate(0,0)}50%{transform:translate(6px,1px) scale(1.15,0.9)}}
 `;
 
 const PART_KEYS: Record<string, Set<CoreAction>> = {
@@ -333,6 +343,11 @@ export function CatBody({
   lookAt,
   isTalking = false,
   viseme = 'closed',
+  isHeld = false,
+  isDizzy = false,
+  isBellyTickle = false,
+  isTailPulled = false,
+  isCheekPinched = false,
 }: {
   emotion: string;
   action: Action;
@@ -341,6 +356,11 @@ export function CatBody({
   lookAt?: { x: number; y: number } | null;
   isTalking?: boolean;
   viseme?: VisemeShape;
+  isHeld?: boolean;
+  isDizzy?: boolean;
+  isBellyTickle?: boolean;
+  isTailPulled?: boolean;
+  isCheekPinched?: boolean;
 }) {
   const core = normalizeAction(action);
   const happy = emotion === 'happy' || emotion === 'celebrate';
@@ -350,12 +370,12 @@ export function CatBody({
   const faceClimb = core === 'climb';
   const faceCrawl = core === 'crawl';
   const faceLoco = core === 'walk' || core === 'run' || core === 'runJump';
-  const overrideFace = faceHurt || faceDead || faceAttack || faceClimb || faceCrawl;
+  const overrideFace = faceHurt || faceDead || faceAttack || faceClimb || faceCrawl || isDizzy || isBellyTickle || isTailPulled;
 
   // Live2D & Rive mouse lookAt calculations
   const lookX = lookAt && !overrideFace ? clamp(lookAt.x * 3.5, -3.5, 3.5) : 0;
   const lookY = lookAt && !overrideFace ? clamp(lookAt.y * 2.5, -2.5, 2.5) : 0;
-  const headLookDeg = lookAt && !overrideFace ? clamp(lookAt.x * 7, -7, 7) : 0;
+  const headLookDeg = isDizzy ? 6 : lookAt && !overrideFace ? clamp(lookAt.x * 7, -7, 7) : 0;
 
   let eyeRx = happy && !overrideFace ? '3.2' : '4.8';
   let eyeRy = happy && !overrideFace ? '2.2' : '4.8';
@@ -398,8 +418,17 @@ export function CatBody({
         </g>
       )}
 
-      {/* Thick tapered tail — LEFT hip so it stays behind when facing +X (forward) */}
-      <g className="mc-part mc-tail" style={{ animation: partAnim('tail', action, walkDur, runDur) }}>
+      {/* Thick tapered tail — responds dynamically to tail pull & held state */}
+      <g
+        className="mc-part mc-tail"
+        style={{
+          animation: isTailPulled
+            ? 'tail-pulled 0.25s ease-out infinite'
+            : isHeld
+              ? 'tail-held 0.8s ease-in-out infinite'
+              : partAnim('tail', action, walkDur, runDur),
+        }}
+      >
         <path
           d="M30 80 C16 68 -2 66 -12 78 C-16 86 -8 96 6 94 C16 93 24 88 30 80 Z"
           fill="#E67E22"
@@ -411,14 +440,28 @@ export function CatBody({
         <path d="M24 82 Q8 74 -4 80" fill="none" stroke="#F5B041" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
       </g>
 
-      <g className="mc-part mc-leg" style={{ animation: partAnim('lleg', action, walkDur, runDur) }}>
+      <g
+        className="mc-part mc-leg"
+        style={{
+          animation: isHeld
+            ? 'lleg-held 0.6s ease-in-out infinite'
+            : partAnim('lleg', action, walkDur, runDur),
+        }}
+      >
         <ellipse cx="45" cy="104" rx="11" ry="12" fill="#D35400" stroke="#A04000" strokeWidth="1" />
         <ellipse cx="45" cy="114" rx="9" ry="11" fill="#C05000" stroke="#A04000" strokeWidth="0.8" />
         <ellipse cx="45" cy="122" rx="13" ry="6" fill="#E67E22" />
         <ellipse cx="45" cy="121" rx="9" ry="4" fill="#F5CBA7" />
       </g>
 
-      <g className="mc-part mc-leg" style={{ animation: partAnim('rleg', action, walkDur, runDur) }}>
+      <g
+        className="mc-part mc-leg"
+        style={{
+          animation: isHeld
+            ? 'rleg-held 0.6s ease-in-out infinite'
+            : partAnim('rleg', action, walkDur, runDur),
+        }}
+      >
         <ellipse cx="75" cy="104" rx="11" ry="12" fill="#D35400" stroke="#A04000" strokeWidth="1" />
         <ellipse cx="75" cy="114" rx="9" ry="11" fill="#C05000" stroke="#A04000" strokeWidth="0.8" />
         <ellipse cx="75" cy="122" rx="13" ry="6" fill="#E67E22" />
@@ -429,9 +472,11 @@ export function CatBody({
       <g
         className="mc-part mc-body"
         style={{
-          animation: action === 'idle'
-            ? `${partAnim('body', action, walkDur, runDur)}, mc-breathe 3.2s ease-in-out infinite`
-            : partAnim('body', action, walkDur, runDur),
+          animation: isHeld
+            ? undefined
+            : action === 'idle'
+              ? `${partAnim('body', action, walkDur, runDur)}, mc-breathe 3.2s ease-in-out infinite`
+              : partAnim('body', action, walkDur, runDur),
         }}
       >
         <ellipse cx="60" cy="80" rx="35" ry="30" fill="#F39C12" stroke="#E67E22" strokeWidth="1" />
@@ -443,13 +488,27 @@ export function CatBody({
         <circle cx="60" cy="74.6" r="1.1" fill="#7D6608" />
       </g>
 
-      <g className="mc-part mc-arm" style={{ animation: partAnim('larm', action, walkDur, runDur) }}>
+      <g
+        className="mc-part mc-arm"
+        style={{
+          animation: isHeld
+            ? 'larm-held 0.5s ease-in-out infinite'
+            : partAnim('larm', action, walkDur, runDur),
+        }}
+      >
         <ellipse cx="30" cy="78" rx="8" ry="13" fill="#E67E22" stroke="#C05A00" strokeWidth="1" />
         <ellipse cx="30" cy="90" rx="7" ry="11" fill="#D4700A" stroke="#B05000" strokeWidth="0.8" />
         <ellipse cx="28" cy="99" rx="8" ry="5" fill="#F5CBA7" stroke="#D4A373" strokeWidth="0.5" />
       </g>
 
-      <g className="mc-part mc-arm" style={{ animation: partAnim('rarm', action, walkDur, runDur) }}>
+      <g
+        className="mc-part mc-arm"
+        style={{
+          animation: isHeld
+            ? 'rarm-held 0.5s ease-in-out infinite'
+            : partAnim('rarm', action, walkDur, runDur),
+        }}
+      >
         <ellipse cx="90" cy="78" rx="8" ry="13" fill="#E67E22" stroke="#C05A00" strokeWidth="1" />
         <ellipse cx="90" cy="90" rx="7" ry="11" fill="#D4700A" stroke="#B05000" strokeWidth="0.8" />
         <ellipse cx="92" cy="99" rx="8" ry="5" fill="#F5CBA7" stroke="#D4A373" strokeWidth="0.5" />
@@ -487,6 +546,35 @@ export function CatBody({
             <text x="72" y="46" fontSize="14" fill="#2C3E50" textAnchor="middle" fontWeight="bold">×</text>
             <ellipse cx="42" cy="50" rx="2" ry="3" fill="#85C1E9" opacity="0.8" />
             <ellipse cx="78" cy="50" rx="2" ry="3" fill="#85C1E9" opacity="0.8" />
+          </>
+        ) : isDizzy ? (
+          <>
+            {/* Dizzy rotating spiral eyes @_@ */}
+            <g style={{ transformBox: 'view-box', transformOrigin: '48px 42px', animation: 'eyes-dizzy 1.2s linear infinite' }}>
+              <ellipse cx="48" cy="42" rx="4.5" ry="4.5" fill="none" stroke="#2C3E50" strokeWidth="1.6" />
+              <path d="M46 42 Q48 40 50 42 Q48 44 46 42" fill="none" stroke="#2C3E50" strokeWidth="1.2" />
+            </g>
+            <g style={{ transformBox: 'view-box', transformOrigin: '72px 42px', animation: 'eyes-dizzy 1.2s linear infinite' }}>
+              <ellipse cx="72" cy="42" rx="4.5" ry="4.5" fill="none" stroke="#2C3E50" strokeWidth="1.6" />
+              <path d="M70 42 Q72 40 74 42 Q72 44 70 42" fill="none" stroke="#2C3E50" strokeWidth="1.2" />
+            </g>
+            <text x="35" y="24" fontSize="11" fill="#F1C40F">💫</text>
+            <text x="76" y="24" fontSize="11" fill="#F1C40F">⭐</text>
+          </>
+        ) : isBellyTickle ? (
+          <>
+            {/* Tickled laughing squint eyes >< */}
+            <path d="M44 39 L49 43 L44 47" fill="none" stroke="#2C3E50" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M76 39 L71 43 L76 47" fill="none" stroke="#2C3E50" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : isTailPulled ? (
+          <>
+            {/* Startled wide shocked eyes */}
+            <circle cx="48" cy="42" r="5.5" fill="white" stroke="#2C3E50" strokeWidth="1.4" />
+            <circle cx="48" cy="42" r="2.2" fill="#2C3E50" />
+            <circle cx="72" cy="42" r="5.5" fill="white" stroke="#2C3E50" strokeWidth="1.4" />
+            <circle cx="72" cy="42" r="2.2" fill="#2C3E50" />
+            <text x="80" y="22" fontSize="18" fontWeight="bold" fill="#E74C3C" textAnchor="middle">!</text>
           </>
         ) : (
           <>
@@ -530,7 +618,7 @@ export function CatBody({
           </g>
         )}
 
-        {faceHurt && !faceDead && (
+        {faceHurt && !faceDead && !isTailPulled && (
           <>
             <line x1="42" y1="36" x2="54" y2="48" stroke="#E74C3C" strokeWidth="1.5" opacity="0.75" />
             <line x1="78" y1="36" x2="66" y2="48" stroke="#E74C3C" strokeWidth="1.5" opacity="0.75" />
@@ -539,9 +627,18 @@ export function CatBody({
 
         <ellipse cx="60" cy="52" rx="3" ry="2" fill="#E74C3C" />
 
-        {/* Animated Mouth (TalkingHead Lip-Sync & Emotion States) */}
+        {/* Animated Mouth (TalkingHead Lip-Sync & Physical Interaction States) */}
         {faceDead || faceHurt ? (
           <ellipse cx="60" cy="58" rx="5" ry="3.5" fill="#2C3E50" />
+        ) : isDizzy ? (
+          <path d="M54 58 Q57 55 60 58 Q63 61 66 58" fill="none" stroke="#2C3E50" strokeWidth="1.4" strokeLinecap="round" />
+        ) : isBellyTickle ? (
+          <g>
+            <path d="M52 56 Q60 68 68 56 Z" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
+            <ellipse cx="60" cy="62" rx="4" ry="2.2" fill="#F1948A" />
+          </g>
+        ) : isTailPulled ? (
+          <ellipse cx="60" cy="58" rx="4" ry="5.5" fill="#78281F" stroke="#2C3E50" strokeWidth="1.2" />
         ) : faceAttack ? (
           <path d="M54 57 L66 57 M56 59 L64 59" fill="none" stroke="#2C3E50" strokeWidth="1.4" strokeLinecap="round" />
         ) : isTalking ? (
@@ -573,17 +670,22 @@ export function CatBody({
         <line x1="78" y1="52" x2="92" y2="50" stroke="#BDC3C7" strokeWidth="0.7" />
         <line x1="78" y1="54" x2="92" y2="54" stroke="#BDC3C7" strokeWidth="0.7" />
 
-        {(happy || faceLoco) && !overrideFace && (
+        {isCheekPinched ? (
+          <>
+            <ellipse cx="34" cy="53" rx="7" ry="4" fill="#F5B7B1" opacity="0.85" style={{ animation: 'cheek-pinch-l 0.4s ease-in-out infinite' }} />
+            <ellipse cx="86" cy="53" rx="7" ry="4" fill="#F5B7B1" opacity="0.85" style={{ animation: 'cheek-pinch-r 0.4s ease-in-out infinite' }} />
+          </>
+        ) : (happy || faceLoco) && !overrideFace ? (
           <>
             <ellipse cx="38" cy="53" rx="5" ry="3" fill="#F5B7B1" opacity={faceLoco ? 0.35 : 0.5} />
             <ellipse cx="82" cy="53" rx="5" ry="3" fill="#F5B7B1" opacity={faceLoco ? 0.35 : 0.5} />
           </>
-        )}
+        ) : null}
 
         <path d="M54 30 L56 35 L60 32 L64 35 L66 30" fill="none"
           stroke="#D68910" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
 
-        {faceHurt && !faceDead && (
+        {faceHurt && !faceDead && !isTailPulled && (
           <text x="78" y="22" fontSize="18" fontWeight="bold" fill="#E74C3C" textAnchor="middle">!</text>
         )}
       </g>
@@ -1195,6 +1297,10 @@ export function MascotOverlay() {
   const [chuteOpen, setChuteOpen] = useState(false);
   const [ropeOn, setRopeOn] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDizzy, setIsDizzy] = useState(false);
+  const [isBellyTickle, setIsBellyTickle] = useState(false);
+  const [isTailPulled, setIsTailPulled] = useState(false);
+  const [isCheekPinched, setIsCheekPinched] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const ropeLineRef = useRef<SVGLineElement>(null);
@@ -1213,6 +1319,12 @@ export function MascotOverlay() {
   const dragStart = useRef({ mx: 0, my: 0, cx: 0, cy: 0 });
   const lastClick = useRef(0);
   const tapCombo = useRef(0);
+  const shakeCount = useRef(0);
+  const lastShakeTime = useRef(0);
+  const lastMoveX = useRef(0);
+  const lastDirX = useRef(0);
+  const dizzyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeZoneRef = useRef<'tail' | 'ear' | 'head' | 'cheek' | 'belly' | 'body' | null>(null);
   const scheduleRef = useRef<() => void>(() => {});
   const reactSupportRef = useRef<(plats: Platform[], gY: number) => void>(() => {});
   const doFallRef = useRef<(
@@ -1513,8 +1625,30 @@ export function MascotOverlay() {
         x += Math.sin((now - m.start) * 0.0035) * 0.012 * dt;
       }
       const max = maxX();
-      if (x < 5) { x = 5; m.vx = Math.abs(m.vx ?? 0) * 0.25; }
-      else if (x > max) { x = max; m.vx = -Math.abs(m.vx ?? 0) * 0.25; }
+      if (x < 5) {
+        x = 5;
+        const rebound = Math.abs(m.vx ?? 0);
+        m.vx = rebound * 0.55;
+        if (rebound > 0.22) {
+          lucyAudio.thud();
+          m.spin = 0.35;
+        }
+      } else if (x > max) {
+        x = max;
+        const rebound = Math.abs(m.vx ?? 0);
+        m.vx = -rebound * 0.55;
+        if (rebound > 0.22) {
+          lucyAudio.thud();
+          m.spin = -0.35;
+        }
+      }
+
+      // Ceiling bounce
+      if (y < 8 && vy < -0.12) {
+        y = 8;
+        m.vy = Math.abs(vy) * 0.45;
+        lucyAudio.thud();
+      }
 
       if (m.parachute || !m.hardLand) {
         const ang = m.angle ?? 0;
@@ -1561,6 +1695,7 @@ export function MascotOverlay() {
           m.vy = -impact * PHYS.bounce;
           m.vx = (m.vx ?? 0) * 0.65;
           m.spin = (m.spin ?? 0) * 0.45;
+          lucyAudio.thud();
           applyPos(x, y);
           rafRef.current = requestAnimationFrame(tick);
           return;
@@ -1996,6 +2131,7 @@ export function MascotOverlay() {
           setAction('dead');
           setBodyFx('tumble');
           easeSpinTo(facingRef.current ? 78 : -78, 520);
+          lucyAudio.thud();
           if (!opts?.silent) {
             useMascotStore.getState().speak(pickLine(HARD_LAND_LINES), 'sad');
           }
@@ -2007,6 +2143,7 @@ export function MascotOverlay() {
           applyPos(x, y, true);
           easeSpinTo(0, 280);
           playLandFx();
+          lucyAudio.pop();
           setAction('idle');
           if (!opts?.silent) {
             if (vibe === 'scroll') speakLand('scroll');
@@ -2249,7 +2386,10 @@ export function MascotOverlay() {
       idleTimer = setTimeout(tickIdle, 5000);
     };
     idleTimer = setTimeout(tickIdle, 15000);
-    return () => clearTimeout(idleTimer);
+    return () => {
+      clearTimeout(idleTimer);
+      if (dizzyTimerRef.current) clearTimeout(dizzyTimerRef.current);
+    };
   }, []);
 
   const cycleActivity = useCallback(() => {
@@ -2332,6 +2472,51 @@ export function MascotOverlay() {
     dragVel.current = { vx: 0, vy: 0, t: performance.now(), x: e.clientX, y: e.clientY };
     setAction('hurt');
 
+    // Anatomical hit detection
+    const rect = el.getBoundingClientRect();
+    const relX = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+    const relY = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+    const localX = facingRef.current ? relX : 1 - relX;
+    const localY = relY;
+
+    let zone: 'tail' | 'ear' | 'head' | 'cheek' | 'belly' | 'body' = 'body';
+    if (localX < 0.28 && localY > 0.45) {
+      zone = 'tail';
+    } else if (localY < 0.35 && (localX < 0.38 || localX > 0.62)) {
+      zone = 'ear';
+    } else if (localY < 0.42 && localX >= 0.35 && localX <= 0.65) {
+      zone = 'head';
+    } else if (localY >= 0.35 && localY <= 0.65 && (localX < 0.32 || localX > 0.68)) {
+      zone = 'cheek';
+    } else if (localY >= 0.52 && localY <= 0.85 && localX >= 0.32 && localX <= 0.68) {
+      zone = 'belly';
+    }
+    activeZoneRef.current = zone;
+
+    // Reset shake tracker
+    shakeCount.current = 0;
+    lastShakeTime.current = performance.now();
+    lastMoveX.current = e.clientX;
+    lastDirX.current = 0;
+
+    // Immediate physical feedback per anatomical zone
+    if (zone === 'tail') {
+      setIsTailPulled(true);
+      lucyAudio.startled();
+      useMascotStore.getState().speak('Á! Đừng kéo đuôi Lucy mà! >_<', 'warning');
+    } else if (zone === 'ear') {
+      lucyAudio.pop();
+    } else if (zone === 'head') {
+      petCat();
+      useMascotStore.getState().speak('Gừ... gừ... xoa đầu thích ghê á! May mắn ngập tràn nè! ✨', 'happy');
+    } else if (zone === 'belly') {
+      setIsBellyTickle(true);
+      lucyAudio.giggle();
+      useMascotStore.getState().speak('Hihi nhột quá! Lucy chịu hổng nổi đâu nha~ :3', 'happy');
+    } else if (zone === 'cheek') {
+      setIsCheekPinched(true);
+    }
+
     const move = (ev: Event) => {
       const p = ev as PointerEvent;
       const now = performance.now();
@@ -2346,13 +2531,38 @@ export function MascotOverlay() {
         x: p.clientX,
         y: p.clientY,
       };
+
+      // Rapid mouse shake tracking (left-right oscillation)
+      const dxMove = p.clientX - lastMoveX.current;
+      if (Math.abs(dxMove) > 12) {
+        const curDir = Math.sign(dxMove);
+        if (curDir !== 0 && curDir !== lastDirX.current) {
+          lastDirX.current = curDir;
+          if (now - lastShakeTime.current < 450) {
+            shakeCount.current += 1;
+          } else {
+            shakeCount.current = 1;
+          }
+          lastShakeTime.current = now;
+        }
+        lastMoveX.current = p.clientX;
+      }
+
       // DOM-only while dragging — syncReact would re-render and fight the next move
       applyPos(
         clamp(dragStart.current.cx + p.clientX - dragStart.current.mx, 5, maxX()),
         clamp(dragStart.current.cy + p.clientY - dragStart.current.my, 0, groundY()),
         false,
       );
-      setSpinAngle(clamp((p.clientX - dragStart.current.mx) * 0.04, -22, 22));
+
+      // Live squash & stretch along pointer motion with volume preservation
+      const spd = Math.hypot(dragVel.current.vx, dragVel.current.vy);
+      const stretchY = clamp(1 + spd * 0.28, 1, 1.35);
+      const stretchX = 1 / Math.sqrt(stretchY);
+      const dragAngle = clamp((p.clientX - dragStart.current.mx) * 0.04, -22, 22);
+      if (bodyPivotRef.current) {
+        bodyPivotRef.current.style.transform = `rotate(${dragAngle}deg) scale(${stretchX}, ${stretchY})`;
+      }
     };
 
     const up = (ev: Event) => {
@@ -2363,6 +2573,31 @@ export function MascotOverlay() {
       window.removeEventListener('pointercancel', up);
       draggingRef.current = false;
       setIsDragging(false);
+
+      if (bodyPivotRef.current) {
+        bodyPivotRef.current.style.transform = '';
+      }
+      setIsTailPulled(false);
+      setIsBellyTickle(false);
+
+      // Cheek release spring bounce
+      if (activeZoneRef.current === 'cheek') {
+        setIsCheekPinched(false);
+        lucyAudio.boing();
+        useMascotStore.getState().speak('Bẹo má Lucy đau nha! Nhưng mà cũng thích... :3', 'happy');
+      }
+
+      // Rapid shake dizziness trigger
+      if (shakeCount.current >= 5) {
+        setIsDizzy(true);
+        lucyAudio.startled();
+        useMascotStore.getState().speak('Chóng mặt quá... sao trăng bay vòng vòng thế này... @_@', 'warning');
+        if (dizzyTimerRef.current) clearTimeout(dizzyTimerRef.current);
+        dizzyTimerRef.current = setTimeout(() => {
+          setIsDizzy(false);
+        }, 3500);
+      }
+
       const dx = p.clientX - dragStart.current.mx;
       const dy = p.clientY - dragStart.current.my;
       const dist = Math.hypot(dx, dy);
@@ -2370,7 +2605,11 @@ export function MascotOverlay() {
       // Sync React pos once at release (DOM already correct)
       applyPos(posRef.current.x, posRef.current.y, true);
       if (dist < 12) {
-        playTapReaction();
+        if (activeZoneRef.current === 'ear') {
+          useMascotStore.getState().speak('Nhột tai Lucy quá à! :3', 'happy');
+        } else if (activeZoneRef.current !== 'head' && activeZoneRef.current !== 'belly' && activeZoneRef.current !== 'tail') {
+          playTapReaction();
+        }
         return;
       }
 
@@ -2413,7 +2652,7 @@ export function MascotOverlay() {
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
-  }, [applyPos, doBallistic, clearRope, playTapReaction, setSpinAngle, settleIdle]);
+  }, [applyPos, doBallistic, clearRope, petCat, playTapReaction, setSpinAngle, settleIdle]);
 
   return (
     <>
@@ -2561,6 +2800,11 @@ export function MascotOverlay() {
                 lookAt={lookAt}
                 isTalking={isTalking}
                 viseme={viseme}
+                isHeld={isDragging}
+                isDizzy={isDizzy}
+                isBellyTickle={isBellyTickle}
+                isTailPulled={isTailPulled}
+                isCheekPinched={isCheekPinched}
               />
             </span>
           </div>

@@ -186,4 +186,105 @@ export const lucyAudio = {
       // Audio policy safe
     }
   },
+
+  /**
+   * Spring elastic boing sound — played on pinch/pull release or bounce.
+   */
+  boing(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(620, now + 0.09);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.22);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch {
+      // Audio policy safe
+    }
+  },
+
+  /**
+   * Physical impact thud — played on wall/ground elastic collision.
+   */
+  thud(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.12);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+      // Audio policy safe
+    }
+  },
+
+  /**
+   * Playful chirp / giggle — played when tickling the belly!
+   */
+  giggle(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const notes = [600, 820, 750, 960];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        const t = now + idx * 0.055;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.05, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.07);
+      });
+    } catch {
+      // Audio policy safe
+    }
+  },
+
+  /**
+   * Startled yelp / meow — played on tail pull or fast shake.
+   */
+  startled(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(540, now);
+      osc.frequency.linearRampToValueAtTime(920, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.28);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch {
+      // Audio policy safe
+    }
+  },
 };
