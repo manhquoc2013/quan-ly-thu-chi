@@ -1,8 +1,8 @@
 # Quản Lý Tài Chính
 
-> **Phiên bản**: 2.1.0 · **Cập nhật**: 2026-10-10
+> **Phiên bản**: 2.2.0 · **Cập nhật**: 2026-10-10
 
-Ứng dụng quản lý tài chính & bán hàng thông minh, tích hợp trợ lý AI đa tầng (Hybrid AI), trợ lý linh vật Mèo Lucy tương tác vật lý và giọng nói tiếng Việt, lưu trữ local (IndexedDB/SQLite) kết hợp đồng bộ đám mây Supabase Cloud Sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
+Ứng dụng quản lý tài chính & bán hàng thông minh, tích hợp trợ lý AI đa tầng (Hybrid AI), công cụ Chuẩn hoá dữ liệu nhập liệu bằng AI, tuỳ biến mức độ hoạt hoạ chống nhấp nháy, trợ lý linh vật Mèo Lucy tương tác vật lý và giọng nói tiếng Việt, lưu trữ local (IndexedDB/SQLite) kết hợp đồng bộ đám mây Supabase Cloud Sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
 
 ---
 
@@ -12,6 +12,8 @@
 
 - 📊 **Quản lý bán hàng & dòng tiền**: CRUD chi phí, doanh thu, đơn hàng, khách hàng, sản phẩm, kênh bán
 - 🤖 **Trợ lý AI đa phương thức**: Nhập liệu bằng giọng nói, OCR quét hoá đơn, phân tích số liệu tài chính chuyên sâu
+- ✨ **Chuẩn hoá dữ liệu AI**: Quét tự động & chuẩn hoá lỗi tiếng Việt, định dạng SĐT 10 số, đồng bộ đơn vị tính & danh mục
+- 🎬 **Kiểm soát Hoạt hoạ Toàn diện**: 3 cấp độ hoạt hoạ (Full / Reduced / Off), chống FOUC với Pre-mount Splash Screen
 - 🐱 **Mèo Lucy — Trợ lý tài chính & Đồng hành**: Tương tác vật lý thực tế, tổng hợp giọng nói tiếng Việt (4 âm sắc), thông báo đơn hàng tự động, chế độ tập trung Pomodoro
 - ☁️ **Đồng bộ đa thiết bị**: Supabase Auth + Cloud Sync thời gian thực
 
@@ -25,6 +27,8 @@
 | 💰 **Chi phí** | CRUD, 10 danh mục chuẩn hoá, tìm kiếm & lọc, thao tác xoá/xuất hàng loạt |
 | 📦 **Doanh thu** | Quản lý đơn hàng, khách hàng, sản phẩm, kênh bán, trạng thái đơn & thanh toán, in hoá đơn A6 |
 | 📊 **Báo cáo** | 8 phân hệ báo cáo chuyên sâu: Chi phí, Doanh thu, Lợi nhuận, Hàng hoá (FIFO), Công nợ, Khách hàng, Sản phẩm, Kênh bán |
+| ✨ **Chuẩn hoá Dữ liệu AI** | Tự động quét và chuẩn hoá dữ liệu sai quy chuẩn (dấu câu tiếng Việt, SĐT 10 số, danh mục, đơn vị tính) qua LLM Cascade & Heuristic, xem trước Diff trực quan |
+| 🎬 **Hiệu ứng & Hoạt hoạ** | 3 cấp độ (Full/Reduced/Off), công tắc chi tiết, Pre-mount Splash chống FOUC, khung thử nghiệm Motion Playground |
 | 🤖 **Trợ lý AI** | Chat ngôn ngữ tự nhiên, nhập liệu giọng nói 🎤, OCR hoá đơn 📷, phân tích P&L |
 | 🔌 **Hybrid AI** | Kilo Free → Gemini → OpenRouter → SiliconFlow → Groq → WebLLM (Qwen 2.5 local GPU) |
 | 🐱 **Mèo Lucy** | Mô phỏng vật lý ném rơi tự do, ngắt âm thanh tuyệt đối khi tắt, 4 âm sắc tiếng Việt, tự động đọc đơn mới/hoàn thành, Pomodoro |

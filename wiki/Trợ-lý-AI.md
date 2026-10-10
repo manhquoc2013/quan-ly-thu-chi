@@ -21,6 +21,7 @@ Trò chuyện trực tiếp với AI để tự động nhập liệu, phân tí
 | **Ghi nhận chi phí** | *"Chi 480k tiền điện và mạng hôm nay bằng chuyển khoản"* |
 | **Phân tích tài chính** | *"Phân tích doanh thu và chi phí tuần này"* |
 | **Tra cứu sổ sách** | *"Tháng này đã chi bao nhiêu tiền nguyên vật liệu?"* |
+| **Chuẩn hoá dữ liệu** | *"Chuẩn hoá dữ liệu"* hoặc *"Làm sạch sổ sách"* |
 | **Điều hướng thông minh** | *"Mở báo cáo lợi nhuận"* hoặc *"Vào cài đặt linh vật"* |
 
 ---
@@ -33,4 +34,21 @@ Trò chuyện trực tiếp với AI để tự động nhập liệu, phân tí
 
 ---
 
-→ [Trang chủ Wiki](Home) · [Kết nối AI Provider](Kết-nối-AI-Provider) · [Trợ lý Linh vật Lucy](Mèo-Lucy)
+## 4. Chuẩn hoá Dữ liệu Nhập liệu Tự động (AI Data Standardization)
+
+Khi nhập liệu vội vàng, thông tin thường bị lỗi: thiếu dấu tiếng Việt, số điện thoại lẫn khoảng trắng hoặc tiền tố quốc tế, danh mục chi phí gán bừa, đơn vị tính lộn xộn. AI Trợ lý tích hợp module quét và chuẩn hoá toàn diện:
+
+![Chuẩn hoá Dữ liệu AI](images/10-data-standardization.png)
+
+- **Cách kích hoạt**:
+  * Bấm nút **Sparkles ✨** trên thanh Header.
+  * Nhấn `⌘K` hoặc `Ctrl+K` và chọn **✨ Chuẩn hoá dữ liệu (AI)**.
+  * Nhắn tin trực tiếp với Trợ lý AI hoặc Mèo Lucy: *"chuẩn hoá dữ liệu"* / *"làm sạch sổ sách"*.
+  * Vào **Cài đặt → AI Providers → Chuẩn hoá dữ liệu nhập liệu (AI)**.
+- **Cơ chế**: Hệ thống tự động so sánh bản ghi cũ và bản ghi sau chuẩn hoá dạng **Diff Trước ➔ Sau**, cho phép người dùng kiểm tra kỹ lưỡng trước khi quyết định áp dụng vào sổ cái.
+
+Xem hướng dẫn chi tiết tại: [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-Dữ-liệu).
+
+---
+
+→ [Trang chủ Wiki](Home) · [Kết nối AI Provider](Kết-nối-AI-Provider) · [Trợ lý Linh vật Lucy](Mèo-Lucy) · [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-Dữ-liệu)

@@ -6,6 +6,45 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.2.0] — 2026-10-10
+
+🔗 [So sánh với v2.1.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.1.0...v2.2.0)
+
+### Chuẩn hoá Dữ liệu Nhập liệu Thông minh (AI Data Standardization)
+- **Engine Chuẩn hoá Dữ liệu (`dataStandardizer.ts`)**:
+  - Quét tự động toàn bộ 4 nhóm dữ liệu cốt lõi: Chi phí, Khách hàng, Sản phẩm, Đơn hàng doanh thu.
+  - Nhận diện các lỗi nhập liệu phổ biến: thiếu/sai dấu tiếng Việt, viết hoa lộn xộn, số điện thoại không chuẩn 10 số (chứa khoảng trắng/dấu chấm/đầu số quốc tế +84), danh mục chi phí sai lệch, đơn vị tính sản phẩm không đồng nhất (lon, chai, cái, kg, ly...).
+  - Cơ chế đa tầng (Cascade AI): Tự động phân tích bằng mô hình ngôn ngữ lớn (Kilo Free / Groq / Gemini / OpenRouter / WebLLM) hoặc bộ quy tắc Heuristic ngoại tuyến thông minh.
+- **Giao diện Trực quan & Xem trước Thay đổi (`DataStandardizationDialog.tsx`)**:
+  - Hiển thị thống kê tổng quan (đã quét, cần chuẩn hoá, đã đề xuất, đã cập nhật).
+  - Phân loại theo tab (Tất cả, Chi phí, Khách hàng, Sản phẩm, Đơn hàng) kèm bộ lọc tìm kiếm nhanh.
+  - Thẻ so sánh trực quan Trước ➔ Sau (Diff Card) làm nổi bật các trường dữ liệu được hiệu chỉnh.
+  - Xem trước và cho phép người dùng chọn lọc từng mục hoặc áp dụng chuẩn hoá hàng loạt an toàn.
+- **Tích hợp Nhanh Toàn diện**:
+  - Nút bấm Sparkles ✨ trên thanh Header điều hướng.
+  - Phím tắt trong Command Palette (`⌘K` → `✨ Chuẩn hoá dữ liệu (AI)`).
+  - Tích hợp vào Cài đặt tab AI và gợi ý nhanh trong màn hình Trò chuyện AI.
+  - Trợ lý Lucy tự động nhận diện ý định `standardize_data` khi người dùng nhắn "chuẩn hoá dữ liệu" hoặc "làm sạch sổ sách".
+
+### Bộ Quản lý & Tối ưu Hoạt hoạ (Motion & Animation Engine)
+- **Kho trạng thái `useMotionStore`**:
+  - Hỗ trợ 3 cấp độ hoạt hoạ: **Đầy đủ (Full)**, **Tối giản (Reduced)**, **Tắt toàn bộ (Off)**.
+  - 5 công tắc tinh chỉnh độc lập: Vệt sáng con trỏ (Cursor Glow), Hoạt hoạ Splash & Loading, Chuyển cảnh trang (Page Transitions), Hoạt hoạ Linh vật (Mascot Animations), Tăng tốc GPU.
+  - Tự động đồng bộ thuộc tính `data-motion` lên thẻ gốc `<html>` và biến CSS toàn cục `--motion-duration-factor`.
+- **Pre-mount Splash Screen**:
+  - Nhúng splash screen siêu nhẹ inline trong `index.html`, đọc trực tiếp cấu hình từ `localStorage` trước khi React render, ngăn chặn hoàn toàn hiện tượng nhấp nháy màn hình trắng (FOUC).
+- **Tab Cài đặt Hoạt hoạ & Khung thử nghiệm**:
+  - Bổ sung tab **Hiệu ứng & Hoạt hoạ** trong `SettingsScreen.tsx`.
+  - Khung thử nghiệm chuyển động tương tác (**Motion Playground**) hỗ trợ kiểm tra trực quan các hiệu ứng Bounce, Spin, Pulse, Slide theo cấp độ đã chọn.
+- **Tiết kiệm Pin & Phần cứng**:
+  - Tự động hủy animation loop (`requestAnimationFrame`) của con trỏ và tạm dừng chu kỳ di chuyển tự do của Linh vật Lucy khi chuyển sang chế độ tiết kiệm/tắt hoạt hoạ.
+
+### Cải tiến Đồng bộ Đám mây & Ổn định Dữ liệu
+- **Khắc phục Đồng bộ Khách hàng & Sản phẩm**: Đảm bảo toàn vẹn dữ liệu khi tải từ Supabase Cloud về kho lưu trữ IndexedDB cục bộ.
+- **Mở rộng Kiểm thử Đơn vị**: Bổ sung bộ kiểm thử cho `dataStandardizer.test.ts` và `reportService.test.ts`, nâng tổng số test lên 215 tests với tỷ lệ vượt qua 100%.
+
+---
+
 ## [2.1.0] — 2026-10-10
 
 🔗 [So sánh với v2.0.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.0.0...v2.1.0)

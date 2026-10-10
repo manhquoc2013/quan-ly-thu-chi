@@ -9,6 +9,7 @@
 - [Quản lý Chi phí](Quản-lý-Chi-phí)
 - [Báo cáo](Báo-cáo)
 - [Trợ lý AI](Trợ-lý-AI)
+- [Chuẩn hoá Dữ liệu](Chuẩn-hoá-Dữ-liệu)
 - [Trợ lý Mèo Lucy](Mèo-Lucy)
 
 ## ⚙️ Cấu hình

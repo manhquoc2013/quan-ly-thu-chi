@@ -356,6 +356,30 @@ async function run() {
     fullPage: false,
   });
 
+  // 9. Settings - Motion tab
+  console.log('📸 Capturing 09-settings-motion.png...');
+  const motionTabBtn = await page.locator('button', { hasText: /Hoạt hoạ|Hiệu ứng/i }).first();
+  if (await motionTabBtn.isVisible()) {
+    await motionTabBtn.click();
+    await page.waitForTimeout(800);
+  }
+  await page.screenshot({
+    path: path.join(wikiImagesDir, '09-settings-motion.png'),
+    fullPage: false,
+  });
+
+  // 10. Data Standardization Dialog
+  console.log('📸 Capturing 10-data-standardization.png...');
+  const standardizeBtn = await page.locator('button[title*="Chuẩn hoá dữ liệu"]').first();
+  if (await standardizeBtn.isVisible()) {
+    await standardizeBtn.click();
+    await page.waitForTimeout(1000);
+  }
+  await page.screenshot({
+    path: path.join(wikiImagesDir, '10-data-standardization.png'),
+    fullPage: false,
+  });
+
   console.log('✅ All screenshots captured successfully in wiki/images/!');
   await browser.close();
   await server.close();

@@ -1,6 +1,6 @@
 # Wiki — Quản Lý Tài Chính
 
-Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng của **Quản Lý Tài Chính** (v2.1.0).
+Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng của **Quản Lý Tài Chính** (v2.2.0).
 
 ---
 
@@ -17,10 +17,11 @@ Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng c�
 - [Quản lý Chi phí](Quản-lý-Chi-phí)
 - [Báo cáo & Phân tích](Báo-cáo)
 - [Trợ lý AI Thông minh](Trợ-lý-AI)
+- [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-Dữ-liệu)
 - [Trợ lý Linh vật Mèo Lucy](Mèo-Lucy)
 
 ### ⚙️ Cấu hình & Quản trị
-- [Cài đặt Hệ thống](Cài-đặt)
+- [Cài đặt Hệ thống & Hoạt hoạ](Cài-đặt)
 - [Kết nối AI Provider](Kết-nối-AI-Provider)
 - [Trợ lý Linh vật Mèo Lucy](Mèo-Lucy)
 
