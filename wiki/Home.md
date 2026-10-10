@@ -1,33 +1,29 @@
 # Wiki — Quản Lý Tài Chính
 
-Chào mừng đến với Wiki của **Quản Lý Tài Chính** v1.4.0.
+Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng của **Quản Lý Tài Chính** (v2.1.0).
+
+---
 
 ## Mục lục
 
 ### 🚀 Bắt đầu
 - [Cài đặt & Chạy ứng dụng](Cài-đặt-và-Chạy)
 - [Cấu hình Supabase](Cấu-hình-Supabase)
-- [Cấu hình AI](Cấu-hình-AI)
+- [Kết nối AI Provider](Kết-nối-AI-Provider)
 
 ### 📖 Hướng dẫn Sử dụng
 - [Dashboard — Tổng quan](Dashboard)
+- [Quản lý Doanh thu & Đơn hàng](Quản-lý-Doanh-thu)
 - [Quản lý Chi phí](Quản-lý-Chi-phí)
-- [Quản lý Doanh thu](Quản-lý-Doanh-thu)
-- [Quản lý Khách hàng](Quản-lý-Khách-hàng)
-- [Quản lý Sản phẩm](Quản-lý-Sản-phẩm)
 - [Báo cáo & Phân tích](Báo-cáo)
-- [Trợ lý AI](Trợ-lý-AI)
+- [Trợ lý AI Thông minh](Trợ-lý-AI)
+- [Trợ lý Linh vật Mèo Lucy](Mèo-Lucy)
 
-### ⚙️ Cấu hình
-- [Cài đặt](Cài-đặt)
+### ⚙️ Cấu hình & Quản trị
+- [Cài đặt Hệ thống](Cài-đặt)
 - [Kết nối AI Provider](Kết-nối-AI-Provider)
-- [Mèo Lucky](Mèo-Lucky)
+- [Trợ lý Linh vật Mèo Lucy](Mèo-Lucy)
 
-### 🔧 Phát triển
-- [Kiến trúc Hệ thống](Kiến-trúc-Hệ-thống)
-- [Hướng dẫn Đóng góp](Hướng-dẫn-Đóng-góp)
-- [Release Process](Release-Process)
-
-### 🆘 Hỗ trợ
-- [FAQ](FAQ)
+### 🆘 Hỗ trợ & Vận hành
+- [FAQ — Câu hỏi thường gặp](FAQ)
 - [Khắc phục Sự cố](Khắc-phục-Sự-cố)

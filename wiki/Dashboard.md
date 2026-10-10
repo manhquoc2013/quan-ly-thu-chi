@@ -1,31 +1,35 @@
 # Dashboard — Tổng quan
 
-Trang chủ khi mở app, hiển thị tổng quan tài chính.
+Trang chủ khi mở ứng dụng, hiển thị bức tranh toàn cảnh về sức khoẻ tài chính của cửa hàng.
 
-## KPI Cards (5 chỉ số)
-
-| KPI | Ý nghĩa |
-|:---|:---|
-| **Doanh thu** | Tổng tiền đã thu (đã thanh toán) |
-| **Chi phí** | Tất cả khoản chi |
-| **Lợi nhuận** | Doanh thu - Chi phí |
-| **Công nợ** | Tiền chưa thu từ đơn hàng |
-| **Đơn chờ** | Số đơn đang xử lý |
-
-Click vào KPI card để xem chi tiết.
-
-## Biểu đồ Thu/Chi 7 ngày
-
-Biểu đồ cột hiển thị doanh thu (xanh) và chi phí (đỏ) trong 7 ngày gần nhất. Hover vào cột để xem số liệu cụ thể.
-
-## Đơn đang chờ
-
-Danh sách đơn hàng chưa hoàn thành. Click vào đơn để cập nhật trạng thái.
-
-## Giao dịch gần đây
-
-6 giao dịch mới nhất (cả thu và chi). Click để xem chi tiết.
+![Tổng quan Dashboard](images/01-dashboard.png)
 
 ---
 
-→ [Trang chủ Wiki](Home)
+## 1. Hành động nhanh (Quick Actions)
+- **Thêm đơn bán**: Mở form tạo đơn hàng nhanh chóng.
+- **Ghi chi tiêu**: Ghi nhận khoản chi tức thời với danh mục và phương thức thanh toán.
+- **Xem báo cáo**: Điều hướng tới các biểu đồ phân tích chuyên sâu.
+
+---
+
+## 2. Các chỉ số Tài chính Trọng yếu (KPI Cards)
+
+| Chỉ số | Ý nghĩa |
+|:---|:---|
+| **ĐÃ THU** | Tổng số tiền đã thanh toán thực tế trong kỳ (tiền mặt / chuyển khoản về túi) |
+| **CHI PHÍ** | Tổng chi phí hoạt động đã thanh toán |
+| **CẦN XỬ LÝ** | Danh sách đơn hàng đang chờ giao hoặc đang xử lý cần lưu ý |
+| **SẢN PHẨM CẦN LÀM** | Tổng hợp số lượng sản phẩm từ các đơn chưa hoàn thành |
+
+---
+
+## 3. Bạn đồng hành Mèo Lucy trên Dashboard
+
+- Mèo Lucy tự động xuất hiện ở góc dưới màn hình làm việc, đồng hành cùng chủ tiệm.
+- Lucy chủ động đưa ra lời khuyên thu chi hôm nay, nhắc nhở kỷ luật tài chính và cung cấp [Chế độ tập trung Pomodoro](Mèo-Lucy).
+- Bấm vào Lucy hoặc nhấp chuột phải để mở [Bảng điều khiển Lucy](Mèo-Lucy).
+
+---
+
+→ [Trang chủ Wiki](Home) · [Quản lý Doanh thu](Quản-lý-Doanh-thu) · [Quản lý Chi phí](Quản-lý-Chi-phí)
