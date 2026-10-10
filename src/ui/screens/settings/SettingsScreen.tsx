@@ -318,7 +318,7 @@ export function SettingsScreen() {
       </div>
 
       {/* Content */}
-      <div className="p-[var(--s-md)] space-y-[var(--s-lg)]">
+      <div className="p-[var(--s-md)] pb-20 space-y-[var(--s-lg)]">
 
         {/* ═══ TAB: Tài khoản ═══ */}
         {tab === 'account' && (<>
@@ -826,82 +826,144 @@ function MotionPlayground() {
 
   useEffect(() => {
     if (activeEffect !== 'none') {
-      const t = setTimeout(() => setActiveEffect('none'), 1800);
+      const duration = motionLevel === 'off' ? 1200 : motionLevel === 'reduced' ? 1800 : 2500;
+      const t = setTimeout(() => setActiveEffect('none'), duration);
       return () => clearTimeout(t);
     }
-  }, [activeEffect]);
+  }, [activeEffect, motionLevel]);
 
   const getEffectClass = () => {
+    if (motionLevel === 'off') {
+      return '';
+    }
+    const isReduced = motionLevel === 'reduced';
     switch (activeEffect) {
-      case 'bounce': return 'animate-bounce';
-      case 'spin': return 'animate-spin';
-      case 'pulse': return 'animate-pulse scale-110';
-      case 'slide': return 'translate-x-12';
-      default: return '';
+      case 'bounce':
+        return isReduced ? 'motion-fx-bounce-reduced' : 'motion-fx-bounce';
+      case 'spin':
+        return isReduced ? 'motion-fx-spin-reduced' : 'motion-fx-spin';
+      case 'pulse':
+        return isReduced ? 'motion-fx-pulse-reduced' : 'motion-fx-pulse';
+      case 'slide':
+        return isReduced ? 'motion-fx-slide-reduced' : 'motion-fx-slide';
+      default:
+        return '';
     }
   };
 
   return (
     <div className="rounded-xl border border-border/80 bg-surface p-4 space-y-4">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-surface-raised/40 border border-border/50">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-accent-fg to-indigo-500 text-white flex items-center justify-center text-2xl shadow-md transition-all duration-500 select-none ${getEffectClass()}`}
-          >
-            {activeEffect === 'spin' ? '🌀' : activeEffect === 'bounce' ? '🦘' : activeEffect === 'pulse' ? '🌟' : activeEffect === 'slide' ? '🚀' : '✨'}
+      {/* Status Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-surface-raised/40 border border-border/50">
+        <div>
+          <div className="text-xs font-semibold text-text-primary flex items-center gap-2">
+            <span>Đối tượng thử nghiệm</span>
+            <Badge
+              variant={activeEffect === 'none' ? 'outline' : 'default'}
+              className="text-[10px] uppercase font-mono tracking-wider"
+            >
+              {activeEffect === 'none' ? 'Trạng thái tĩnh' : `Đang chạy: ${activeEffect}`}
+            </Badge>
           </div>
-          <div>
-            <div className="text-xs font-semibold text-text-primary">
-              Đối tượng thử nghiệm ({activeEffect === 'none' ? 'Trạng thái tĩnh' : `Đang chạy: ${activeEffect}`})
-            </div>
-            <div className="text-[11px] text-text-muted mt-0.5">
-              {motionLevel === 'off'
-                ? '⚡ Tắt hoạt hoạ: Các hiệu ứng chuyển động bị triệt tiêu tức thì (0ms duration)'
-                : motionLevel === 'reduced'
-                ? '🍃 Nhẹ nhàng: Chuyển động với thời lượng rút ngắn và êm dịu'
-                : '✨ Đầy đủ: Hoạt hoạ nguyên bản 60fps mượt mà'}
-            </div>
+          <div className="text-[11px] text-text-muted mt-0.5">
+            {motionLevel === 'off'
+              ? '⚡ Tắt hoạt hoạ: Các hiệu ứng chuyển động bị triệt tiêu tức thì (0ms duration)'
+              : motionLevel === 'reduced'
+              ? '🍃 Nhẹ nhàng: Chuyển động với thời lượng rút ngắn và êm dịu, không gây mỏi mắt'
+              : '✨ Đầy đủ: Hoạt hoạ nguyên bản 60fps mượt mà, hỗ trợ vật lý tự nhiên'}
           </div>
         </div>
-        <Badge variant={motionLevel === 'off' ? 'destructive' : motionLevel === 'reduced' ? 'secondary' : 'default'} className="text-[10px]">
-          Chế độ: {MOTION_LEVELS[motionLevel].badge}
+        <Badge
+          variant={motionLevel === 'off' ? 'destructive' : motionLevel === 'reduced' ? 'secondary' : 'default'}
+          className="text-[10px] shrink-0"
+        >
+          {MOTION_LEVELS[motionLevel].icon} Chế độ: {MOTION_LEVELS[motionLevel].badge}
         </Badge>
       </div>
 
+      {/* Dedicated Interactive Arena / Stage */}
+      <div className="relative h-32 w-full rounded-xl bg-gradient-to-b from-surface-raised/30 to-surface-raised/70 border border-border/60 overflow-hidden flex flex-col items-center justify-center select-none">
+        {/* Subtle grid background */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px]" />
+
+        {/* Runway track for sliding */}
+        <div className="absolute bottom-6 w-56 h-[2px] bg-border/40 rounded-full">
+          <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 rounded-full bg-border" />
+          <div className="absolute left-6 -top-0.5 w-1 h-1 rounded-full bg-border/60" />
+          <div className="absolute right-6 -top-0.5 w-1 h-1 rounded-full bg-border/60" />
+        </div>
+
+        {/* The Animated Object */}
+        <div className="relative z-10 flex flex-col items-center">
+          <div
+            className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-accent-fg to-indigo-500 text-white flex items-center justify-center text-2xl shadow-md select-none will-change-transform ${getEffectClass()}`}
+          >
+            {activeEffect === 'spin'
+              ? '🌀'
+              : activeEffect === 'bounce'
+              ? '🦘'
+              : activeEffect === 'pulse'
+              ? '🌟'
+              : activeEffect === 'slide'
+              ? '🚀'
+              : '✨'}
+          </div>
+
+          {/* Dynamic Floor Shadow */}
+          <div
+            className={`w-10 h-2 bg-black/20 dark:bg-black/60 rounded-full blur-[2px] mt-2 transition-all duration-300 ${
+              activeEffect === 'bounce' && motionLevel === 'full'
+                ? 'animate-[motionShadowPulse_1.25s_ease-in-out_infinite]'
+                : activeEffect === 'slide' && motionLevel === 'full'
+                ? 'opacity-30'
+                : 'opacity-50'
+            }`}
+          />
+        </div>
+
+        {/* Mode indicator notice when off */}
+        {motionLevel === 'off' && activeEffect !== 'none' && (
+          <div className="absolute bottom-2 text-[10px] text-amber-500 font-medium bg-surface/90 px-2.5 py-0.5 rounded-md border border-amber-500/30 shadow-xs">
+            ⚡ Hoạt hoạ đã bị tắt (0ms) — vật thể không dịch chuyển vị trí
+          </div>
+        )}
+      </div>
+
+      {/* Control Buttons */}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant={activeEffect === 'bounce' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveEffect('bounce')}
-          className="text-xs flex items-center gap-1.5"
+          className="text-xs flex items-center gap-1.5 transition-all"
         >
           <span>🦘 Nhún nhảy (Bounce)</span>
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant={activeEffect === 'spin' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveEffect('spin')}
-          className="text-xs flex items-center gap-1.5"
+          className="text-xs flex items-center gap-1.5 transition-all"
         >
           <span>🌀 Xoay tròn (Spin)</span>
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant={activeEffect === 'pulse' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveEffect('pulse')}
-          className="text-xs flex items-center gap-1.5"
+          className="text-xs flex items-center gap-1.5 transition-all"
         >
           <span>🌟 Phát sáng (Pulse)</span>
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant={activeEffect === 'slide' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveEffect('slide')}
-          className="text-xs flex items-center gap-1.5"
+          className="text-xs flex items-center gap-1.5 transition-all"
         >
           <span>🚀 Trượt ngang (Slide)</span>
         </Button>
@@ -911,9 +973,9 @@ function MotionPlayground() {
             variant="ghost"
             size="sm"
             onClick={() => setActiveEffect('none')}
-            className="text-xs text-text-muted"
+            className="text-xs text-text-muted hover:text-text-primary"
           >
-            Dừng lại
+            ⏹️ Dừng lại
           </Button>
         )}
       </div>

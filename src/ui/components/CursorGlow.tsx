@@ -58,15 +58,17 @@ export function CursorGlow() {
       const dx = mx - prevMx;
       const dy = my - prevMy;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const steps = Math.min(Math.floor(dist / 6), 12);
+      const maxSteps = motionLevel === 'reduced' ? 4 : 12;
+      const steps = Math.min(Math.floor(dist / 6), maxSteps);
 
+      const speedFactor = motionLevel === 'reduced' ? 0.5 : 1;
       for (let i = 0; i <= steps; i++) {
         const t = steps === 0 ? 0 : i / steps;
         const px = prevMx + dx * t + (Math.random() - 0.5) * 6;
         const py = prevMy + dy * t + (Math.random() - 0.5) * 6;
         const angle = Math.random() * Math.PI * 2;
-        const speed = 0.2 + Math.random() * 1.2;
-        const life = 60 + Math.random() * 80;
+        const speed = (0.2 + Math.random() * 1.2) * speedFactor;
+        const life = motionLevel === 'reduced' ? (30 + Math.random() * 40) : (60 + Math.random() * 80);
         particles.push({
           x: px,
           y: py,
@@ -124,9 +126,10 @@ export function CursorGlow() {
         ctx.fill();
       }
 
-      // Limit particles
-      if (particles.length > 200) {
-        particles.splice(0, particles.length - 200);
+      // Limit particles based on motion level
+      const maxParticles = motionLevel === 'reduced' ? 60 : 200;
+      if (particles.length > maxParticles) {
+        particles.splice(0, particles.length - maxParticles);
       }
 
       animId = requestAnimationFrame(animate);
