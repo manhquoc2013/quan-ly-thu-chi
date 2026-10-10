@@ -1164,3 +1164,43 @@ aside nav a[title]:hover::after {
     print-color-adjust: exact;
   }
 }
+
+/* ── System Animation & Motion Controls ── */
+:root {
+  --motion-duration-factor: 1;
+}
+
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+[data-motion="reduced"] {
+  --motion-duration-factor: 0.5;
+}
+
+[data-motion="reduced"] .auth-loading-bg,
+[data-motion="reduced"] .auth-loading-logo {
+  animation: none !important;
+}
+
+/* Skeleton shimmer utility */
+@keyframes shimmerWave {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmerWave 1.6s ease-in-out infinite;
+}
+
+[data-motion="off"] .skeleton-shimmer {
+  animation: none !important;
+  background: var(--surface-hover);
+}

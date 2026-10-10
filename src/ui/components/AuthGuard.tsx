@@ -9,36 +9,47 @@ import { AuthScreen } from '@/ui/screens/auth/AuthScreen';
 import { OnboardingScreen } from '@/ui/screens/onboarding/OnboardingScreen';
 import { getSupabase, isSupabaseConfigured } from '@/services/supabaseClient';
 import { bootstrapSessionAfterAuth } from '@/services/sessionBootstrap';
+import { useMotionStore } from '@/store/motionStore';
 
 function AuthGuardSpinner() {
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+  const splashAnimation = useMotionStore((s) => s.splashAnimation);
+  const skipAnimation = motionLevel === 'off' || !splashAnimation;
+  const isReduced = motionLevel === 'reduced';
+
   const titleChars = [...'Quản Lý Tài Chính'];
   const charRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<'intro' | 'reveal' | 'play'>('intro');
-  const [catAction, setCatAction] = useState<Action>('idle');
-  const [catX, setCatX] = useState(-40);
+  const [phase, setPhase] = useState<'intro' | 'reveal' | 'play'>(skipAnimation ? 'play' : 'intro');
+  const [catAction, setCatAction] = useState<Action>(skipAnimation ? 'idle' : 'walk');
+  const [catX, setCatX] = useState(skipAnimation ? 40 : -40);
   const [catOnTitle, setCatOnTitle] = useState(false);
   const stepRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Phase 1: intro — cat walks in; letters start popping immediately (no wait)
   useEffect(() => {
+    if (skipAnimation || isReduced) {
+      setPhase('play');
+      setCatAction('idle');
+      setCatX(40);
+      return;
+    }
     setPhase('intro');
     setCatAction('walk');
     const t = setTimeout(() => setCatX(0), 40);
     // Hop along title as soon as first letters are visible
     const t2 = setTimeout(() => { setPhase('reveal'); stepRef.current = 0; }, 80);
     return () => { clearTimeout(t); clearTimeout(t2); };
-  }, []);
+  }, [skipAnimation, isReduced]);
 
   // Phase 2: reveal — cat hops to each character as it appears
   useEffect(() => {
-    if (phase !== 'reveal') return;
+    if (skipAnimation || isReduced || phase !== 'reveal') return;
 
     function hopToNext() {
       const idx = stepRef.current;
       if (idx >= titleChars.length) {
-        // All chars revealed → play phase
         setPhase('play');
         return;
       }
@@ -47,7 +58,7 @@ function AuthGuardSpinner() {
       const wrap = wrapRef.current;
       if (!el || !wrap) {
         stepRef.current = 0;
-        timerRef.current = setTimeout(hopToNext, 40);
+        timerRef.current = setTimeout(hopToNext, 35);
         return;
       }
 
@@ -59,17 +70,16 @@ function AuthGuardSpinner() {
       setCatX(targetX);
 
       stepRef.current = idx + 1;
-      // Keep pace with char stagger (0.06s) so cat lands as each letter pops
-      timerRef.current = setTimeout(hopToNext, idx === 0 ? 90 : 70);
+      timerRef.current = setTimeout(hopToNext, idx === 0 ? 80 : 60);
     }
 
-    timerRef.current = setTimeout(hopToNext, 40);
+    timerRef.current = setTimeout(hopToNext, 35);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [phase, titleChars.length]);
+  }, [phase, titleChars.length, skipAnimation, isReduced]);
 
   // Phase 3: play — random actions along the title
   useEffect(() => {
-    if (phase !== 'play') return;
+    if (skipAnimation || isReduced || phase !== 'play') return;
 
     const actions: Action[] = ['walk', 'jump', 'spin', 'walk', 'jump', 'walk', 'spin', 'jump', 'climb'];
     let i = 0;
@@ -80,15 +90,13 @@ function AuthGuardSpinner() {
       i++;
 
       if (act === 'climb' && !onTitle) {
-        // Jump onto the title text
         setCatAction('jump');
         setCatOnTitle(true);
         onTitle = true;
-        setTimeout(() => setCatAction('climb'), 400);
+        setTimeout(() => setCatAction('climb'), 350);
         timerRef.current = setTimeout(nextAction, 1500);
       } else if (act === 'walk') {
         setCatAction('walk');
-        // Walk back and forth along the title
         const wrap = wrapRef.current;
         if (wrap) {
           const w = wrap.getBoundingClientRect().width;
@@ -106,7 +114,7 @@ function AuthGuardSpinner() {
 
     timerRef.current = setTimeout(nextAction, 600);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [phase]);
+  }, [phase, skipAnimation, isReduced]);
 
   const bgUrl = `${import.meta.env.BASE_URL}auth-bg.png`;
 
@@ -127,23 +135,25 @@ function AuthGuardSpinner() {
                 <span
                   key={i}
                   ref={(el) => { charRefs.current[i] = el; }}
-                  className="auth-char"
-                  style={{ animationDelay: `${i * 0.055}s` }}
+                  className={skipAnimation ? "auth-char-instant" : "auth-char"}
+                  style={skipAnimation ? undefined : { animationDelay: `${i * (isReduced ? 0.025 : 0.055)}s` }}
                 >
                   {ch === ' ' ? '\u00A0' : ch}
                 </span>
               ))}
             </h1>
-            <span
-              className="auth-cat"
-              style={{
-                width: 56, height: 58, display: 'inline-block',
-                left: catX, top: catOnTitle ? -58 : -28,
-                transition: 'left 0.3s ease-out, top 0.4s ease-out',
-              }}
-            >
-              <CatBody emotion="happy" action={catAction} />
-            </span>
+            {!skipAnimation && (
+              <span
+                className="auth-cat"
+                style={{
+                  width: 56, height: 58, display: 'inline-block',
+                  left: catX, top: catOnTitle ? -58 : -28,
+                  transition: isReduced ? 'none' : 'left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s ease-out',
+                }}
+              >
+                <CatBody emotion="happy" action={catAction} />
+              </span>
+            )}
           </div>
           <p className="auth-loading-subtitle">
             Đang tải dữ liệu
@@ -152,6 +162,7 @@ function AuthGuardSpinner() {
         </div>
       </div>
       <style>{`
+        .auth-char-instant { display: inline-block; opacity: 1; }
         .auth-loading-screen {
           position: relative; display: flex; align-items: center; justify-content: center;
           min-height: 100vh; overflow: hidden; background: #0a1628;

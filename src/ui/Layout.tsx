@@ -12,7 +12,7 @@ import {
   FileUp, Radio, AlertTriangle, CheckCheck,
 } from 'lucide-react';
 import { useUIStore } from '@store/uiStore';
-import { useAuthStore, useNotificationStore, useUnreadCount } from '@/store';
+import { useAuthStore, useNotificationStore, useUnreadCount, useMotionStore } from '@/store';
 import type { NotificationType } from '@/store';
 import { formatRelativeTime } from '@/utils/date';
 import { ChatPanel } from '@screens/ai/ChatPanel';
@@ -60,6 +60,8 @@ export function Layout() {
   const [pending, setPending] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const { mode, isDark, cycleTheme: toggleDark } = useTheme();
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+  const pageTransitions = useMotionStore((s) => s.pageTransitions);
   const [chatClosing, setChatClosing] = useState(false);
   const [showBell, setShowBell] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -485,17 +487,23 @@ export function Layout() {
             }}
             className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-clip overscroll-y-contain"
           >
-            <div key={location.pathname} className="animate-fade-in-up w-full max-w-7xl mx-auto min-w-0 p-4 sm:p-6 pb-[calc(var(--dimens-fabClearance)+1rem)]">
+            <div key={location.pathname} className={[
+              motionLevel === 'off' || !pageTransitions ? '' : motionLevel === 'reduced' ? 'animate-fade-in' : 'animate-fade-in-up',
+              'w-full max-w-7xl mx-auto min-w-0 p-4 sm:p-6 pb-[calc(var(--dimens-fabClearance)+1rem)]'
+            ].join(' ')}>
               <Suspense
                 fallback={
-                  <div className="flex items-center justify-center py-24">
-                    <div className="flex gap-2">
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className="size-2.5 rounded-full bg-accent-fg animate-pulse"
-                          style={{ animationDelay: `${i * 0.2}s` }}
-                        />
+                  <div className="w-full space-y-4 py-4 animate-in fade-in duration-150">
+                    <div className="h-24 rounded-2xl border border-border/40 bg-surface/50 p-5 flex flex-col justify-center gap-2.5">
+                      <div className="h-5 w-40 rounded-lg bg-surface-hover skeleton-shimmer" />
+                      <div className="h-3.5 w-64 rounded-md bg-surface-hover/70 skeleton-shimmer" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-20 rounded-xl border border-border/40 bg-surface/40 p-3.5 space-y-2">
+                          <div className="h-3 w-16 rounded bg-surface-hover skeleton-shimmer" />
+                          <div className="h-6 w-28 rounded bg-surface-hover/80 skeleton-shimmer" />
+                        </div>
                       ))}
                     </div>
                   </div>

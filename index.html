@@ -9,9 +9,72 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/logo.svg" />
     <title>Quản Lý Tài Chính</title>
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('theme');
+          var isDark = t === 'dark' || (!t || t === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (isDark) document.documentElement.classList.add('dark');
+          var m = localStorage.getItem('motion-settings');
+          if (m) {
+            var p = JSON.parse(m);
+            if (p && p.state && p.state.motionLevel) {
+              document.documentElement.setAttribute('data-motion', p.state.motionLevel);
+              if (p.state.motionLevel === 'off') document.documentElement.classList.add('motion-off');
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      .app-pre-splash {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: #0a1628; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        z-index: 99999; -webkit-font-smoothing: antialiased;
+      }
+      html:not(.dark) .app-pre-splash { background: #f8fafc; color: #0f172a; }
+      .app-pre-card {
+        display: flex; flex-direction: column; align-items: center; gap: 16px;
+        padding: 32px 40px; border-radius: 24px; text-align: center;
+        background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3); backdrop-filter: blur(16px);
+      }
+      html:not(.dark) .app-pre-card {
+        background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+      }
+      .app-pre-logo {
+        width: 68px; height: 68px; border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.25);
+        animation: app-pre-pulse 2.2s ease-in-out infinite alternate;
+      }
+      .app-pre-title { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+      .app-pre-bar {
+        width: 140px; height: 3px; border-radius: 999px; background: rgba(255,255,255,0.12);
+        overflow: hidden; position: relative; margin-top: 4px;
+      }
+      html:not(.dark) .app-pre-bar { background: rgba(0,0,0,0.08); }
+      .app-pre-line {
+        position: absolute; inset: 0; width: 40%; border-radius: 999px;
+        background: linear-gradient(90deg, #10b981, #06b6d4);
+        animation: app-pre-slide 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      @keyframes app-pre-pulse { 0% { transform: scale(0.97); } 100% { transform: scale(1.03); } }
+      @keyframes app-pre-slide { 0% { left: -40%; } 100% { left: 100%; } }
+      [data-motion="off"] .app-pre-logo, [data-motion="off"] .app-pre-line { animation: none !important; }
+      [data-motion="off"] .app-pre-line { width: 100%; left: 0; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-pre-splash">
+        <div class="app-pre-card">
+          <img src="/logo.svg" alt="Quản Lý Tài Chính" class="app-pre-logo" width="68" height="68" />
+          <h1 class="app-pre-title">Quản Lý Tài Chính</h1>
+          <div class="app-pre-bar"><div class="app-pre-line"></div></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

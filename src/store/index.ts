@@ -49,3 +49,6 @@ export type { AuthActions } from './authStore';
 
 export { useNotificationStore, useUnreadCount } from './notificationStore';
 export type { NotificationType, NotificationItem, NotificationActions } from './notificationStore';
+
+export { useMotionStore, MOTION_LEVELS } from './motionStore';
+export type { MotionLevel, MotionState, MotionActions } from './motionStore';

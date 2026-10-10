@@ -29,18 +29,21 @@ import { toast } from 'sonner';
 import { Key, Info, Users, User, FlaskConical, CheckCircle, XCircle,
   Loader2, RefreshCw, Download, Pencil, Lock, LogOut, Bot, ArrowUp, ArrowDown,
   Zap, CloudUpload, Palette, Sun, Moon, Monitor, Save, Trash2, LogIn, Cat,
+  Sparkles, RotateCcw, Layers,
 } from 'lucide-react';
+import { useMotionStore, MOTION_LEVELS, type MotionLevel } from '@/store/motionStore';
 import { Input } from '@/components/ui/input';
 import { ToggleSwitch } from '@/ui/components/ToggleSwitch';
 import { validateApiKey } from '@/utils/apiKey';
 import { APP_VERSION } from '@/appVersion';
 
-type Tab = 'account' | 'ai' | 'mascot' | 'about';
+type Tab = 'account' | 'ai' | 'mascot' | 'motion' | 'about';
 
 const TABS: { key: Tab; label: string; icon: typeof Cat }[] = [
   { key: 'account', label: 'Tài khoản', icon: User },
   { key: 'ai', label: 'AI', icon: Bot },
   { key: 'mascot', label: 'Mascot', icon: Cat },
+  { key: 'motion', label: 'Hiệu ứng & Hoạt hoạ', icon: Sparkles },
   { key: 'about', label: 'Thông tin', icon: Info },
 ];
 
@@ -79,6 +82,20 @@ export function SettingsScreen() {
   const setDocked = useMascotStore((s) => s.setDocked);
   const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
   const speakMascot = useMascotStore((s) => s.speak);
+
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+  const setMotionLevel = useMotionStore((s) => s.setMotionLevel);
+  const cursorGlow = useMotionStore((s) => s.cursorGlow);
+  const setCursorGlow = useMotionStore((s) => s.setCursorGlow);
+  const splashAnimation = useMotionStore((s) => s.splashAnimation);
+  const setSplashAnimation = useMotionStore((s) => s.setSplashAnimation);
+  const pageTransitions = useMotionStore((s) => s.pageTransitions);
+  const setPageTransitions = useMotionStore((s) => s.setPageTransitions);
+  const mascotAnimations = useMotionStore((s) => s.mascotAnimations);
+  const setMascotAnimations = useMotionStore((s) => s.setMascotAnimations);
+  const gpuAcceleration = useMotionStore((s) => s.gpuAcceleration);
+  const setGpuAcceleration = useMotionStore((s) => s.setGpuAcceleration);
+  const resetMotionSettings = useMotionStore((s) => s.resetMotionSettings);
 
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   useEffect(() => {
@@ -538,25 +555,336 @@ export function SettingsScreen() {
           </section>
         )}
 
+        {/* ═══ TAB: Motion & Effects ═══ */}
+        {tab === 'motion' && (
+          <section aria-label="Motion Settings" className="space-y-[var(--s-lg)]">
+            {/* Presets / Motion Level */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-accent-fg" />
+                    <CardTitle>Mức độ hoạt hoạ hệ thống</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="text-[11px] font-mono">
+                    data-motion="{motionLevel}"
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-text-muted">
+                  Tùy chỉnh cường độ chuyển động và hiệu ứng hình ảnh trên toàn bộ ứng dụng (chuyển trang, loading, hạt ánh sáng, tương tác mascot).
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(Object.keys(MOTION_LEVELS) as MotionLevel[]).map((lvl) => {
+                    const info = MOTION_LEVELS[lvl];
+                    const active = motionLevel === lvl;
+                    return (
+                      <button
+                        key={lvl}
+                        type="button"
+                        onClick={() => {
+                          setMotionLevel(lvl);
+                          toast.success(`Đã chuyển mức độ hoạt hoạ: ${info.label}`);
+                        }}
+                        className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer relative flex flex-col justify-between ${
+                          active
+                            ? 'border-accent-fg bg-accent-bg/40 shadow-sm ring-1 ring-accent-fg/40'
+                            : 'border-border/70 hover:border-accent-fg/40 hover:bg-surface-raised/40'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-2xl">{info.icon}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            active
+                              ? 'bg-accent-fg text-white'
+                              : 'bg-surface-raised text-text-muted'
+                          }`}>
+                            {info.badge}
+                          </span>
+                        </div>
+                        <div className="mt-3">
+                          <div className="text-xs font-semibold text-text-primary flex items-center gap-1.5">
+                            {info.label}
+                            {active && <CheckCircle className="h-3.5 w-3.5 text-accent-fg inline shrink-0" />}
+                          </div>
+                          <div className="text-[11px] text-text-muted mt-1 leading-relaxed">
+                            {info.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Granular Toggles */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-accent-fg" />
+                  <CardTitle>Bật / Tắt hiệu ứng chi tiết</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Splash & Loading */}
+                <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
+                  <div className="pr-4">
+                    <div className="text-text-primary font-medium flex items-center gap-1.5">
+                      <span>🚀 Màn hình chào & Loading ban đầu (Splash Screen)</span>
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5">
+                      Hiển thị màn hình giới thiệu nhẹ nhàng khi tải ứng dụng, chống giật hình FOUC. Tắt để vào app tức thì 0ms.
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Màn hình chào & Loading"
+                    checked={splashAnimation}
+                    onCheckedChange={(val) => {
+                      setSplashAnimation(val);
+                      toast.success(val ? 'Đã bật hiệu ứng Splash Screen' : 'Đã tắt hiệu ứng Splash Screen (tải tức thì)');
+                    }}
+                  />
+                </div>
+
+                {/* Cursor Glow */}
+                <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
+                  <div className="pr-4">
+                    <div className="text-text-primary font-medium flex items-center gap-1.5">
+                      <span>✨ Hạt ánh sáng con trỏ (Interactive Cursor Glow)</span>
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5">
+                      Vệt sáng tinh vân tương tác theo con trỏ chuột. Tắt để huỷ canvas và giải phóng CPU/GPU hoàn toàn.
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Hạt ánh sáng con trỏ"
+                    checked={cursorGlow}
+                    onCheckedChange={(val) => {
+                      setCursorGlow(val);
+                      toast.success(val ? 'Đã bật hiệu ứng con trỏ chuột' : 'Đã tắt hiệu ứng con trỏ chuột');
+                    }}
+                  />
+                </div>
+
+                {/* Page Transitions */}
+                <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
+                  <div className="pr-4">
+                    <div className="text-text-primary font-medium flex items-center gap-1.5">
+                      <span>🔄 Chuyển cảnh trang mượt mà (Page Transitions)</span>
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5">
+                      Hiệu ứng fade-in & trượt nhẹ khi chuyển đổi qua lại giữa các menu và màn hình chức năng.
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Chuyển cảnh trang"
+                    checked={pageTransitions}
+                    onCheckedChange={(val) => {
+                      setPageTransitions(val);
+                      toast.success(val ? 'Đã bật chuyển cảnh trang' : 'Đã tắt chuyển cảnh trang (chuyển tức thì)');
+                    }}
+                  />
+                </div>
+
+                {/* Mascot Animations */}
+                <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
+                  <div className="pr-4">
+                    <div className="text-text-primary font-medium flex items-center gap-1.5">
+                      <span>🐱 Hoạt hoạ & Cử động Mèo Lucy (Mascot Motion)</span>
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5">
+                      Cho phép Lucy bước đi tự do, cử động đuôi, mắt nhìn theo chuột (lookAt) và các tương tác vật lý.
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Hoạt hoạ Mèo Lucy"
+                    checked={mascotAnimations}
+                    onCheckedChange={(val) => {
+                      setMascotAnimations(val);
+                      toast.success(val ? 'Đã bật hoạt hoạ Mèo Lucy' : 'Đã giảm tối đa cử động Mèo Lucy');
+                    }}
+                  />
+                </div>
+
+                {/* GPU Acceleration */}
+                <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
+                  <div className="pr-4">
+                    <div className="text-text-primary font-medium flex items-center gap-1.5">
+                      <span>⚡ Tăng tốc phần cứng GPU (Hardware Compositing)</span>
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5">
+                      Kích hoạt lớp vẽ 3D (translate3d, will-change) để tận dụng card đồ hoạ, giảm tải cho CPU khi render hoạt hoạ.
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Tăng tốc GPU"
+                    checked={gpuAcceleration}
+                    onCheckedChange={(val) => {
+                      setGpuAcceleration(val);
+                      toast.success(val ? 'Đã bật tăng tốc phần cứng GPU' : 'Đã tắt tăng tốc phần cứng GPU');
+                    }}
+                  />
+                </div>
+
+                {/* Reset button */}
+                <div className="pt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      resetMotionSettings();
+                      toast.info('Đã khôi phục cài đặt hoạt hoạ về mặc định');
+                    }}
+                    className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Khôi phục mặc định
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Interactive Motion Test Lab */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-accent-fg" />
+                  <CardTitle>Khung thử nghiệm hoạt hoạ trực quan</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-text-muted mb-4">
+                  Bấm thử các nút bên dưới để kiểm tra phản hồi chuyển động thực tế của cấu hình hiện tại ({MOTION_LEVELS[motionLevel].label}):
+                </p>
+                <MotionPlayground />
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {/* ═══ TAB: About ═══ */}
         {tab === 'about' && (
           <section aria-label="About">
             <Card><CardHeader><div className="flex items-center gap-2"><Info className="h-4 w-4 text-accent-fg" /><CardTitle>Thông tin</CardTitle></div></CardHeader>
-              <CardContent><div className="space-y-[var(--s-sm)]">
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Ứng dụng</span><span className="text-xs font-medium text-text-primary">Quản lý thu chi</span></div>
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Phiên bản</span><span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">{APP_VERSION}</span></div>
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Công nghệ</span><span className="text-xs text-text-primary">React 19 · Vite · TypeScript · Tailwind 4 · SQLite + Supabase</span></div>
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">AI</span><span className="text-xs text-text-primary">Kilo Free · OpenRouter · SiliconFlow · Groq · Gemini · WebLLM</span></div>
-                <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Tác giả</span><span className="text-xs text-text-primary">Quản Lý Tài Chính Team 🐱</span></div>
-              </div></CardContent>
-            </Card>
-          </section>
-        )}
+            <CardContent><div className="space-y-[var(--s-sm)]">
+              <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Ứng dụng</span><span className="text-xs font-medium text-text-primary">Quản lý thu chi</span></div>
+              <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Phiên bản</span><span className="bg-accent-bg text-accent-fg text-xs px-2 py-0.5 rounded-full">{APP_VERSION}</span></div>
+              <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Công nghệ</span><span className="text-xs text-text-primary">React 19 · Vite · TypeScript · Tailwind 4 · SQLite + Supabase</span></div>
+              <div className="flex items-center justify-between"><span className="text-xs text-text-muted">AI</span><span className="text-xs text-text-primary">Kilo Free · OpenRouter · SiliconFlow · Groq · Gemini · WebLLM</span></div>
+              <div className="flex items-center justify-between"><span className="text-xs text-text-muted">Tác giả</span><span className="text-xs text-text-primary">Quản Lý Tài Chính Team 🐱</span></div>
+            </div></CardContent>
+          </Card>
+        </section>
+      )}
 
       </div>
 
       <ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
       <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+    </div>
+  );
+}
+
+function MotionPlayground() {
+  const [activeEffect, setActiveEffect] = useState<'none' | 'bounce' | 'spin' | 'pulse' | 'slide'>('none');
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+
+  useEffect(() => {
+    if (activeEffect !== 'none') {
+      const t = setTimeout(() => setActiveEffect('none'), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [activeEffect]);
+
+  const getEffectClass = () => {
+    switch (activeEffect) {
+      case 'bounce': return 'animate-bounce';
+      case 'spin': return 'animate-spin';
+      case 'pulse': return 'animate-pulse scale-110';
+      case 'slide': return 'translate-x-12';
+      default: return '';
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border/80 bg-surface p-4 space-y-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-lg bg-surface-raised/40 border border-border/50">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-accent-fg to-indigo-500 text-white flex items-center justify-center text-2xl shadow-md transition-all duration-500 select-none ${getEffectClass()}`}
+          >
+            {activeEffect === 'spin' ? '🌀' : activeEffect === 'bounce' ? '🦘' : activeEffect === 'pulse' ? '🌟' : activeEffect === 'slide' ? '🚀' : '✨'}
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-text-primary">
+              Đối tượng thử nghiệm ({activeEffect === 'none' ? 'Trạng thái tĩnh' : `Đang chạy: ${activeEffect}`})
+            </div>
+            <div className="text-[11px] text-text-muted mt-0.5">
+              {motionLevel === 'off'
+                ? '⚡ Tắt hoạt hoạ: Các hiệu ứng chuyển động bị triệt tiêu tức thì (0ms duration)'
+                : motionLevel === 'reduced'
+                ? '🍃 Nhẹ nhàng: Chuyển động với thời lượng rút ngắn và êm dịu'
+                : '✨ Đầy đủ: Hoạt hoạ nguyên bản 60fps mượt mà'}
+            </div>
+          </div>
+        </div>
+        <Badge variant={motionLevel === 'off' ? 'destructive' : motionLevel === 'reduced' ? 'secondary' : 'default'} className="text-[10px]">
+          Chế độ: {MOTION_LEVELS[motionLevel].badge}
+        </Badge>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActiveEffect('bounce')}
+          className="text-xs flex items-center gap-1.5"
+        >
+          <span>🦘 Nhún nhảy (Bounce)</span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActiveEffect('spin')}
+          className="text-xs flex items-center gap-1.5"
+        >
+          <span>🌀 Xoay tròn (Spin)</span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActiveEffect('pulse')}
+          className="text-xs flex items-center gap-1.5"
+        >
+          <span>🌟 Phát sáng (Pulse)</span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setActiveEffect('slide')}
+          className="text-xs flex items-center gap-1.5"
+        >
+          <span>🚀 Trượt ngang (Slide)</span>
+        </Button>
+        {activeEffect !== 'none' && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveEffect('none')}
+            className="text-xs text-text-muted"
+          >
+            Dừng lại
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTheme } from '@/hooks/useTheme';
+import { useMotionStore } from '@/store/motionStore';
 
 interface Particle {
   x: number;
@@ -14,12 +15,15 @@ interface Particle {
 
 export function CursorGlow() {
   const { isDark } = useTheme();
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+  const cursorGlow = useMotionStore((s) => s.cursorGlow);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDarkRef = useRef(isDark);
   isDarkRef.current = isDark;
 
   useEffect(() => {
-    if ('ontouchstart' in window) return;
+    if ('ontouchstart' in window || motionLevel === 'off' || !cursorGlow) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -137,7 +141,9 @@ export function CursorGlow() {
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(animId);
     };
-  }, []);
+  }, [motionLevel, cursorGlow]);
+
+  if (motionLevel === 'off' || !cursorGlow) return null;
 
   return (
     <canvas

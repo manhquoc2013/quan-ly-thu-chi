@@ -4,6 +4,7 @@
  * Motion vocabulary referenced from FREE_Cat 2D Pixel Art (not rendered).
  */
 import { useMascotStore } from '@/store/mascotStore';
+import { useMotionStore } from '@/store/motionStore';
 import type { MascotActivity } from '@/store/mascotStore';
 import {
   HARD_LAND_LINES,
@@ -1274,6 +1275,8 @@ export function MascotOverlay() {
   const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
   const petCount = useMascotStore((s) => s.petCount);
   const petCat = useMascotStore((s) => s.petCat);
+  const motionLevel = useMotionStore((s) => s.motionLevel);
+  const mascotAnimations = useMotionStore((s) => s.mascotAnimations);
 
   const profile = PROFILES[activity] ?? PROFILES.medium;
 
@@ -1439,6 +1442,10 @@ export function MascotOverlay() {
 
   // Pointer tracking for Rive & Live2D lookAt eyes
   useEffect(() => {
+    if (motionLevel === 'off' || !mascotAnimations) {
+      setLookAt(null);
+      return;
+    }
     let resetTimer: number = 0;
     const onMouseMove = (e: MouseEvent) => {
       const cur = posRef.current;
@@ -1458,7 +1465,7 @@ export function MascotOverlay() {
       window.removeEventListener('mousemove', onMouseMove);
       window.clearTimeout(resetTimer);
     };
-  }, []);
+  }, [motionLevel, mascotAnimations]);
 
   // Spawn floating purr heart particles on petting or celebrate
   const lastPetCount = useRef(petCount);
@@ -2258,7 +2265,7 @@ export function MascotOverlay() {
     if (timerRef.current) clearTimeout(timerRef.current);
     scheduleRef.current = schedule;
     timerRef.current = setTimeout(() => {
-      if (busyRef.current || draggingRef.current || motionRef.current || useMascotStore.getState().isDocked) {
+      if (busyRef.current || draggingRef.current || motionRef.current || useMascotStore.getState().isDocked || useMotionStore.getState().motionLevel === 'off' || !useMotionStore.getState().mascotAnimations) {
         schedule();
         return;
       }
