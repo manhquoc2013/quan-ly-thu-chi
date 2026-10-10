@@ -1,19 +1,19 @@
 # Quản Lý Tài Chính
 
-> **Phiên bản**: 1.4.0 · **Cập nhật**: 2026-08-09
+> **Phiên bản**: 2.1.0 · **Cập nhật**: 2026-10-10
 
-Ứng dụng quản lý tài chính cá nhân/doanh nghiệp nhỏ, tích hợp trợ lý AI đa provider, lưu trữ local (SQLite/IndexedDB) + Supabase cloud sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
+Ứng dụng quản lý tài chính & bán hàng thông minh, tích hợp trợ lý AI đa tầng (Hybrid AI), trợ lý linh vật Mèo Lucy tương tác vật lý và giọng nói tiếng Việt, lưu trữ local (IndexedDB/SQLite) kết hợp đồng bộ đám mây Supabase Cloud Sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
 
 ---
 
 ## 📌 Giới thiệu
 
-**Quản Lý Tài Chính** giúp bạn theo dõi thu chi hàng ngày một cách thông minh. Ứng dụng kết hợp:
+**Quản Lý Tài Chính** giúp chủ tiệm và người kinh doanh theo dõi thu chi hàng ngày một cách thông minh, kỷ luật và hiệu quả. Ứng dụng kết hợp:
 
-- 📊 **Quản lý thủ công**: CRUD chi phí, doanh thu, khách hàng, sản phẩm, kênh bán
-- 🤖 **Trợ lý AI**: Nhập liệu bằng giọng nói, OCR hoá đơn, phân tích số liệu
-- 🐱 **Mascot Lucky**: Mèo hoạt hình tương tác, phản ứng theo thao tác
-- ☁️ **Đồng bộ đa thiết bị**: Supabase Auth + Sync
+- 📊 **Quản lý bán hàng & dòng tiền**: CRUD chi phí, doanh thu, đơn hàng, khách hàng, sản phẩm, kênh bán
+- 🤖 **Trợ lý AI đa phương thức**: Nhập liệu bằng giọng nói, OCR quét hoá đơn, phân tích số liệu tài chính chuyên sâu
+- 🐱 **Mèo Lucy — Trợ lý tài chính & Đồng hành**: Tương tác vật lý thực tế, tổng hợp giọng nói tiếng Việt (4 âm sắc), thông báo đơn hàng tự động, chế độ tập trung Pomodoro
+- ☁️ **Đồng bộ đa thiết bị**: Supabase Auth + Cloud Sync thời gian thực
 
 ---
 
@@ -21,14 +21,14 @@
 
 | Module | Mô tả |
 |:---|:---|
-| 📊 **Dashboard** | KPI cards (Doanh thu, Chi phí, Lợi nhuận, Công nợ, Đơn chờ), chart thu chi 7 ngày |
-| 💰 **Chi phí** | CRUD, 10 danh mục, tìm kiếm & lọc, chọn nhiều xoá hàng loạt |
-| 📦 **Doanh thu** | Đơn hàng, khách hàng, sản phẩm, kênh bán, trạng thái đơn & thanh toán |
-| 📊 **Báo cáo** | 8 loại báo cáo: Chi phí, Doanh thu, Lợi nhuận, Hàng hoá, Công nợ, Khách hàng, Sản phẩm, Kênh bán |
-| 🤖 **Trợ lý AI** | Chat, nhập liệu giọng nói, OCR hoá đơn, phân tích số liệu |
-| 🔌 **Hybrid AI** | Kilo Free → Gemini → OpenRouter → SiliconFlow → Groq → WebLLM local |
-| 🐱 **Mascot** | Mèo SVG hoạt hình, đi lại trên giao diện, phản ứng CRUD |
-| 🔐 **Auth** | Supabase email/password, đăng ký có xác nhận mật khẩu |
+| 📊 **Dashboard** | KPI cards (Đã thu, Chi phí, Việc cần xử lý, Sản phẩm cần làm), biểu đồ dòng tiền 7 ngày, thanh thao tác nhanh |
+| 💰 **Chi phí** | CRUD, 10 danh mục chuẩn hoá, tìm kiếm & lọc, thao tác xoá/xuất hàng loạt |
+| 📦 **Doanh thu** | Quản lý đơn hàng, khách hàng, sản phẩm, kênh bán, trạng thái đơn & thanh toán, in hoá đơn A6 |
+| 📊 **Báo cáo** | 8 phân hệ báo cáo chuyên sâu: Chi phí, Doanh thu, Lợi nhuận, Hàng hoá (FIFO), Công nợ, Khách hàng, Sản phẩm, Kênh bán |
+| 🤖 **Trợ lý AI** | Chat ngôn ngữ tự nhiên, nhập liệu giọng nói 🎤, OCR hoá đơn 📷, phân tích P&L |
+| 🔌 **Hybrid AI** | Kilo Free → Gemini → OpenRouter → SiliconFlow → Groq → WebLLM (Qwen 2.5 local GPU) |
+| 🐱 **Mèo Lucy** | Mô phỏng vật lý ném rơi tự do, ngắt âm thanh tuyệt đối khi tắt, 4 âm sắc tiếng Việt, tự động đọc đơn mới/hoàn thành, Pomodoro |
+| 🔐 **Auth & Sổ chung** | Supabase email/password, phân quyền và sổ dùng chung gia đình/cửa hàng |
 
 ---
 
@@ -82,6 +82,7 @@ Không có Supabase, app vẫn chạy offline với SQLite local.
 
 | # | Tài liệu | Nội dung |
 |:--|:---|:---|
+| | [Wiki](wiki/Home.md) | Tài liệu hướng dẫn sử dụng & ảnh chụp màn hình v2.1.0 |
 | | [README](README.md) | Tổng quan dự án |
 | | [RELEASE](RELEASE.md) | Lịch sử phát hành & quy trình release |
 | | [CHANGELOG](CHANGELOG.md) | Nhật ký thay đổi qua các phiên bản |

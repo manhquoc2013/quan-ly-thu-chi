@@ -344,3 +344,54 @@ File `database.db` được lưu trên Google Drive trong thư mục `QuanLyThuC
 | **Offline support** | Đọc/ghi cache khi mất mạng, sync khi có mạng lại |
 | **PWA install** | Cài được trên desktop + mobile |
 | **Browser support** | Chrome, Edge, Firefox, Safari (2 versions gần nhất) |
+
+---
+
+## 9. Mascot Lucy Companion Architecture
+
+Phân hệ trợ lý linh vật ảo và đồng hành tài chính Lucy được thiết kế tách biệt và tối ưu hoá hiệu năng, gồm các thành phần cốt lõi:
+
+```mermaid
+flowchart TB
+    subgraph UI_Mascot["UI & Interaction Layer"]
+        MascotOverlay["MascotOverlay.tsx<br/>(Physics Engine & Rendering)"]
+        ControlDeck["LucyControlDeck.tsx<br/>(Floating Companion Panel)"]
+    end
+
+    subgraph State_Mascot["State Management"]
+        MascotStore["mascotStore.ts (Zustand 5)<br/>Persisted: activity, sound, voice, tone"]
+    end
+
+    subgraph Audio_Speech["Audio & Speech Synthesis"]
+        LucyAudio["lucyAudio.ts<br/>Web Audio SFX Synth (Mute gate)"]
+        SpeechSvc["speechService.ts<br/>Web Speech API TTS (4 Voice Tones)"]
+        MascotAnnouncer["mascotAnnouncer.ts<br/>Order Events Vocalizer (Debounced)"]
+    end
+
+    subgraph Business_Events["Business Events Trigger"]
+        RevSvc["revenueService.ts (create / complete)"]
+        RevStore["revenueStore.ts (addRecord / updateRecord)"]
+    end
+
+    MascotOverlay --> MascotStore
+    ControlDeck --> MascotStore
+    MascotStore --> LucyAudio
+    MascotStore --> SpeechSvc
+    Business_Events --> MascotAnnouncer
+    MascotAnnouncer --> MascotStore
+```
+
+### 9.1. Physics Simulation Engine
+- **Mô hình động học**: Xử lý trong `MascotOverlay.tsx` qua `requestAnimationFrame`. Tính toán vận tốc `(vx, vy)`, gia tốc trọng trường `gravity = 0.58`, ma sát không khí `friction = 0.985`, độ nảy đàn hồi sàn và tường `bounce = -0.52`.
+- **Ném rơi tự do**: Khi người dùng thả chuột sau khi kéo, vận tốc kéo được chuyển đổi thành vận tốc ban đầu `(vx, vy)`.
+- **Ghim góc bàn (Docking)**: Khi `isDocked = true`, hệ thống chuyển sang chế độ Desk Companion, Lucy ngồi yên ở góc phải màn hình và quan sát.
+
+### 9.2. Web Audio Procedural Synthesis (`lucyAudio.ts`)
+- Không sử dụng file âm thanh tĩnh nặng nề, toàn bộ tiếng mèo kêu (*meow*), gầm gừ (*purr*), chuông tiền (*coin*), chuông tập trung (*focusBell*) được tổng hợp trực tiếp bằng `AudioContext`, `OscillatorNode`, và `GainNode`.
+- **Cổng ngắt âm tuyệt đối**: `getAudioContext()` kiểm tra trực tiếp cờ `soundEnabled` và `localStorage`. Khi tắt, hàm lập tức trả về `null`, triệt tiêu hoàn toàn khả năng rò rỉ âm thanh.
+
+### 9.3. Voice Synthesis & Order Announcements (`speechService.ts` & `mascotAnnouncer.ts`)
+- **Web Speech API**: Điều khiển khẩu hình nhép môi của Lucy đồng bộ với từng âm tiết phát ra.
+- **4 Bộ âm sắc (Voice Tones)**: Tinh chỉnh các tham số cao độ (`pitch`) và tốc độ (`rate`) tạo nên các phong cách: Dễ thương (`pitch: 1.25, rate: 1.05`), Tự nhiên (`pitch: 1.0, rate: 1.0`), Điềm đạm (`pitch: 0.85, rate: 0.92`), Năng động (`pitch: 1.15, rate: 1.15`).
+- **Thông báo đơn hàng**: Khi phát sinh đơn hàng mới hoặc đơn chuyển trạng thái sang `completed`, `mascotAnnouncer` chuyển đổi số tiền VND sang câu đọc tự nhiên tiếng Việt và kích hoạt giọng nói kèm cơ chế khử trùng lặp thời gian thực (*debounce 4s*).
+

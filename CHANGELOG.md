@@ -27,6 +27,16 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
   - Hỗ trợ toàn diện chuẩn tiếp cận `prefers-reduced-motion` WCAG.
   - Các tiện ích gradient tài chính `.stat-card-income`, `.stat-card-expense`, `.stat-card-profit`, `.stat-card-debt`.
   - Đạt điểm kiểm định UI/UX tuyệt đối: `validate_ui_code` 100/100, `audit_ux_interface` 100/100 (0 smells).
+- **Trợ lý Linh vật Mèo Lucy & Bảng điều khiển LucyControlDeck**:
+  - Tích hợp mô phỏng vật lý chân thực (kéo thả quăng ném, trọng lực, gia tốc rơi tự do và bật nảy đàn hồi).
+  - Cấu hình âm thanh: Cho phép tắt/bật âm thanh (`soundEnabled`), ngắt hoàn toàn bộ tổng hợp Web Audio khi tắt âm (im lặng tuyệt đối).
+  - Khóa mức độ hoạt động: Mức độ hoạt động (`low`, `medium`, `high`) luôn tuân thủ nghiêm ngặt cấu hình người dùng, không bị đột biến khi click.
+  - Tổng hợp giọng nói tiếng Việt (Web Speech API TTS), tự động quét giọng hệ thống và cung cấp 4 bộ âm sắc giọng (Dễ thương, Tự nhiên, Điềm đạm, Năng động).
+  - Tự động cất giọng thông báo bằng tiếng Việt khi có đơn hàng mới và reo vui ăn mừng khi đơn hàng hoàn thành (có debounce chống lặp âm).
+  - Chế độ tập trung Pomodoro (15m, 25m, 45m) có đếm ngược, chuông báo hoàn thành và tư vấn tài chính theo thời gian thực.
+- **Tự động hoá Kiểm thử & Tài liệu Wiki**:
+  - Xây dựng kịch bản Playwright tự động (`scripts/capture-wiki-screenshots.mjs`) khởi chạy Vite server, nạp dữ liệu mẫu thực tế và chụp 8 ảnh chụp màn hình độ phân giải cao Retina 2x.
+  - Cập nhật toàn bộ tài liệu Wiki (`wiki/Mèo-Lucy.md`, `wiki/Cài-đặt.md`, `wiki/Dashboard.md`, `wiki/Quản-lý-Doanh-thu.md`, v.v.) đồng bộ chuẩn xác với logic hiện tại.
 
 ---
 
