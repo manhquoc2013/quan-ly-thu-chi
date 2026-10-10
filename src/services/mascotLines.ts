@@ -13,20 +13,20 @@ export function pickLine(pool: readonly string[]): string {
 export const IDLE_LINES = [
   'Hôm nay đã ghi đơn chưa?',
   'Nhớ chốt chi phí trước khi quên nhé.',
-  'Có đơn mới thì Lucy ghi giúp liền!',
+  'Có đơn mới thì Nấm ghi giúp liền!',
   'Công nợ còn treo không ta?',
   'Xem báo cáo một nhịp cho chắc.',
   'Ghi sổ đều tay, cuối tháng dễ thở.',
   'Ưu tiên đơn gấp trước khi tối nhé.',
-  'Lucy đang canh sổ thu–chi đây.',
+  'Nấm đang canh sổ thu–chi đây.',
 ] as const;
 
 /** Focus companion lines to keep user attentive and disciplined. */
 export const FOCUS_LINES = [
   'Tập trung cao độ nào, việc hôm nay chớ để ngày mai! 🎯',
-  'Lucy đang ngồi cạnh cổ vũ bạn nè, đừng lướt điện thoại nha! 🐾',
+  'Nấm đang ngồi cạnh cổ vũ bạn nè, đừng lướt điện thoại nha! 🐾',
   'Giữ nhịp thở đều, làm từng việc một thật gọn gàng nhé.',
-  'Chủ tiệm làm việc chăm chỉ quá, Lucy tự hào ghê! ✨',
+  'Chủ tiệm làm việc chăm chỉ quá, Nấm tự hào ghê! ✨',
   'Chỉ 25 phút thôi, tập trung hoàn thành dứt điểm mục tiêu nào!',
   'Kỷ luật hôm nay là thành công ngày mai! Cố lên nha.',
 ] as const;

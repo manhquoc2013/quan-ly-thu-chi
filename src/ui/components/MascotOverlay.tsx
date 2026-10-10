@@ -18,13 +18,15 @@ import {
 import type { VisemeShape } from '@/services/speechService';
 import { LucyControlDeck } from './LucyControlDeck';
 import { lucyAudio } from '@/services/lucyAudio';
+import { NamCatPuppet } from './NamCatPuppet';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
 
 type CoreAction =
   | 'idle' | 'walk' | 'run' | 'jump' | 'runJump'
-  | 'climb' | 'crawl' | 'attack' | 'hurt' | 'fall' | 'dead';
+  | 'climb' | 'crawl' | 'attack' | 'hurt' | 'fall' | 'dead'
+  | 'trip' | 'peek' | 'celebrate';
 
 /** Includes legacy aliases used by AuthGuard / chat loaders */
 export type Action = CoreAction | 'grapple' | 'spin' | 'flinch' | 'tossed';
@@ -335,363 +337,7 @@ function partAnim(part: string, action: Action, walkDur = 0.75, runDur = 0.5): s
   return `${key} ${dur} ${ease} ${iter}`;
 }
 
-export function CatBody({
-  emotion,
-  action,
-  walkDur = 0.75,
-  runDur = 0.5,
-  lookAt,
-  isTalking = false,
-  viseme = 'closed',
-  isHeld = false,
-  isDizzy = false,
-  isBellyTickle = false,
-  isTailPulled = false,
-  isCheekPinched = false,
-}: {
-  emotion: string;
-  action: Action;
-  walkDur?: number;
-  runDur?: number;
-  lookAt?: { x: number; y: number } | null;
-  isTalking?: boolean;
-  viseme?: VisemeShape;
-  isHeld?: boolean;
-  isDizzy?: boolean;
-  isBellyTickle?: boolean;
-  isTailPulled?: boolean;
-  isCheekPinched?: boolean;
-}) {
-  const core = normalizeAction(action);
-  const happy = emotion === 'happy' || emotion === 'celebrate';
-  const faceHurt = core === 'hurt' || core === 'fall';
-  const faceDead = core === 'dead';
-  const faceAttack = core === 'attack';
-  const faceClimb = core === 'climb';
-  const faceCrawl = core === 'crawl';
-  const faceLoco = core === 'walk' || core === 'run' || core === 'runJump';
-  const overrideFace = faceHurt || faceDead || faceAttack || faceClimb || faceCrawl || isDizzy || isBellyTickle || isTailPulled;
-
-  // Live2D & Rive mouse lookAt calculations
-  const lookX = lookAt && !overrideFace ? clamp(lookAt.x * 3.5, -3.5, 3.5) : 0;
-  const lookY = lookAt && !overrideFace ? clamp(lookAt.y * 2.5, -2.5, 2.5) : 0;
-  const headLookDeg = isDizzy ? 6 : lookAt && !overrideFace ? clamp(lookAt.x * 7, -7, 7) : 0;
-
-  let eyeRx = happy && !overrideFace ? '3.2' : '4.8';
-  let eyeRy = happy && !overrideFace ? '2.2' : '4.8';
-  if (faceLoco) { eyeRx = '4.6'; eyeRy = '4.2'; } // alert while moving
-  if (faceAttack) { eyeRx = '4'; eyeRy = '3'; }
-  if (faceCrawl) { eyeRx = '4.5'; eyeRy = '2.2'; }
-  if (faceClimb) { eyeRx = '4.5'; eyeRy = '4.5'; }
-
-  const eyeAnim = faceHurt || faceDead
-    ? 'eyes-hurt 0.35s ease-out'
-    : faceCrawl
-      ? 'eyes-half 1s ease-in-out infinite'
-      : faceLoco
-        ? 'eyes-blink 4.2s ease-in-out infinite'
-        : 'eyes-blink 3.5s ease-in-out infinite';
-
-  // Local +X is "forward" after the parent scaleX flip for facing
-  const pupilY = (faceClimb ? 38 : faceCrawl ? 43 : faceLoco ? 40.5 : 40) + lookY;
-  const pupilXOff = (faceAttack ? 0 : faceLoco ? 3.2 : 2) + lookX;
-  const showSmile = (happy || faceLoco) && !overrideFace && emotion !== 'sad';
-
-  return (
-    <svg width={W} height={H} viewBox="0 0 145 125" overflow="visible" className="drop-shadow-lg">
-      <style>{PART_STYLES}</style>
-
-      {/* Focus halo glowing above head (Focus / Pomodoro mode) */}
-      {(emotion === 'focus') && (
-        <g style={{ transformBox: 'view-box', transformOrigin: '60px 14px' }}>
-          <ellipse
-            cx="60"
-            cy="14"
-            rx="20"
-            ry="5"
-            fill="none"
-            stroke="#F1C40F"
-            strokeWidth="2.2"
-            filter="drop-shadow(0 0 6px #F39C12)"
-            style={{ animation: 'focusHaloPulse 2s ease-in-out infinite' }}
-          />
-        </g>
-      )}
-
-      {/* Thick tapered tail — responds dynamically to tail pull & held state */}
-      <g
-        className="mc-part mc-tail"
-        style={{
-          animation: isTailPulled
-            ? 'tail-pulled 0.25s ease-out infinite'
-            : isHeld
-              ? 'tail-held 0.8s ease-in-out infinite'
-              : partAnim('tail', action, walkDur, runDur),
-        }}
-      >
-        <path
-          d="M30 80 C16 68 -2 66 -12 78 C-16 86 -8 96 6 94 C16 93 24 88 30 80 Z"
-          fill="#E67E22"
-          stroke="#C05A00"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-        <ellipse cx="-8" cy="80" rx="5" ry="4.5" fill="#D35400" />
-        <path d="M24 82 Q8 74 -4 80" fill="none" stroke="#F5B041" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
-      </g>
-
-      <g
-        className="mc-part mc-leg"
-        style={{
-          animation: isHeld
-            ? 'lleg-held 0.6s ease-in-out infinite'
-            : partAnim('lleg', action, walkDur, runDur),
-        }}
-      >
-        <ellipse cx="45" cy="104" rx="11" ry="12" fill="#D35400" stroke="#A04000" strokeWidth="1" />
-        <ellipse cx="45" cy="114" rx="9" ry="11" fill="#C05000" stroke="#A04000" strokeWidth="0.8" />
-        <ellipse cx="45" cy="122" rx="13" ry="6" fill="#E67E22" />
-        <ellipse cx="45" cy="121" rx="9" ry="4" fill="#F5CBA7" />
-      </g>
-
-      <g
-        className="mc-part mc-leg"
-        style={{
-          animation: isHeld
-            ? 'rleg-held 0.6s ease-in-out infinite'
-            : partAnim('rleg', action, walkDur, runDur),
-        }}
-      >
-        <ellipse cx="75" cy="104" rx="11" ry="12" fill="#D35400" stroke="#A04000" strokeWidth="1" />
-        <ellipse cx="75" cy="114" rx="9" ry="11" fill="#C05000" stroke="#A04000" strokeWidth="0.8" />
-        <ellipse cx="75" cy="122" rx="13" ry="6" fill="#E67E22" />
-        <ellipse cx="75" cy="121" rx="9" ry="4" fill="#F5CBA7" />
-      </g>
-
-      {/* Body with Live2D organic breathing */}
-      <g
-        className="mc-part mc-body"
-        style={{
-          animation: isHeld
-            ? undefined
-            : action === 'idle'
-              ? `${partAnim('body', action, walkDur, runDur)}, mc-breathe 3.2s ease-in-out infinite`
-              : partAnim('body', action, walkDur, runDur),
-        }}
-      >
-        <ellipse cx="60" cy="80" rx="35" ry="30" fill="#F39C12" stroke="#E67E22" strokeWidth="1" />
-        <ellipse cx="60" cy="88" rx="22" ry="18" fill="#FDEBD0" />
-
-        {/* Lucky Red Collar & Golden Jingle Bell */}
-        <path d="M42 69 Q60 76 78 69" fill="none" stroke="#E74C3C" strokeWidth="2.8" strokeLinecap="round" />
-        <circle cx="60" cy="74.2" r="3.6" fill="#F1C40F" stroke="#D4AC0D" strokeWidth="0.8" />
-        <circle cx="60" cy="74.6" r="1.1" fill="#7D6608" />
-      </g>
-
-      <g
-        className="mc-part mc-arm"
-        style={{
-          animation: isHeld
-            ? 'larm-held 0.5s ease-in-out infinite'
-            : partAnim('larm', action, walkDur, runDur),
-        }}
-      >
-        <ellipse cx="30" cy="78" rx="8" ry="13" fill="#E67E22" stroke="#C05A00" strokeWidth="1" />
-        <ellipse cx="30" cy="90" rx="7" ry="11" fill="#D4700A" stroke="#B05000" strokeWidth="0.8" />
-        <ellipse cx="28" cy="99" rx="8" ry="5" fill="#F5CBA7" stroke="#D4A373" strokeWidth="0.5" />
-      </g>
-
-      <g
-        className="mc-part mc-arm"
-        style={{
-          animation: isHeld
-            ? 'rarm-held 0.5s ease-in-out infinite'
-            : partAnim('rarm', action, walkDur, runDur),
-        }}
-      >
-        <ellipse cx="90" cy="78" rx="8" ry="13" fill="#E67E22" stroke="#C05A00" strokeWidth="1" />
-        <ellipse cx="90" cy="90" rx="7" ry="11" fill="#D4700A" stroke="#B05000" strokeWidth="0.8" />
-        <ellipse cx="92" cy="99" rx="8" ry="5" fill="#F5CBA7" stroke="#D4A373" strokeWidth="0.5" />
-      </g>
-
-      {/* Head with lookAt tilt & talking nod */}
-      <g
-        className="mc-part mc-head"
-        style={{
-          animation: isTalking
-            ? 'head-talking 0.4s ease-in-out infinite'
-            : partAnim('head', action, walkDur, runDur),
-          transform: headLookDeg !== 0 ? `rotate(${headLookDeg}deg)` : undefined,
-        }}
-      >
-        <ellipse cx="60" cy="45" rx="30" ry="27" fill="#F39C12" />
-
-        {/* Left Ear with micro-twitch */}
-        <g style={{ transformBox: 'view-box', transformOrigin: '36px 25px', animation: 'mc-ear-l 4.5s ease-in-out infinite' }}>
-          <polygon points="33,30 28,5 45,20" fill="#F39C12" />
-          <polygon points="35,25 32,12 42,20" fill="#F5B7B1" />
-        </g>
-
-        {/* Right Ear with micro-twitch */}
-        <g style={{ transformBox: 'view-box', transformOrigin: '84px 25px', animation: 'mc-ear-r 5s ease-in-out infinite' }}>
-          <polygon points="87,30 92,5 75,20" fill="#F39C12" />
-          <polygon points="85,25 88,12 78,20" fill="#F5B7B1" />
-        </g>
-
-        <ellipse cx="60" cy="52" rx="22" ry="17" fill="#FDEBD0" />
-
-        {faceDead ? (
-          <>
-            <text x="48" y="46" fontSize="14" fill="#2C3E50" textAnchor="middle" fontWeight="bold">×</text>
-            <text x="72" y="46" fontSize="14" fill="#2C3E50" textAnchor="middle" fontWeight="bold">×</text>
-            <ellipse cx="42" cy="50" rx="2" ry="3" fill="#85C1E9" opacity="0.8" />
-            <ellipse cx="78" cy="50" rx="2" ry="3" fill="#85C1E9" opacity="0.8" />
-          </>
-        ) : isDizzy ? (
-          <>
-            {/* Dizzy rotating spiral eyes @_@ */}
-            <g style={{ transformBox: 'view-box', transformOrigin: '48px 42px', animation: 'eyes-dizzy 1.2s linear infinite' }}>
-              <ellipse cx="48" cy="42" rx="4.5" ry="4.5" fill="none" stroke="#2C3E50" strokeWidth="1.6" />
-              <path d="M46 42 Q48 40 50 42 Q48 44 46 42" fill="none" stroke="#2C3E50" strokeWidth="1.2" />
-            </g>
-            <g style={{ transformBox: 'view-box', transformOrigin: '72px 42px', animation: 'eyes-dizzy 1.2s linear infinite' }}>
-              <ellipse cx="72" cy="42" rx="4.5" ry="4.5" fill="none" stroke="#2C3E50" strokeWidth="1.6" />
-              <path d="M70 42 Q72 40 74 42 Q72 44 70 42" fill="none" stroke="#2C3E50" strokeWidth="1.2" />
-            </g>
-            <text x="35" y="24" fontSize="11" fill="#F1C40F">💫</text>
-            <text x="76" y="24" fontSize="11" fill="#F1C40F">⭐</text>
-          </>
-        ) : isBellyTickle ? (
-          <>
-            {/* Tickled laughing squint eyes >< */}
-            <path d="M44 39 L49 43 L44 47" fill="none" stroke="#2C3E50" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M76 39 L71 43 L76 47" fill="none" stroke="#2C3E50" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </>
-        ) : isTailPulled ? (
-          <>
-            {/* Startled wide shocked eyes */}
-            <circle cx="48" cy="42" r="5.5" fill="white" stroke="#2C3E50" strokeWidth="1.4" />
-            <circle cx="48" cy="42" r="2.2" fill="#2C3E50" />
-            <circle cx="72" cy="42" r="5.5" fill="white" stroke="#2C3E50" strokeWidth="1.4" />
-            <circle cx="72" cy="42" r="2.2" fill="#2C3E50" />
-            <text x="80" y="22" fontSize="18" fontWeight="bold" fill="#E74C3C" textAnchor="middle">!</text>
-          </>
-        ) : (
-          <>
-            <g style={{ transformBox: 'view-box', transformOrigin: '48px 42px', animation: eyeAnim }}>
-              <ellipse cx="48" cy="42" rx={eyeRx} ry={eyeRy} fill="#2C3E50" />
-              {!faceHurt && (
-                <g style={{
-                  transformBox: 'view-box',
-                  transformOrigin: '48px 42px',
-                  animation: faceLoco ? `pupils-look ${walkDur}s linear infinite` : undefined,
-                }}>
-                  <circle cx={48 + pupilXOff} cy={pupilY} r={faceLoco ? 2.2 : 2} fill="white" />
-                  <circle cx={48 + pupilXOff + 1.2} cy={pupilY - 1} r="0.8" fill="white" opacity="0.7" />
-                </g>
-              )}
-            </g>
-            <g style={{ transformBox: 'view-box', transformOrigin: '72px 42px', animation: eyeAnim }}>
-              <ellipse cx="72" cy="42" rx={eyeRx} ry={eyeRy} fill="#2C3E50" />
-              {!faceHurt && (
-                <g style={{
-                  transformBox: 'view-box',
-                  transformOrigin: '72px 42px',
-                  animation: faceLoco ? `pupils-look ${walkDur}s linear infinite` : undefined,
-                }}>
-                  <circle cx={72 + pupilXOff} cy={pupilY} r={faceLoco ? 2.2 : 2} fill="white" />
-                  <circle cx={72 + pupilXOff + 1.2} cy={pupilY - 1} r="0.8" fill="white" opacity="0.7" />
-                </g>
-              )}
-            </g>
-          </>
-        )}
-
-        {/* Smart Golden Glasses (Financial Advisor & Thinking Mode) */}
-        {(emotion === 'thinking' || emotion === 'focus') && !overrideFace && (
-          <g className="mc-glasses" opacity="0.95">
-            <circle cx="48" cy="42" r="7.5" fill="rgba(255,255,255,0.12)" stroke="#F39C12" strokeWidth="1.4" />
-            <path d="M44 38 Q47 36 50 36" fill="none" stroke="white" strokeWidth="0.8" opacity="0.8" />
-            <circle cx="72" cy="42" r="7.5" fill="rgba(255,255,255,0.12)" stroke="#F39C12" strokeWidth="1.4" />
-            <path d="M68 38 Q71 36 74 36" fill="none" stroke="white" strokeWidth="0.8" opacity="0.8" />
-            <path d="M55.5 42 Q60 40 64.5 42" fill="none" stroke="#F39C12" strokeWidth="1.4" />
-          </g>
-        )}
-
-        {faceHurt && !faceDead && !isTailPulled && (
-          <>
-            <line x1="42" y1="36" x2="54" y2="48" stroke="#E74C3C" strokeWidth="1.5" opacity="0.75" />
-            <line x1="78" y1="36" x2="66" y2="48" stroke="#E74C3C" strokeWidth="1.5" opacity="0.75" />
-          </>
-        )}
-
-        <ellipse cx="60" cy="52" rx="3" ry="2" fill="#E74C3C" />
-
-        {/* Animated Mouth (TalkingHead Lip-Sync & Physical Interaction States) */}
-        {faceDead || faceHurt ? (
-          <ellipse cx="60" cy="58" rx="5" ry="3.5" fill="#2C3E50" />
-        ) : isDizzy ? (
-          <path d="M54 58 Q57 55 60 58 Q63 61 66 58" fill="none" stroke="#2C3E50" strokeWidth="1.4" strokeLinecap="round" />
-        ) : isBellyTickle ? (
-          <g>
-            <path d="M52 56 Q60 68 68 56 Z" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
-            <ellipse cx="60" cy="62" rx="4" ry="2.2" fill="#F1948A" />
-          </g>
-        ) : isTailPulled ? (
-          <ellipse cx="60" cy="58" rx="4" ry="5.5" fill="#78281F" stroke="#2C3E50" strokeWidth="1.2" />
-        ) : faceAttack ? (
-          <path d="M54 57 L66 57 M56 59 L64 59" fill="none" stroke="#2C3E50" strokeWidth="1.4" strokeLinecap="round" />
-        ) : isTalking ? (
-          viseme === 'open' ? (
-            <g>
-              <path d="M53 56 Q60 67 67 56 Q60 54 53 56 Z" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
-              <ellipse cx="60" cy="62" rx="3.5" ry="2" fill="#E74C3C" />
-            </g>
-          ) : viseme === 'round' ? (
-            <g>
-              <ellipse cx="60" cy="58" rx="4.5" ry="5.5" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
-              <ellipse cx="60" cy="60" rx="3" ry="2.2" fill="#E74C3C" />
-            </g>
-          ) : viseme === 'smile' ? (
-            <path d="M52 56 Q60 65 68 56" fill="none" stroke="#2C3E50" strokeWidth="1.6" strokeLinecap="round" />
-          ) : (
-            <path d="M54 57 Q57 59 60 57 Q63 59 66 57" fill="none" stroke="#2C3E50" strokeWidth="1.3" strokeLinecap="round" />
-          )
-        ) : showSmile ? (
-          <path d="M53 56 Q56 61 60 57 Q64 61 67 56" fill="none" stroke="#2C3E50" strokeWidth="1.35" strokeLinecap="round" />
-        ) : emotion === 'sad' && !overrideFace ? (
-          <path d="M54 58 Q60 54 66 58" fill="none" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" />
-        ) : (
-          <line x1="56" y1="57" x2="64" y2="57" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" />
-        )}
-
-        <line x1="28" y1="50" x2="42" y2="52" stroke="#BDC3C7" strokeWidth="0.7" />
-        <line x1="28" y1="54" x2="42" y2="54" stroke="#BDC3C7" strokeWidth="0.7" />
-        <line x1="78" y1="52" x2="92" y2="50" stroke="#BDC3C7" strokeWidth="0.7" />
-        <line x1="78" y1="54" x2="92" y2="54" stroke="#BDC3C7" strokeWidth="0.7" />
-
-        {isCheekPinched ? (
-          <>
-            <ellipse cx="34" cy="53" rx="7" ry="4" fill="#F5B7B1" opacity="0.85" style={{ animation: 'cheek-pinch-l 0.4s ease-in-out infinite' }} />
-            <ellipse cx="86" cy="53" rx="7" ry="4" fill="#F5B7B1" opacity="0.85" style={{ animation: 'cheek-pinch-r 0.4s ease-in-out infinite' }} />
-          </>
-        ) : (happy || faceLoco) && !overrideFace ? (
-          <>
-            <ellipse cx="38" cy="53" rx="5" ry="3" fill="#F5B7B1" opacity={faceLoco ? 0.35 : 0.5} />
-            <ellipse cx="82" cy="53" rx="5" ry="3" fill="#F5B7B1" opacity={faceLoco ? 0.35 : 0.5} />
-          </>
-        ) : null}
-
-        <path d="M54 30 L56 35 L60 32 L64 35 L66 30" fill="none"
-          stroke="#D68910" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-
-        {faceHurt && !faceDead && !isTailPulled && (
-          <text x="78" y="22" fontSize="18" fontWeight="bold" fill="#E74C3C" textAnchor="middle">!</text>
-        )}
-      </g>
-    </svg>
-  );
-}
+export const CatBody = NamCatPuppet;
 
 /* ═══ Helpers ═══ */
 
@@ -1275,6 +921,12 @@ export function MascotOverlay() {
   const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
   const petCount = useMascotStore((s) => s.petCount);
   const petCat = useMascotStore((s) => s.petCat);
+  const outfit = useMascotStore((s) => s.outfit);
+  const isTransforming = useMascotStore((s) => s.isTransforming);
+  const requestedAction = useMascotStore((s) => s.requestedAction);
+  const clearRequestedAction = useMascotStore((s) => s.clearRequestedAction);
+  const soundEnabled = useMascotStore((s) => s.soundEnabled);
+  const speak = useMascotStore((s) => s.speak);
   const motionLevel = useMotionStore((s) => s.motionLevel);
   const mascotAnimations = useMotionStore((s) => s.mascotAnimations);
 
@@ -2397,6 +2049,62 @@ export function MascotOverlay() {
     };
   }, []);
 
+  /* ═══ Custom Interactive Action Triggers (Wardrobe & Action Playground) ═══ */
+  useEffect(() => {
+    if (!requestedAction) return;
+    const act = requestedAction;
+    clearRequestedAction();
+
+    if (act === 'trip') {
+      setAction('trip');
+      if (soundEnabled) lucyAudio.trip();
+      speak('Úi cha... Nấm trượt chân một cái! Meow~ 💫', 'sad');
+      const t = setTimeout(() => {
+        setAction('idle');
+      }, 1600);
+      return () => clearTimeout(t);
+    }
+    if (act === 'peek') {
+      setAction('peek');
+      if (soundEnabled) lucyAudio.sneak();
+      speak('Em Nấm đang nấp nè, anh/chị có thấy em không? 👀', 'happy');
+      const t = setTimeout(() => {
+        setAction('idle');
+      }, 2600);
+      return () => clearTimeout(t);
+    }
+    if (act === 'celebrate') {
+      setAction('attack');
+      if (soundEnabled) lucyAudio.coin();
+      speak('Yeahh! Bão đơn về ngập tràn, doanh thu tăng trưởng rực rỡ nha! 🎉✨', 'celebrate');
+      const t = setTimeout(() => {
+        setAction('idle');
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+    if (act === 'walk' || act === 'run') {
+      const cur = posRef.current;
+      const dir = facingRef.current ? 1 : -1;
+      const targetX = clamp(cur.x + dir * (act === 'run' ? 220 : 140), 10, maxX());
+      doLoco(targetX, act as 'walk' | 'run');
+      return;
+    }
+    if (act === 'jump') {
+      const cur = posRef.current;
+      doJump(clamp(cur.x + (facingRef.current ? 80 : -80), 10, maxX()), true);
+      return;
+    }
+    if (act === 'climb') {
+      const cur = posRef.current;
+      doClimb(cur.y - 60, cur.x);
+      return;
+    }
+    if (act === 'crawl') {
+      doCrawl();
+      return;
+    }
+  }, [requestedAction, clearRequestedAction, soundEnabled, speak, doLoco, doJump, doClimb, doCrawl]);
+
   /** Poke / knock — physical hops & flinches, not CSS spin loops. */
   const playTapReaction = useCallback(() => {
     const now = Date.now();
@@ -2787,9 +2495,11 @@ export function MascotOverlay() {
               display: 'inline-block',
               transform: action === 'dead' ? 'none' : `scaleX(${facingRight ? 1 : -1})`,
             }}>
-              <CatBody
+              <NamCatPuppet
                 emotion={visible ? emotion : focusMode ? 'focus' : 'idle'}
                 action={action}
+                outfit={outfit}
+                isTransforming={isTransforming}
                 walkDur={profile.walkDur}
                 runDur={profile.runDur}
                 lookAt={lookAt}

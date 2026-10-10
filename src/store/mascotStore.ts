@@ -16,6 +16,65 @@ import { lucyAudio } from '@/services/lucyAudio';
 export type MascotEmotion = 'happy' | 'sad' | 'warning' | 'celebrate' | 'thinking' | 'idle' | 'focus';
 export type MascotActivity = 'low' | 'medium' | 'high';
 export type VoiceTone = 'cute' | 'natural' | 'calm' | 'energetic';
+export type MascotOutfit = 'financial' | 'support' | 'tech' | 'marketing' | 'system';
+
+export interface OutfitPreset {
+  id: MascotOutfit;
+  name: string;
+  role: string;
+  desc: string;
+  icon: string;
+  greeting: string;
+  primaryColor: string;
+}
+
+export const OUTFIT_PRESETS: Record<MascotOutfit, OutfitPreset> = {
+  financial: {
+    id: 'financial',
+    name: 'Trợ lý Tài chính',
+    role: 'Financial Advisor',
+    desc: 'Vest navy, sơ mi trắng, chân váy bút chì, kính mắt, kẹp tài liệu & heo đất may mắn',
+    icon: '💼',
+    greeting: 'Meow! Em là Nấm - Trợ lý Tài chính. Em đã sẵn sàng đối soát thu chi và tối ưu tài chính cho anh/chị rồi ạ! 📈',
+    primaryColor: '#1E3A8A',
+  },
+  support: {
+    id: 'support',
+    name: 'Chăm sóc Khách hàng',
+    role: 'Customer Care',
+    desc: 'Áo polo pastel dấu chân mèo, tai nghe headset kèm micro chuyên nghiệp',
+    icon: '🎧',
+    greeting: 'Meow! Em Nấm CSKH nghe đây ạ! Em có thể hỗ trợ giải đáp hay xử lý đơn hàng nào cho anh/chị ạ? 🐾',
+    primaryColor: '#6366F1',
+  },
+  tech: {
+    id: 'tech',
+    name: 'Chuyên gia Công nghệ',
+    role: 'Tech & Dev Specialist',
+    desc: 'Hoodie xám năng động, kính chống ánh sáng xanh, ôm laptop kim loại',
+    icon: '💻',
+    greeting: 'Hệ thống vận hành trơn tru, data đồng bộ an toàn! Để Nấm theo dõi hiệu năng hệ thống cho nhé! ⚡',
+    primaryColor: '#0EA5E9',
+  },
+  marketing: {
+    id: 'marketing',
+    name: 'Ưu đãi & Khuyến mãi',
+    role: 'Sales & Marketing',
+    desc: 'Áo khoác varsity đỏ-trắng, chân váy xếp ly, loa cầm tay megaphone & bảng SALE',
+    icon: '📢',
+    greeting: 'Ưu đãi bùng nổ! Tăng tốc doanh số và bão đơn hôm nay cùng Nấm nào! 🔥',
+    primaryColor: '#EC4899',
+  },
+  system: {
+    id: 'system',
+    name: 'Nghỉ ngơi & Nạp năng lượng',
+    role: 'System / Sleep / Coffee',
+    desc: 'Bộ pajama pastel ấm áp, tách cà phê bốc khói, thong thả thư giãn nạp năng lượng',
+    icon: '☕',
+    greeting: 'Làm việc chăm chỉ rồi, anh/chị nhấp ngụm cà phê ấm rồi nghỉ mắt một chút cùng Nấm nhé! 🌸',
+    primaryColor: '#8B5CF6',
+  },
+};
 
 export const VOICE_TONES: Record<VoiceTone, { label: string; pitch: number; rate: number; desc: string }> = {
   cute: { label: 'Dễ thương (Mèo con)', pitch: 1.35, rate: 1.08, desc: 'Giọng cao trong trẻo, tinh nghịch' },
@@ -30,6 +89,12 @@ export interface MascotState {
   emotion: MascotEmotion;
   activity: MascotActivity;
   queue: Array<{ message: string; emotion: MascotEmotion }>;
+  
+  // Costume & Wardrobe Modules
+  outfit: MascotOutfit;
+  autoOutfit: boolean;
+  isTransforming: boolean;
+  requestedAction: string | null;
   
   // Audio & Voice (TalkingHead inspired)
   voiceEnabled: boolean;
@@ -58,6 +123,13 @@ export interface MascotActions {
   hide: () => void;
   setEmotion: (emotion: MascotEmotion) => void;
   setActivity: (level: MascotActivity) => void;
+  
+  // Costume & Wardrobe Actions
+  setOutfit: (outfit: MascotOutfit, options?: { silent?: boolean }) => void;
+  setAutoOutfit: (enabled: boolean) => void;
+  adaptOutfitForContext: (contextKey: string) => void;
+  triggerAction: (action: string) => void;
+  clearRequestedAction: () => void;
   
   // Sound & Voice
   setVoiceEnabled: (enabled: boolean) => void;
@@ -92,6 +164,11 @@ export const useMascotStore = create<MascotStore>()(
       emotion: 'idle',
       activity: 'medium',
       queue: [],
+      
+      outfit: 'financial',
+      autoOutfit: true,
+      isTransforming: false,
+      requestedAction: null,
       
       voiceEnabled: false,
       soundEnabled: true,
@@ -176,6 +253,50 @@ export const useMascotStore = create<MascotStore>()(
 
       setActivity: (activity) => set({ activity }),
 
+      setOutfit: (outfit, options) => {
+        const current = get();
+        if (current.outfit === outfit && !current.isTransforming) return;
+        if (current.soundEnabled && !options?.silent) lucyAudio.transform();
+        set({ outfit, isTransforming: true, emotion: 'happy' });
+        const preset = OUTFIT_PRESETS[outfit];
+        if (!options?.silent) {
+          current.speak(preset.greeting, 'happy', { forceVoice: current.voiceEnabled });
+        }
+        setTimeout(() => {
+          set({ isTransforming: false });
+        }, 750);
+      },
+
+      setAutoOutfit: (autoOutfit) => set({ autoOutfit }),
+
+      adaptOutfitForContext: (contextKey) => {
+        const state = get();
+        if (!state.autoOutfit) return;
+
+        let target: MascotOutfit | null = null;
+        const lower = contextKey.toLowerCase();
+
+        if (state.focusMode) {
+          target = 'system';
+        } else if (lower.includes('ai') || lower.includes('chat') || lower.includes('cskh') || lower.includes('support')) {
+          target = 'support';
+        } else if (lower.includes('setting') || lower.includes('sync') || lower.includes('tech') || lower.includes('model')) {
+          target = 'tech';
+        } else if (lower.includes('product') || lower.includes('platform') || lower.includes('customer') || lower.includes('sale') || lower.includes('order')) {
+          target = 'marketing';
+        } else if (lower === '/' || lower.includes('expense') || lower.includes('revenue') || lower.includes('report') || lower.includes('dashboard')) {
+          target = 'financial';
+        }
+
+        if (target && target !== state.outfit) {
+          state.setOutfit(target, { silent: false });
+        }
+      },
+
+      triggerAction: (requestedAction) => set({ requestedAction }),
+
+      clearRequestedAction: () => set({ requestedAction: null }),
+
       setVoiceEnabled: (voiceEnabled) => {
         set({ voiceEnabled });
         if (!voiceEnabled) {
@@ -218,7 +339,7 @@ export const useMascotStore = create<MascotStore>()(
         });
         if (get().soundEnabled) lucyAudio.focusBell();
         get().speak(
-          `Bắt đầu phiên tập trung ${minutes} phút! Lucy sẽ cùng chủ tiệm làm việc hết mình nhé. 🎯`,
+          `Bắt đầu phiên tập trung ${minutes} phút! Nấm sẽ cùng chủ tiệm làm việc hết mình nhé. 🎯`,
           'focus',
         );
       },
@@ -264,8 +385,8 @@ export const useMascotStore = create<MascotStore>()(
         if (get().soundEnabled) lucyAudio.pop();
         get().speak(
           isDocked
-            ? 'Lucy đã ngồi ngay ngắn tại góc bàn để bạn tập trung làm việc nhé! 🐾'
-            : 'Lucy lại được tung tăng đi dạo quanh màn hình rồi! 🐱',
+            ? 'Nấm đã ngồi ngay ngắn tại góc bàn để bạn tập trung làm việc nhé! 🐾'
+            : 'Nấm lại được tung tăng đi dạo quanh màn hình rồi! 🐱',
           'happy',
         );
       },
@@ -278,9 +399,9 @@ export const useMascotStore = create<MascotStore>()(
         if (get().soundEnabled) lucyAudio.purr(1.5);
         const purrLines = [
           'Grừ grừ... Thích quá chủ tiệm ơi! 💖',
-          'Purr purr... Lucy nạp đầy năng lượng rồi nè! ✨',
+          'Purr purr... Nấm nạp đầy năng lượng rồi nè! ✨',
           'Xoa đầu mèo lấy hên hôm nay buôn may bán đắt nha! 🍀',
-          'Mèo Lucy yêu chủ tiệm nhất trần đời! 🐾',
+          'Mèo Nấm yêu chủ tiệm nhất trần đời! 🐾',
         ];
         const line = purrLines[Math.floor(Math.random() * purrLines.length)]!;
         get().speak(line, 'happy');
@@ -289,6 +410,8 @@ export const useMascotStore = create<MascotStore>()(
     {
       name: 'mascot-settings',
       partialize: (state) => ({
+        outfit: state.outfit,
+        autoOutfit: state.autoOutfit,
         activity: state.activity,
         voiceEnabled: state.voiceEnabled,
         soundEnabled: state.soundEnabled,

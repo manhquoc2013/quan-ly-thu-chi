@@ -310,4 +310,81 @@ export const lucyAudio = {
       // Audio policy safe
     }
   },
+
+  /**
+   * Magical transformation sparkle chime — played when switching mascot outfits & accessories.
+   */
+  transform(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      // Fast ascending magical pentatonic arpeggio [C6, D6, E6, G6, A6, C7]
+      const notes = [1046.5, 1174.66, 1318.51, 1567.98, 1760.0, 2093.0];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        const t = now + idx * 0.055;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.06, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.3);
+      });
+    } catch {
+      // Audio policy safe
+    }
+  },
+
+  /**
+   * Comical stumble / trip wobble with soft thud — played on tripping/falling.
+   */
+  trip(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.linearRampToValueAtTime(180, now + 0.18);
+      osc.frequency.linearRampToValueAtTime(110, now + 0.28);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch {
+      // Audio policy safe
+    }
+  },
+
+  /**
+   * Sneak / Peek soft wooden chime — played when peeking out from behind text or cards.
+   */
+  sneak(): void {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(780, now);
+      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.08);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } catch {
+      // Audio policy safe
+    }
+  },
 };

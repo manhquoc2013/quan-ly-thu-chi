@@ -25,6 +25,7 @@ import { pendingCount } from '@/services/syncOutbox';
 import { flushOutbox } from '@/services/syncEngine';
 import { useTheme } from '@/hooks/useTheme';
 import { APP_VERSION_LABEL } from '@/appVersion';
+import { useMascotStore } from '@/store/mascotStore';
 
 interface NavItem { label: string; route: string; tab: string; icon: ReactNode; }
 
@@ -108,8 +109,18 @@ export function Layout() {
   const pageTitle = PAGE_TITLES[location.pathname] ?? 'Quản Lý Tài Chính';
   const displayName = userProfile?.storeName ?? 'User';
   const avatarLetter = displayName.charAt(0).toUpperCase();
-
   const closeChat = () => { setChatClosing(true); setTimeout(() => { setChatClosing(false); setFabOpen(false); }, 200); };
+
+  const adaptOutfitForContext = useMascotStore((s) => s.adaptOutfitForContext);
+
+  /* Automatically adapt mascot outfit based on route & chat drawer state */
+  useEffect(() => {
+    if (fabOpen) {
+      adaptOutfitForContext('ai');
+    } else {
+      adaptOutfitForContext(location.pathname);
+    }
+  }, [location.pathname, fabOpen, adaptOutfitForContext]);
 
   useEffect(() => {
     let c = false;

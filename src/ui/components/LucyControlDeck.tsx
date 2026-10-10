@@ -22,14 +22,30 @@ import {
   Heart,
   X,
   Lightbulb,
+  Shirt,
+  Gamepad2,
+  Smile,
 } from 'lucide-react';
-import { useMascotStore, type MascotActivity, VOICE_TONES, type VoiceTone } from '@/store/mascotStore';
+import {
+  useMascotStore,
+  type MascotActivity,
+  VOICE_TONES,
+  type VoiceTone,
+  OUTFIT_PRESETS,
+  type MascotOutfit,
+} from '@/store/mascotStore';
 import { useUIStore } from '@/store/uiStore';
 import { getTodayFinancialSummary, type TodayFinancialSummary } from '@/services/mascotAdvisor';
 import { FINANCIAL_TIPS, pickLine } from '@/services/mascotLines';
 
 export function LucyControlDeck({ onClose }: { onClose: () => void }) {
   const {
+    outfit,
+    autoOutfit,
+    setOutfit,
+    setAutoOutfit,
+    triggerAction,
+    isTransforming,
     voiceEnabled,
     soundEnabled,
     voiceTone,
@@ -91,22 +107,27 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
     speak(`💡 Lời khuyên cho chủ tiệm: ${tip}`, 'thinking', { forceVoice: true });
   };
 
+  const currentOutfitPreset = OUTFIT_PRESETS[outfit] || OUTFIT_PRESETS.financial;
+
   return (
     <div
-      className="fixed z-[120] bottom-16 right-4 sm:right-6 w-[340px] sm:w-[380px] max-w-[calc(100vw-32px)] bg-surface/95 dark:bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 select-none text-text-primary"
+      className="fixed z-[120] bottom-16 right-4 sm:right-6 w-[360px] sm:w-[410px] max-w-[calc(100vw-32px)] bg-surface/95 dark:bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 select-none text-text-primary"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-gradient-to-r from-pink-500/10 via-amber-500/10 to-transparent">
         <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm shadow-inner">
-            🐱
+          <div className="size-9 rounded-full bg-gradient-to-tr from-pink-500/20 to-amber-500/20 border border-pink-500/30 text-pink-600 dark:text-pink-400 flex items-center justify-center font-bold text-base shadow-inner">
+            {currentOutfitPreset.icon}
           </div>
           <div>
             <h3 className="text-sm font-bold flex items-center gap-1.5 leading-none">
-              Mèo Lucy <span className="text-[10px] font-normal text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded-full">Trợ lý tài chính</span>
+              Mèo Nấm
+              <span className="text-[10px] font-medium text-pink-600 dark:text-pink-400 bg-pink-500/15 px-2 py-0.5 rounded-full border border-pink-500/25">
+                {currentOutfitPreset.name}
+              </span>
             </h3>
-            <p className="text-[11px] text-text-muted mt-0.5">Tập trung làm việc · Quản lý dòng tiền</p>
+            <p className="text-[11px] text-text-muted mt-0.5">3D Pixar Chibi Mascot · Trợ lý đa năng</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -114,7 +135,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={petCat}
             title="Xoa đầu mèo lấy may"
-            className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors font-medium"
+            className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors font-medium border border-rose-500/20"
           >
             <Heart size={12} className="fill-rose-500 text-rose-500 animate-pulse" />
             <span>{petCount}</span>
@@ -131,6 +152,102 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="p-3.5 space-y-3.5 max-h-[75vh] overflow-y-auto">
+        {/* Section 0: Wardrobe & Outfits Selector (Three-VRM modular attachment) */}
+        <div className="p-3 rounded-xl bg-card border border-border shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Shirt size={15} className="text-pink-500" />
+              <span className="text-xs font-semibold">Tủ Đồ & Trang Phục (5 Modules)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isTransforming ? (
+                <span className="flex items-center gap-1 text-[10px] text-pink-500 font-semibold px-2 py-0.5 rounded-full bg-pink-500/10 animate-pulse">
+                  <Sparkles size={10} />
+                  Đang biến hình...
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAutoOutfit(!autoOutfit)}
+                  title={autoOutfit ? 'Đang bật tự động thay đồ theo trang & ngữ cảnh' : 'Đang tắt tự động thay đồ'}
+                  className={[
+                    'text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors border',
+                    autoOutfit
+                      ? 'bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30 font-semibold'
+                      : 'bg-surface text-text-muted border-border-subtle hover:bg-surface-hover',
+                  ].join(' ')}
+                >
+                  {autoOutfit ? '✨ Tự đổi: Bật' : 'Tự đổi: Tắt'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-5 gap-1.5 mb-2">
+            {(Object.keys(OUTFIT_PRESETS) as MascotOutfit[]).map((key) => {
+              const item = OUTFIT_PRESETS[key];
+              const isSelected = outfit === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setOutfit(key)}
+                  className={[
+                    'flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all',
+                    isSelected
+                      ? 'bg-pink-500/15 border-2 border-pink-500 text-pink-600 dark:text-pink-400 shadow-xs scale-102 font-bold'
+                      : 'bg-surface hover:bg-surface-hover border border-border-subtle text-text-secondary hover:text-text-primary',
+                  ].join(' ')}
+                >
+                  <span className="text-xl leading-none mb-1">{item.icon}</span>
+                  <span className="text-[10px] leading-tight line-clamp-1">{item.name.replace('Trợ lý ', '')}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-surface border border-border-subtle text-[11px] leading-relaxed flex items-start gap-2">
+            <span className="text-base leading-none">{currentOutfitPreset.icon}</span>
+            <div className="flex-1">
+              <div className="font-semibold text-text-primary text-[11px]">{currentOutfitPreset.name} ({currentOutfitPreset.role})</div>
+              <div className="text-text-muted text-[10px] mt-0.5">{currentOutfitPreset.desc}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 0.5: Action Playground (Interactive Motion Control) */}
+        <div className="p-3 rounded-xl bg-card border border-border shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Gamepad2 size={15} className="text-indigo-500" />
+              <span className="text-xs font-semibold">Tương Tác & Hành Động Của Nấm</span>
+            </div>
+            <span className="text-[10px] text-text-muted">Nhấn để xem biểu diễn</span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { id: 'walk', label: 'Đi dạo', icon: '🚶' },
+              { id: 'run', label: 'Chạy nhanh', icon: '🏃' },
+              { id: 'jump', label: 'Nhảy cao', icon: '🦘' },
+              { id: 'climb', label: 'Leo trèo', icon: '🧗' },
+              { id: 'crawl', label: 'Bò luồn', icon: '🐛' },
+              { id: 'trip', label: 'Té ngã', icon: '💫' },
+              { id: 'peek', label: 'Nấp trốn', icon: '🫣' },
+              { id: 'celebrate', label: 'Ăn mừng', icon: '🎉' },
+            ].map((act) => (
+              <button
+                key={act.id}
+                type="button"
+                onClick={() => triggerAction(act.id)}
+                className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-surface hover:bg-surface-hover border border-border-subtle text-[11px] font-medium text-text-secondary hover:text-text-primary transition-all active:scale-95"
+              >
+                <span>{act.icon}</span>
+                <span>{act.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         {/* Section 1: Focus Companion (Pomodoro) */}
         <div className="p-3 rounded-xl bg-card border border-border shadow-xs">
           <div className="flex items-center justify-between mb-2">
