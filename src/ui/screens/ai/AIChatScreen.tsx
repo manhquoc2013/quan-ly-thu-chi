@@ -39,7 +39,7 @@ export function AIChatScreen() {
     {
       id: 'welcome',
       role: 'ai',
-      text: 'Xin chào! Gõ chi/thu để lưu ngay. Đính kèm ảnh/PDF/CSV cần xác nhận. Hỗ trợ mic và phân tích số liệu.',
+      text: '🐱 Xin chào! Mình là Mèo Lucy — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi/đơn hàng, xem báo cáo, phân tích dòng tiền, kiểm tra công nợ hoặc hỏi tư vấn kinh doanh bất cứ lúc nào!',
       timestamp: new Date(),
     },
   ]);
@@ -55,9 +55,11 @@ export function AIChatScreen() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const QUICK_PROMPTS = [
-    { label: '☕ Chi cà phê 35k', text: 'Chi 35k tiền cà phê sáng' },
-    { label: '🛍️ Bán 2 áo 300k', text: 'Bán 2 áo thun 300k cho khách lẻ' },
-    { label: '📊 Thu chi hôm nay', text: 'Hôm nay thu chi thế nào?' },
+    { label: '📊 Tình hình tiệm hôm nay', text: 'Hôm nay tình hình thu chi và lợi nhuận tiệm thế nào em?' },
+    { label: '💡 Tư vấn tối ưu chi phí', text: 'Phân tích chi phí và tư vấn cách tối ưu cho cửa hàng giúp mình' },
+    { label: '🧾 Kiểm tra đơn công nợ', text: 'Kiểm tra danh sách đơn công nợ chưa thanh toán' },
+    { label: '🛍️ Bán 2 áo 300k cho Linh', text: 'Bán 2 áo thun 300k cho bạn Linh' },
+    { label: '☕ Chi 35k tiền cà phê', text: 'Chi 35k tiền cà phê sáng tiếp khách' },
     { label: '📎 Đính kèm hóa đơn', isUpload: true },
   ];
 

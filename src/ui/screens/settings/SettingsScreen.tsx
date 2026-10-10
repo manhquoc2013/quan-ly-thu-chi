@@ -64,6 +64,13 @@ export function SettingsScreen() {
 
   const activity = useMascotStore((s) => s.activity);
   const setActivity = useMascotStore((s) => s.setActivity);
+  const voiceEnabled = useMascotStore((s) => s.voiceEnabled);
+  const setVoiceEnabled = useMascotStore((s) => s.setVoiceEnabled);
+  const soundEnabled = useMascotStore((s) => s.soundEnabled);
+  const setSoundEnabled = useMascotStore((s) => s.setSoundEnabled);
+  const isDocked = useMascotStore((s) => s.isDocked);
+  const setDocked = useMascotStore((s) => s.setDocked);
+  const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
@@ -361,9 +368,9 @@ export function SettingsScreen() {
         {/* ═══ TAB: Mascot ═══ */}
         {tab === 'mascot' && (
           <section aria-label="Mascot settings">
-            <Card><CardHeader><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Lucky</CardTitle></div></CardHeader>
+            <Card><CardHeader><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Lucy — Trợ lý tài chính & Đồng hành</CardTitle></div><Button size="sm" onClick={() => setMenuOpen(true)} className="text-xs">Mở Bảng điều khiển Lucy</Button></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-md)]">
-                <p className="text-xs text-text-muted">Điều chỉnh mức độ hoạt động của mascot trên màn hình. Chọn là lưu ngay — giữ sau khi tải lại trang. Double-click vào mèo để đổi nhanh.</p>
+                <p className="text-xs text-text-muted">Mèo Lucy hỗ trợ tương tác giọng nói tiếng Việt, đồng hành tập trung Pomodoro và tư vấn dòng tiền. Chọn mức hoạt động hoặc vị trí ghim góc bàn.</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => {
                     const active = activity === level;
@@ -381,25 +388,35 @@ export function SettingsScreen() {
                     );
                   })}
                 </div>
+
+                <div className="pt-2 border-t border-border space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-text-secondary font-medium">Giọng đọc tiếng Việt (Lucy nói chuyện)</span>
+                    <ToggleSwitch aria-label="Bật giọng đọc tiếng Việt" checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-text-secondary font-medium">Hiệu ứng âm thanh sinh động (Leng keng, purr)</span>
+                    <ToggleSwitch aria-label="Bật hiệu ứng âm thanh" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-text-secondary font-medium">Ghim tại góc bàn (Desk Companion)</span>
+                    <ToggleSwitch aria-label="Ghim tại góc bàn" checked={isDocked} onCheckedChange={setDocked} />
+                  </div>
+                </div>
               </div></CardContent>
             </Card>
 
-            <Card className="mt-[var(--s-lg)]"><CardHeader><div className="flex items-center gap-2"><Info className="h-4 w-4 text-accent-fg" /><CardTitle>Hướng dẫn & Tính năng</CardTitle></div></CardHeader>
+            <Card className="mt-[var(--s-lg)]"><CardHeader><div className="flex items-center gap-2"><Info className="h-4 w-4 text-accent-fg" /><CardTitle>Tương tác & Tính năng mới</CardTitle></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-sm)] text-xs text-text-muted">
-                <p>🐱 <strong>Mèo Lucky</strong> — thú cưng ảo sống trong app, tự động đi lại, leo trèo, nhảy nhót.</p>
+                <p>🐱 <strong>Mèo Lucy</strong> — Tối ưu hoạt hoạ theo cảm hứng từ Rive, Pixi-Live2D, TalkingHead & Lottie:</p>
                 <div className="space-y-1 mt-2">
-                  <p>🖱️ <strong>Click</strong> — mèo giật mình</p>
-                  <p>🖱️🖱️ <strong>Double-click</strong> — đổi nhanh mức hoạt động</p>
-                  <p>↗️ <strong>Kéo + thả</strong> — ném mèo đi, mèo sẽ bung dù rơi xuống</p>
+                  <p>👀 <strong>Theo dõi con trỏ (LookAt)</strong> — Mắt và đầu mèo chuyển động theo chuột của bạn</p>
+                  <p>👄 <strong>Nói chuyện & Khẩu hình (Lip-Sync)</strong> — Miệng mèo mở theo nhịp khi phát giọng nói tiếng Việt</p>
+                  <p>🎯 <strong>Chế độ Tập Trung (Pomodoro)</strong> — Đếm giờ 25m, nhắc nhở không phân tâm, giữ kỷ luật</p>
+                  <p>💖 <strong>Vuốt ve (Petting)</strong> — Click xoa đầu mèo phát tiếng gầm gừ purr và bung tim may mắn</p>
+                  <p>👓 <strong>Kính vàng tri thức</strong> — Tự động đeo kính khi tư vấn tài chính hoặc suy nghĩ</p>
+                  <p>⚙️ <strong>Menu nhanh / Chuột phải</strong> — Click chuột phải hoặc nút ⚙️ cạnh mèo để mở bảng điều khiển</p>
                 </div>
-                <div className="space-y-1 mt-2">
-                  <p>🚶 <strong>Đi bộ</strong> — dọc mặt đất hoặc trên element</p>
-                  <p>🤸 <strong>Nhảy</strong> — bật lên rồi đáp xuống</p>
-                  <p>🧗 <strong>Leo trèo</strong> — trèo lên card, button, bảng...</p>
-                  <p>🪝 <strong>Grapple</strong> — bắn móc câu lên platform cao</p>
-                  <p>🪂 <strong>Bung dù</strong> — khi rơi từ trên cao</p>
-                </div>
-                <p className="mt-2">💬 Mèo tự động nói chuyện khi rảnh hoặc khi có giao dịch mới.</p>
               </div></CardContent>
             </Card>
           </section>

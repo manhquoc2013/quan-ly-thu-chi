@@ -3,7 +3,8 @@
  * 250000 → "250.000 ₫"
  */
 export function formatCurrency(amount: number): string {
-  return amount.toLocaleString('vi-VN') + ' ₫';
+  const n = typeof amount === 'number' && !Number.isNaN(amount) ? amount : Number(amount) || 0;
+  return n.toLocaleString('vi-VN') + ' ₫';
 }
 
 /**

@@ -9,11 +9,14 @@ import {
   ACTIVITY_LINES,
   HARD_LAND_LINES,
   IDLE_LINES,
+  FOCUS_LINES,
   LAND_LINES,
   TAP_LINES,
   pickLine,
   type LandVibe,
 } from '@/services/mascotLines';
+import type { VisemeShape } from '@/services/speechService';
+import { LucyControlDeck } from './LucyControlDeck';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
@@ -269,6 +272,12 @@ const PART_STYLES = `
   0%,100%{transform:translate(1.5px,0)}
   50%{transform:translate(2.5px,0.5px)}
 }
+@keyframes mc-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,1.015)}}
+@keyframes mc-ear-l{0%,88%,100%{transform:rotate(0deg)}92%{transform:rotate(-7deg)}96%{transform:rotate(3deg)}}
+@keyframes mc-ear-r{0%,90%,100%{transform:rotate(0deg)}94%{transform:rotate(7deg)}97%{transform:rotate(-3deg)}}
+@keyframes focusHaloPulse{0%,100%{transform:scale(1) translateY(0);opacity:0.85}50%{transform:scale(1.08) translateY(-2px);opacity:1}}
+@keyframes head-talking{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.2px) rotate(-1deg)}50%{transform:translateY(0.4px) rotate(1deg)}75%{transform:translateY(-0.6px) rotate(-0.5deg)}}
+@keyframes purrFloat{0%{opacity:1;transform:translateY(0) scale(0.8)}50%{transform:translateY(-18px) scale(1.1)}100%{opacity:0;transform:translateY(-36px) scale(1)}}
 `;
 
 const PART_KEYS: Record<string, Set<CoreAction>> = {
@@ -321,11 +330,17 @@ export function CatBody({
   action,
   walkDur = 0.75,
   runDur = 0.5,
+  lookAt,
+  isTalking = false,
+  viseme = 'closed',
 }: {
   emotion: string;
   action: Action;
   walkDur?: number;
   runDur?: number;
+  lookAt?: { x: number; y: number } | null;
+  isTalking?: boolean;
+  viseme?: VisemeShape;
 }) {
   const core = normalizeAction(action);
   const happy = emotion === 'happy' || emotion === 'celebrate';
@@ -336,6 +351,11 @@ export function CatBody({
   const faceCrawl = core === 'crawl';
   const faceLoco = core === 'walk' || core === 'run' || core === 'runJump';
   const overrideFace = faceHurt || faceDead || faceAttack || faceClimb || faceCrawl;
+
+  // Live2D & Rive mouse lookAt calculations
+  const lookX = lookAt && !overrideFace ? clamp(lookAt.x * 3.5, -3.5, 3.5) : 0;
+  const lookY = lookAt && !overrideFace ? clamp(lookAt.y * 2.5, -2.5, 2.5) : 0;
+  const headLookDeg = lookAt && !overrideFace ? clamp(lookAt.x * 7, -7, 7) : 0;
 
   let eyeRx = happy && !overrideFace ? '3.2' : '4.8';
   let eyeRy = happy && !overrideFace ? '2.2' : '4.8';
@@ -353,13 +373,30 @@ export function CatBody({
         : 'eyes-blink 3.5s ease-in-out infinite';
 
   // Local +X is "forward" after the parent scaleX flip for facing
-  const pupilY = faceClimb ? 38 : faceCrawl ? 43 : faceLoco ? 40.5 : 40;
-  const pupilXOff = faceAttack ? 0 : faceLoco ? 3.2 : 2;
+  const pupilY = (faceClimb ? 38 : faceCrawl ? 43 : faceLoco ? 40.5 : 40) + lookY;
+  const pupilXOff = (faceAttack ? 0 : faceLoco ? 3.2 : 2) + lookX;
   const showSmile = (happy || faceLoco) && !overrideFace && emotion !== 'sad';
 
   return (
     <svg width={W} height={H} viewBox="0 0 145 125" overflow="visible" className="drop-shadow-lg">
       <style>{PART_STYLES}</style>
+
+      {/* Focus halo glowing above head (Focus / Pomodoro mode) */}
+      {(emotion === 'focus') && (
+        <g style={{ transformBox: 'view-box', transformOrigin: '60px 14px' }}>
+          <ellipse
+            cx="60"
+            cy="14"
+            rx="20"
+            ry="5"
+            fill="none"
+            stroke="#F1C40F"
+            strokeWidth="2.2"
+            filter="drop-shadow(0 0 6px #F39C12)"
+            style={{ animation: 'focusHaloPulse 2s ease-in-out infinite' }}
+          />
+        </g>
+      )}
 
       {/* Thick tapered tail — LEFT hip so it stays behind when facing +X (forward) */}
       <g className="mc-part mc-tail" style={{ animation: partAnim('tail', action, walkDur, runDur) }}>
@@ -388,9 +425,22 @@ export function CatBody({
         <ellipse cx="75" cy="121" rx="9" ry="4" fill="#F5CBA7" />
       </g>
 
-      <g className="mc-part mc-body" style={{ animation: partAnim('body', action, walkDur, runDur) }}>
+      {/* Body with Live2D organic breathing */}
+      <g
+        className="mc-part mc-body"
+        style={{
+          animation: action === 'idle'
+            ? `${partAnim('body', action, walkDur, runDur)}, mc-breathe 3.2s ease-in-out infinite`
+            : partAnim('body', action, walkDur, runDur),
+        }}
+      >
         <ellipse cx="60" cy="80" rx="35" ry="30" fill="#F39C12" stroke="#E67E22" strokeWidth="1" />
         <ellipse cx="60" cy="88" rx="22" ry="18" fill="#FDEBD0" />
+
+        {/* Lucky Red Collar & Golden Jingle Bell */}
+        <path d="M42 69 Q60 76 78 69" fill="none" stroke="#E74C3C" strokeWidth="2.8" strokeLinecap="round" />
+        <circle cx="60" cy="74.2" r="3.6" fill="#F1C40F" stroke="#D4AC0D" strokeWidth="0.8" />
+        <circle cx="60" cy="74.6" r="1.1" fill="#7D6608" />
       </g>
 
       <g className="mc-part mc-arm" style={{ animation: partAnim('larm', action, walkDur, runDur) }}>
@@ -405,12 +455,30 @@ export function CatBody({
         <ellipse cx="92" cy="99" rx="8" ry="5" fill="#F5CBA7" stroke="#D4A373" strokeWidth="0.5" />
       </g>
 
-      <g className="mc-part mc-head" style={{ animation: partAnim('head', action, walkDur, runDur) }}>
+      {/* Head with lookAt tilt & talking nod */}
+      <g
+        className="mc-part mc-head"
+        style={{
+          animation: isTalking
+            ? 'head-talking 0.4s ease-in-out infinite'
+            : partAnim('head', action, walkDur, runDur),
+          transform: headLookDeg !== 0 ? `rotate(${headLookDeg}deg)` : undefined,
+        }}
+      >
         <ellipse cx="60" cy="45" rx="30" ry="27" fill="#F39C12" />
-        <polygon points="33,30 28,5 45,20" fill="#F39C12" />
-        <polygon points="35,25 32,12 42,20" fill="#F5B7B1" />
-        <polygon points="87,30 92,5 75,20" fill="#F39C12" />
-        <polygon points="85,25 88,12 78,20" fill="#F5B7B1" />
+
+        {/* Left Ear with micro-twitch */}
+        <g style={{ transformBox: 'view-box', transformOrigin: '36px 25px', animation: 'mc-ear-l 4.5s ease-in-out infinite' }}>
+          <polygon points="33,30 28,5 45,20" fill="#F39C12" />
+          <polygon points="35,25 32,12 42,20" fill="#F5B7B1" />
+        </g>
+
+        {/* Right Ear with micro-twitch */}
+        <g style={{ transformBox: 'view-box', transformOrigin: '84px 25px', animation: 'mc-ear-r 5s ease-in-out infinite' }}>
+          <polygon points="87,30 92,5 75,20" fill="#F39C12" />
+          <polygon points="85,25 88,12 78,20" fill="#F5B7B1" />
+        </g>
+
         <ellipse cx="60" cy="52" rx="22" ry="17" fill="#FDEBD0" />
 
         {faceDead ? (
@@ -451,6 +519,17 @@ export function CatBody({
           </>
         )}
 
+        {/* Smart Golden Glasses (Financial Advisor & Thinking Mode) */}
+        {(emotion === 'thinking' || emotion === 'focus') && !overrideFace && (
+          <g className="mc-glasses" opacity="0.95">
+            <circle cx="48" cy="42" r="7.5" fill="rgba(255,255,255,0.12)" stroke="#F39C12" strokeWidth="1.4" />
+            <path d="M44 38 Q47 36 50 36" fill="none" stroke="white" strokeWidth="0.8" opacity="0.8" />
+            <circle cx="72" cy="42" r="7.5" fill="rgba(255,255,255,0.12)" stroke="#F39C12" strokeWidth="1.4" />
+            <path d="M68 38 Q71 36 74 36" fill="none" stroke="white" strokeWidth="0.8" opacity="0.8" />
+            <path d="M55.5 42 Q60 40 64.5 42" fill="none" stroke="#F39C12" strokeWidth="1.4" />
+          </g>
+        )}
+
         {faceHurt && !faceDead && (
           <>
             <line x1="42" y1="36" x2="54" y2="48" stroke="#E74C3C" strokeWidth="1.5" opacity="0.75" />
@@ -460,12 +539,29 @@ export function CatBody({
 
         <ellipse cx="60" cy="52" rx="3" ry="2" fill="#E74C3C" />
 
+        {/* Animated Mouth (TalkingHead Lip-Sync & Emotion States) */}
         {faceDead || faceHurt ? (
           <ellipse cx="60" cy="58" rx="5" ry="3.5" fill="#2C3E50" />
         ) : faceAttack ? (
           <path d="M54 57 L66 57 M56 59 L64 59" fill="none" stroke="#2C3E50" strokeWidth="1.4" strokeLinecap="round" />
+        ) : isTalking ? (
+          viseme === 'open' ? (
+            <g>
+              <path d="M53 56 Q60 67 67 56 Q60 54 53 56 Z" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
+              <ellipse cx="60" cy="62" rx="3.5" ry="2" fill="#E74C3C" />
+            </g>
+          ) : viseme === 'round' ? (
+            <g>
+              <ellipse cx="60" cy="58" rx="4.5" ry="5.5" fill="#78281F" stroke="#2C3E50" strokeWidth="1" />
+              <ellipse cx="60" cy="60" rx="3" ry="2.2" fill="#E74C3C" />
+            </g>
+          ) : viseme === 'smile' ? (
+            <path d="M52 56 Q60 65 68 56" fill="none" stroke="#2C3E50" strokeWidth="1.6" strokeLinecap="round" />
+          ) : (
+            <path d="M54 57 Q57 59 60 57 Q63 59 66 57" fill="none" stroke="#2C3E50" strokeWidth="1.3" strokeLinecap="round" />
+          )
         ) : showSmile ? (
-          <path d="M53 56 Q60 63 67 56" fill="none" stroke="#2C3E50" strokeWidth="1.35" strokeLinecap="round" />
+          <path d="M53 56 Q56 61 60 57 Q64 61 67 56" fill="none" stroke="#2C3E50" strokeWidth="1.35" strokeLinecap="round" />
         ) : emotion === 'sad' && !overrideFace ? (
           <path d="M54 58 Q60 54 66 58" fill="none" stroke="#2C3E50" strokeWidth="1.2" strokeLinecap="round" />
         ) : (
@@ -1068,7 +1164,21 @@ export function MascotOverlay() {
   const emotion = useMascotStore((s) => s.emotion);
   const activity = useMascotStore((s) => s.activity);
   const setActivity = useMascotStore((s) => s.setActivity);
+  const isTalking = useMascotStore((s) => s.isTalking);
+  const viseme = useMascotStore((s) => s.viseme);
+  const focusMode = useMascotStore((s) => s.focusMode);
+  const focusSecondsLeft = useMascotStore((s) => s.focusSecondsLeft);
+  const tickFocus = useMascotStore((s) => s.tickFocus);
+  const isDocked = useMascotStore((s) => s.isDocked);
+  const menuOpen = useMascotStore((s) => s.menuOpen);
+  const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
+  const petCount = useMascotStore((s) => s.petCount);
+  const petCat = useMascotStore((s) => s.petCat);
+
   const profile = PROFILES[activity] ?? PROFILES.medium;
+
+  const [lookAt, setLookAt] = useState<{ x: number; y: number } | null>(null);
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; char: string }>>([]);
 
   /** Floor above the status bar so the cat isn't clipped / sitting on pagination. */
   const groundY = () => {
@@ -1207,6 +1317,68 @@ export function MascotOverlay() {
   useLayoutEffect(() => {
     applyPos(posRef.current.x, posRef.current.y, true);
   }, [applyPos]);
+
+  // 1-second interval for Focus Mode countdown
+  useEffect(() => {
+    if (!focusMode) return;
+    const timer = setInterval(() => {
+      tickFocus();
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [focusMode, tickFocus]);
+
+  // Pointer tracking for Rive & Live2D lookAt eyes
+  useEffect(() => {
+    let resetTimer: number = 0;
+    const onMouseMove = (e: MouseEvent) => {
+      const cur = posRef.current;
+      const catCenterX = cur.x + W / 2;
+      const catCenterY = cur.y + H / 2;
+      const dx = (e.clientX - catCenterX) / Math.max(window.innerWidth * 0.35, 180);
+      const dy = (e.clientY - catCenterY) / Math.max(window.innerHeight * 0.35, 180);
+      setLookAt({
+        x: clamp(dx, -1, 1),
+        y: clamp(dy, -1, 1),
+      });
+      window.clearTimeout(resetTimer);
+      resetTimer = window.setTimeout(() => setLookAt(null), 2500);
+    };
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.clearTimeout(resetTimer);
+    };
+  }, []);
+
+  // Spawn floating purr heart particles on petting or celebrate
+  const lastPetCount = useRef(petCount);
+  useEffect(() => {
+    if (petCount > lastPetCount.current) {
+      lastPetCount.current = petCount;
+      const chars = ['💖', '✨', '🐾', '⭐'];
+      const newBatch = Array.from({ length: 3 }, (_, i) => ({
+        id: Date.now() + i,
+        x: rand(10, 45),
+        y: rand(-10, 15),
+        char: chars[Math.floor(Math.random() * chars.length)]!,
+      }));
+      setParticles((prev) => [...prev, ...newBatch]);
+      setTimeout(() => {
+        setParticles((prev) => prev.filter((p) => !newBatch.some((nb) => nb.id === p.id)));
+      }, 1200);
+    }
+  }, [petCount]);
+
+  // Settle quietly in corner if docked mode is enabled
+  useEffect(() => {
+    if (isDocked) {
+      const targetX = Math.max(20, window.innerWidth - W - 28);
+      const targetY = groundY();
+      applyPos(targetX, targetY, true);
+      setAction('idle');
+      clearRope();
+    }
+  }, [isDocked, applyPos, clearRope]);
 
   /** Physics lean lives on outer pivot — never fight land/gait CSS on the inner layer. */
   const setSpinAngle = useCallback((deg: number) => {
@@ -1951,7 +2123,7 @@ export function MascotOverlay() {
     if (timerRef.current) clearTimeout(timerRef.current);
     scheduleRef.current = schedule;
     timerRef.current = setTimeout(() => {
-      if (busyRef.current || draggingRef.current || motionRef.current) {
+      if (busyRef.current || draggingRef.current || motionRef.current || useMascotStore.getState().isDocked) {
         schedule();
         return;
       }
@@ -2069,7 +2241,9 @@ export function MascotOverlay() {
         return;
       }
       if (Date.now() - lastSpeak > 20000) {
-        useMascotStore.getState().speak(pickLine(IDLE_LINES), 'idle');
+        const isFoc = useMascotStore.getState().focusMode;
+        const line = isFoc ? pickLine(FOCUS_LINES) : pickLine(IDLE_LINES);
+        useMascotStore.getState().speak(line, isFoc ? 'focus' : 'idle');
         lastSpeak = Date.now();
       }
       idleTimer = setTimeout(tickIdle, 5000);
@@ -2281,7 +2455,7 @@ export function MascotOverlay() {
       <div
         ref={containerRef}
         data-mascot-root
-        className="fixed z-[100] select-none touch-none"
+        className="fixed z-[100] select-none touch-none group"
         style={{
           // Read live ref on re-render (not stale React pos) so setAction/chute never teleports
           left: posRef.current.x,
@@ -2293,8 +2467,70 @@ export function MascotOverlay() {
           touchAction: 'none',
         }}
         onPointerDown={onPointerDown}
-        title="🐱 Kéo để ném · Gõ để chọc · Click đúp đổi mức hoạt động"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpen(true);
+        }}
+        title="🐱 Kéo để ném · Gõ để chọc · Click đúp đổi hoạt động · Click chuột phải/nút ⚙️ mở Trợ lý Lucy"
       >
+        {/* Floating Focus Badge when focusMode is active */}
+        {focusMode && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(true);
+            }}
+            className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500 text-white font-mono font-bold text-[10px] shadow-md flex items-center gap-1 cursor-pointer hover:scale-105 transition-transform animate-bounce z-[60]"
+            title="Chế độ tập trung đang bật - Click mở bảng điều khiển"
+          >
+            <span>🎯</span>
+            <span>
+              {Math.floor(focusSecondsLeft / 60)}:{String(focusSecondsLeft % 60).padStart(2, '0')}
+            </span>
+          </div>
+        )}
+
+        {/* Hover mini-action pill */}
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto flex items-center gap-1 bg-surface/90 backdrop-blur-sm border border-border shadow-sm rounded-full px-1.5 py-0.5 text-[10px] z-[60]">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(true);
+            }}
+            className="hover:scale-110 transition-transform text-amber-500"
+            title="Bảng điều khiển Lucy"
+          >
+            ⚙️
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              petCat();
+            }}
+            className="hover:scale-110 transition-transform text-rose-500"
+            title="Xoa đầu mèo lấy hên"
+          >
+            💖
+          </button>
+        </div>
+
+        {/* Floating Purr / Sparkle Particles */}
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className="absolute pointer-events-none text-xs z-[70]"
+            style={{
+              left: p.x,
+              top: p.y,
+              animation: 'purrFloat 1.2s ease-out forwards',
+            }}
+          >
+            {p.char}
+          </span>
+        ))}
+
         {message && (
           <SpeechBubble key={message} text={message} side={pickBubbleSide(pos.x, pos.y)} />
         )}
@@ -2318,10 +2554,13 @@ export function MascotOverlay() {
               transform: action === 'dead' ? 'none' : `scaleX(${facingRight ? 1 : -1})`,
             }}>
               <CatBody
-                emotion={visible ? emotion : 'idle'}
+                emotion={visible ? emotion : focusMode ? 'focus' : 'idle'}
                 action={action}
                 walkDur={profile.walkDur}
                 runDur={profile.runDur}
+                lookAt={lookAt}
+                isTalking={isTalking}
+                viseme={viseme}
               />
             </span>
           </div>
@@ -2348,6 +2587,8 @@ export function MascotOverlay() {
           }
         `}</style>
       </div>
+
+      {menuOpen && <LucyControlDeck onClose={() => setMenuOpen(false)} />}
     </>
   );
 }

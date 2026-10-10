@@ -55,6 +55,7 @@ export function OrderRowCard({ row, readOnly = false, onStatusChange, onPrint }:
   const customerName = isWalkInCustomerId(row.customerId)
     ? 'Khách vãng lai'
     : customers.find((c) => c.id === row.customerId)?.name ||
+      (row as { customerName?: string }).customerName ||
       row.notes?.replace(/^Khách:\s*/i, '') ||
       '—';
 

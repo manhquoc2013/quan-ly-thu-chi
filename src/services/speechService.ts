@@ -1,8 +1,9 @@
 /**
- * Web Speech API wrapper for Vietnamese voice input.
+ * Web Speech API wrapper for Vietnamese voice input & Text-To-Speech output with lip-sync.
  */
 
 type SpeechListener = (text: string, isFinal: boolean) => void;
+export type VisemeShape = 'closed' | 'open' | 'round' | 'smile';
 
 interface SpeechRecognitionLike {
   lang: string;
@@ -31,14 +32,24 @@ function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
 
 let recognition: SpeechRecognitionLike | null = null;
 let listening = false;
+let speaking = false;
+let lipSyncTimer: ReturnType<typeof setInterval> | null = null;
 
 export const speechService = {
   get isSupported(): boolean {
     return typeof window !== 'undefined' && !!getRecognitionCtor();
   },
 
+  get isTtsSupported(): boolean {
+    return typeof window !== 'undefined' && 'speechSynthesis' in window;
+  },
+
   get isListening(): boolean {
     return listening;
+  },
+
+  get isSpeaking(): boolean {
+    return speaking;
   },
 
   start(onResult: SpeechListener, onError?: (msg: string) => void): boolean {
@@ -99,5 +110,105 @@ export const speechService = {
     }
     recognition = null;
     listening = false;
+  },
+
+  /**
+   * Speak text out loud using Web Speech API with simulated talking visemes.
+   */
+  speakText(
+    text: string,
+    options?: {
+      onStart?: () => void;
+      onEnd?: () => void;
+      onViseme?: (viseme: VisemeShape) => void;
+    },
+  ): boolean {
+    if (!this.isTtsSupported) return false;
+
+    // Clean text: strip markdown characters, emojis, and code formatting
+    const plain = text
+      .replace(/[*_#`~[\]()]/g, ' ')
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Emojis
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!plain) return false;
+
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // Safe catch
+    }
+
+    if (lipSyncTimer) {
+      clearInterval(lipSyncTimer);
+      lipSyncTimer = null;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(plain);
+    utterance.lang = 'vi-VN';
+    utterance.pitch = 1.15; // Slightly cute and clear cat voice
+    utterance.rate = 1.05;
+
+    // Prefer high-quality Vietnamese voice if installed
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice = voices.find((v) => v.lang.startsWith('vi') || v.lang === 'vi_VN') ||
+      voices.find((v) => v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('tieng viet'));
+    if (viVoice) {
+      utterance.voice = viVoice;
+    }
+
+    utterance.onstart = () => {
+      speaking = true;
+      options?.onStart?.();
+
+      // TalkingHead / Live2D viseme animation driver
+      const shapes: VisemeShape[] = ['open', 'round', 'smile', 'open', 'closed'];
+      let idx = 0;
+      lipSyncTimer = setInterval(() => {
+        if (!speaking) {
+          if (lipSyncTimer) clearInterval(lipSyncTimer);
+          options?.onViseme?.('closed');
+          return;
+        }
+        idx = (idx + 1) % shapes.length;
+        options?.onViseme?.(shapes[idx]!);
+      }, 130);
+    };
+
+    const finish = () => {
+      speaking = false;
+      if (lipSyncTimer) {
+        clearInterval(lipSyncTimer);
+        lipSyncTimer = null;
+      }
+      options?.onViseme?.('closed');
+      options?.onEnd?.();
+    };
+
+    utterance.onend = finish;
+    utterance.onerror = finish;
+
+    try {
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch {
+      finish();
+      return false;
+    }
+  },
+
+  stopSpeaking(): void {
+    if (!this.isTtsSupported) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // ignore
+    }
+    speaking = false;
+    if (lipSyncTimer) {
+      clearInterval(lipSyncTimer);
+      lipSyncTimer = null;
+    }
   },
 };

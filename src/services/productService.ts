@@ -165,6 +165,10 @@ export function looksLikeGenerateSkuMessage(message: string): boolean {
   return /(?:tạo|sinh|gán|cấp|generate|auto)/i.test(t);
 }
 
+import { isCloudSyncActive, getActiveHouseholdId } from './cloudSync';
+import { getSupabase, isSupabaseConfigured } from './supabaseClient';
+import { mapProduct, type ProductRow } from './supabaseMappers';
+
 export async function getAllProducts(): Promise<Product[]> {
   const records = await cacheGet<Product[]>(CACHE_KEY);
   const normalized = (records ?? []).map((p) =>
@@ -176,6 +180,31 @@ export async function getAllProducts(): Promise<Product[]> {
     await cacheSet(CACHE_KEY, normalized);
   }
   useProductStore.getState().setProducts(normalized);
+
+  if (isCloudSyncActive()) {
+    const hid = getActiveHouseholdId();
+    if (hid && isSupabaseConfigured() && (typeof navigator === 'undefined' || navigator.onLine)) {
+      try {
+        const sb = getSupabase();
+        const { data, error } = await sb
+          .from('products')
+          .select('*')
+          .eq('household_id', hid)
+          .order('name', { ascending: true });
+        if (!error && data) {
+          const cloudList = (data as ProductRow[]).map(mapProduct);
+          if (!records || records.length === 0 || cloudList.length > 0) {
+            await cacheSet(CACHE_KEY, cloudList);
+            useProductStore.getState().setProducts(cloudList);
+            return cloudList;
+          }
+        }
+      } catch (err) {
+        console.warn('[productService] sync products from cloud failed:', err);
+      }
+    }
+  }
+
   return normalized;
 }
 

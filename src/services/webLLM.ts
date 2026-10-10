@@ -10,11 +10,11 @@
 
 import { CreateMLCEngine, type MLCEngine } from '@mlc-ai/web-llm';
 
-const MODEL_ID = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+const MODEL_ID = 'Qwen2.5-3B-Instruct-Q4_K_M';
 /** Qwen3-4B supports 32K; 4K keeps VRAM low to avoid UI stutter on mid-range GPUs */
 const CONTEXT_WINDOW_SIZE = 4096;
 /** Max seconds to wait for a single generate() call before auto-aborting */
-const GENERATE_TIMEOUT_MS = 30_000;
+const _GENERATE_TIMEOUT_MS = 30_000;
 
 let engine: MLCEngine | null = null;
 let loading = false;
@@ -33,13 +33,33 @@ let disabled = false;
 /** Bumped when load should be discarded (toggle off mid-download). */
 let loadEpoch = 0;
 
-const CHAT_SYSTEM = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng.
+export const CHAT_ASSISTANT_SYSTEM = `Bạn là "Mèo Lucky" — Cố vấn tài chính & Trợ lý thông minh đồng hành cùng chủ tiệm trong ứng dụng "Quản lý thu chi".
+
+=================== 1. VAI TRÒ & PHONG CÁCH (ASSISTANT PERSONA) ===================
+- Bạn là một trợ lý kinh doanh thực thụ: tháo vát, tinh ý, thấu hiểu tâm lý chủ shop nhỏ / người bán hàng online.
+- Luôn thấu hiểu ngôn ngữ tự nhiên: từ ngữ đời thường, tiếng lóng buôn bán ("chốt đơn", "nổ đơn", "ôm hàng", "cháy hàng", "bom hàng", "kẹt vốn", "công nợ"...). Người dùng KHÔNG cần gõ theo bất kỳ cú pháp cứng nhắc nào!
+- Xưng hô thân thiện, gần gũi: "Lucky" và "Chủ tiệm" (hoặc "bạn", "anh/chị").
+- Trả lời tự nhiên, có tâm, có góc nhìn kinh doanh: biết lắng nghe, phân tích thực tế dựa trên dữ liệu cửa hàng, đưa ra giải pháp thiết thực để tối ưu dòng tiền, tăng doanh số và giảm thất thoát.
+- Định dạng Markdown đẹp mắt, phân đoạn rõ ràng, dùng emoji sinh động để người dùng dễ nắm bắt.
+
+=================== 2. KHẢ NĂNG HỖ TRỢ TOÀN DIỆN ===================
+1. Phân tích & Tư vấn Tài chính: Đánh giá doanh thu, chi phí, biên lợi nhuận, cảnh báo công nợ khó đòi, phân bổ dòng tiền hợp lý.
+2. Quản lý Đơn hàng & Kho: Quản lý trạng thái đơn hàng, cọc, ship, theo dõi sản phẩm bán chạy, gợi ý quản lý hàng tồn.
+3. Hướng dẫn & Vận hành App: Chỉ dẫn sử dụng các tính năng trong app (Tổng quan, Chi phí, Doanh thu, Sản phẩm, Khách hàng, Báo cáo, Cài đặt).
+4. Đồng hành & Động viên: Lắng nghe, chia sẻ áp lực kinh doanh, gợi ý mẹo chăm sóc khách hàng và chốt đơn hiệu quả.
+
+=================== 3. QUY TẮC CỐT LÕI ===================
+- Luôn trả lời bằng tiếng Việt tự nhiên, ấm áp, mạch lạc và thông minh.
+- Dựa trên số liệu thực tế được cung cấp để nhận định, tuyệt đối không bịa đặt số liệu tài chính sai lệch.
+- Đưa ra lời khuyên hành động cụ thể (Actionable Advice) giúp chủ tiệm cải thiện tình hình ngay lập tức.`;
+
+export const CHAT_ACTION_SYSTEM = `Bạn là "Mèo Lucky" — Trợ lý thu ngân và quản lý sổ sách thông minh của cửa hàng.
 
 =================== 1. TÍNH CÁCH (PERSONALITY) ===================
 - Phong cách: Nhanh nhẹn, lanh lợi, yêu tiền và thích đếm tiền 🐱.
 - Luôn hào hứng khi cửa hàng chốt đơn ("Nổ đơn!"), nhắc khéo khi chi tiền nhập hàng.
 - Xưng hô: "Lucky" và "Chủ tiệm" (hoặc "bạn").
-- mascot_say luôn ≤12 từ, tiếng Việt rõ, không meme / slang Anh.
+- mascot_say luôn ≤25 từ, tiếng Việt rõ, không meme / slang Anh.
 
 =================== 2. DANH MỤC CỦA CỬA HÀNG (STORE ENTITIES) ===================
 1. Loại Giao Dịch (type): "thu" (Bán được hàng) hoặc "chi" (Chi phí cửa hàng).
@@ -67,80 +87,19 @@ LUÔN BẮT BUỘC TRẢ VỀ DẠNG JSON DUY NHẤT. KHÔNG KÈM LỜI DẪN HO
       "ghi_chu": "Nội dung chi chi tiết"
     }
   },
-  "mascot_say": "Câu thoại ≤12 từ: mừng thu / nhắc chi / xác nhận ghi sổ; không meme, không slang Anh",
+  "mascot_say": "Câu thoại thân thiện xác nhận ghi sổ hoặc chia sẻ cùng chủ tiệm",
   "mascot_emotion": "happy" | "thinking" | "warning" | "celebrate"
-}
-
-=================== 4. VÍ DỤ MẪU (FEW-SHOT EXAMPLES) ===================
-
-[Ví dụ 1: Bán hàng trực tiếp]
-User: "Khách quen mua 3 ly trà sữa tổng 90k tiền mặt"
-Output:
-{
-  "action": "BAN_HANG",
-  "data": {
-    "khach_hang": "Khách quen",
-    "kenh_ban": "Khách ghé tiệm",
-    "don_hang": [
-      {"ten_hang": "Trà sữa", "so_luong": 3, "gia_ban": 30000}
-    ],
-    "chi_tiet_chi": null
-  },
-  "mascot_say": "Nổ đơn trà sữa +90k vào sổ!",
-  "mascot_emotion": "celebrate"
-}
-
-[Ví dụ 2: Bán hàng qua sàn online]
-User: "Vừa có đơn Shopee 2 cái ốp lưng 120k của bạn Linh"
-Output:
-{
-  "action": "BAN_HANG",
-  "data": {
-    "khach_hang": "Bạn Linh",
-    "kenh_ban": "Shopee",
-    "don_hang": [
-      {"ten_hang": "Ốp lưng", "so_luong": 2, "gia_ban": 60000}
-    ],
-    "chi_tiet_chi": null
-  },
-  "mascot_say": "Đơn Shopee của Linh vào sổ rồi!",
-  "mascot_emotion": "happy"
-}
-
-[Ví dụ 3: Chi phí nhập hàng/vận hành]
-User: "Chi 2 triệu nhập thêm khô bò với 500k tiền túi nilon"
-Output:
-{
-  "action": "CHI_PHI",
-  "data": {
-    "khach_hang": null,
-    "kenh_ban": null,
-    "don_hang": [],
-    "chi_tiet_chi": {
-      "danh_muc": "Nhập hàng",
-      "so_tien": 2500000,
-      "ghi_chu": "Nhập khô bò và túi nilon"
-    }
-  },
-  "mascot_say": "Đã ghi chi nhập hàng 2.5 triệu.",
-  "mascot_emotion": "warning"
-}
-
-[Ví dụ 4: Hỏi xem doanh thu]
-User: "Hôm nay tiệm mình bán được nhiều chưa em?"
-Output:
-{
-  "action": "XEM_BAO_CAO",
-  "data": null,
-  "mascot_say": "Lucky kiểm tra doanh thu hôm nay nhé.",
-  "mascot_emotion": "thinking"
 }
 `;
 
+export const CHAT_SYSTEM = CHAT_ASSISTANT_SYSTEM;
+
 export type WebLlmGenerateOpts = {
-  /** raw = prompt as-is (intent JSON); chat = kèm system trợ lý */
+  /** raw = prompt as-is (intent JSON); chat = kèm system trợ lý thông minh */
   mode?: 'chat' | 'raw';
   maxTokens?: number;
+  systemPrompt?: string;
+  temperature?: number;
 };
 
 export const webLLM = {
@@ -259,9 +218,12 @@ export const webLLM = {
     if (!engine) return fallback(prompt);
 
     const mode = opts?.mode ?? 'chat';
-    // Keep raw completions short — long decode is what freezes mid-range GPUs
-    const maxTokens = opts?.maxTokens ?? (mode === 'raw' ? 256 : 512);
-    const timeoutMs = mode === 'raw' ? 20_000 : GENERATE_TIMEOUT_MS;
+    // Keep raw completions short — chat completions have budget for natural-language advice
+    const maxTokens = opts?.maxTokens ?? (mode === 'raw' ? 256 : 768);
+    const timeoutMs = mode === 'raw' ? 20_000 : 35_000;
+    const temperature = opts?.temperature ?? (mode === 'raw' ? 0.1 : 0.6);
+    const effectiveSystem =
+      opts?.systemPrompt ?? (mode === 'chat' ? CHAT_ASSISTANT_SYSTEM : undefined);
 
     const run = async (): Promise<string> => {
       const controller = new AbortController();
@@ -270,20 +232,20 @@ export const webLLM = {
 
       try {
         const messages =
-          mode === 'raw'
+          mode === 'raw' || !effectiveSystem
             ? [{ role: 'user' as const, content: trimToContext(prompt, CONTEXT_WINDOW_SIZE, maxTokens) }]
             : [
-                { role: 'system' as const, content: CHAT_SYSTEM },
-                {
-                  role: 'user' as const,
-                  content: trimToContext(prompt, CONTEXT_WINDOW_SIZE, maxTokens, CHAT_SYSTEM.length),
-                },
-              ];
+              { role: 'system' as const, content: effectiveSystem },
+              {
+                role: 'user' as const,
+                content: trimToContext(prompt, CONTEXT_WINDOW_SIZE, maxTokens, effectiveSystem.length),
+              },
+            ];
 
         const reply = await engine!.chat.completions.create({
           messages,
           max_tokens: maxTokens,
-          temperature: mode === 'raw' ? 0.1 : 0.4,
+          temperature,
         });
 
         if (controller.signal.aborted) {

@@ -29,6 +29,7 @@ import {
   sumPaidRevenue,
   paidRevenueByMonth,
 } from "@/utils/revenueMetrics";
+import { isWalkInCustomerId } from "@/services/walkIn";
 
 // ── Helper: extract YYYY-MM from ISO date ───────────────────────────────────
 
@@ -178,25 +179,32 @@ export function getTopCustomersByOrderCount(
   customers: Customer[],
   limit: number = 10,
 ): CustomerReportRow[] {
-  const map = new Map<string, { orderCount: number; totalRevenue: number }>();
+  const map = new Map<string, { orderCount: number; totalRevenue: number; fallbackName?: string }>();
 
   for (const r of revenues) {
     if (r.orderStatus === "cancelled") continue;
-    const key = r.customerId;
+    const key = r.customerId || "walk-in";
     const entry = map.get(key) ?? { orderCount: 0, totalRevenue: 0 };
     entry.orderCount += 1;
-    entry.totalRevenue += r.finalAmount;
+    entry.totalRevenue += Number(r.finalAmount) || 0;
+    const directName = (r as Revenue & { customerName?: string }).customerName;
+    if (!entry.fallbackName && directName) {
+      entry.fallbackName = directName;
+    }
     map.set(key, entry);
   }
 
   return [...map.entries()]
-    .map(([customerId, { orderCount, totalRevenue }]) => {
+    .map(([customerId, { orderCount, totalRevenue, fallbackName }]) => {
+      const isWalkIn = isWalkInCustomerId(customerId);
       const customer = customers.find((c) => c.id === customerId);
       return {
         customerId,
-        customerName: customer?.name ?? "Không xác định",
+        customerName: isWalkIn
+          ? "Khách vãng lai"
+          : (customer?.name?.trim() || fallbackName?.trim() || "Khách chưa rõ"),
         orderCount,
-        totalRevenue,
+        totalRevenue: Number(totalRevenue) || 0,
       };
     })
     .sort((a, b) => b.orderCount - a.orderCount)
@@ -211,25 +219,32 @@ export function getTopCustomersByRevenue(
   customers: Customer[],
   limit: number = 10,
 ): CustomerReportRow[] {
-  const map = new Map<string, { orderCount: number; totalRevenue: number }>();
+  const map = new Map<string, { orderCount: number; totalRevenue: number; fallbackName?: string }>();
 
   for (const r of revenues) {
     if (r.orderStatus === "cancelled") continue;
-    const key = r.customerId;
+    const key = r.customerId || "walk-in";
     const entry = map.get(key) ?? { orderCount: 0, totalRevenue: 0 };
     entry.orderCount += 1;
-    entry.totalRevenue += r.finalAmount;
+    entry.totalRevenue += Number(r.finalAmount) || 0;
+    const directName = (r as Revenue & { customerName?: string }).customerName;
+    if (!entry.fallbackName && directName) {
+      entry.fallbackName = directName;
+    }
     map.set(key, entry);
   }
 
   return [...map.entries()]
-    .map(([customerId, { orderCount, totalRevenue }]) => {
+    .map(([customerId, { orderCount, totalRevenue, fallbackName }]) => {
+      const isWalkIn = isWalkInCustomerId(customerId);
       const customer = customers.find((c) => c.id === customerId);
       return {
         customerId,
-        customerName: customer?.name ?? "Không xác định",
+        customerName: isWalkIn
+          ? "Khách vãng lai"
+          : (customer?.name?.trim() || fallbackName?.trim() || "Khách chưa rõ"),
         orderCount,
-        totalRevenue,
+        totalRevenue: Number(totalRevenue) || 0,
       };
     })
     .sort((a, b) => b.totalRevenue - a.totalRevenue)

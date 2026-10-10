@@ -22,9 +22,10 @@ import {
   useProductStore,
   useRevenueStore,
 } from '@/store';
-import { cacheGet } from './cacheManager';
+import { cacheGet, cacheSet } from './cacheManager';
 import { getActiveHouseholdId, isCloudSyncActive } from './cloudSync';
 import { getSupabase, isSupabaseConfigured } from './supabaseClient';
+import { isWalkInCustomerId } from './walkIn';
 import {
   mapCustomer,
   mapExpense,
@@ -297,6 +298,7 @@ async function queryRevenuesCloud(
             itemsByRevenue.set(item.revenue_id, list);
           }
         }
+        await ensureCustomersInStore(householdId, rows.map((r) => r.customer_id));
         const items = rows.map((row) => mapRevenue(row, itemsByRevenue.get(row.id) ?? []));
         return {
           items,
@@ -365,6 +367,7 @@ async function queryRevenuesCloud(
     }
   }
 
+  await ensureCustomersInStore(householdId, rows.map((r) => r.customer_id));
   const items = rows.map((row) => mapRevenue(row, itemsByRevenue.get(row.id) ?? []));
   return {
     items,
@@ -373,6 +376,41 @@ async function queryRevenuesCloud(
     pageSize: params.pageSize,
     source: 'cloud',
   };
+}
+
+async function ensureCustomersInStore(
+  householdId: string,
+  rawCustomerIds: Array<string | undefined | null>,
+): Promise<void> {
+  const customerIds = [
+    ...new Set(
+      rawCustomerIds
+        .filter((id): id is string => Boolean(id) && !isWalkInCustomerId(id)),
+    ),
+  ];
+  if (customerIds.length === 0) return;
+
+  const store = useCustomerStore.getState();
+  const known = new Set(store.customers.map((c) => c.id));
+  const missing = customerIds.filter((id) => !known.has(id));
+  if (missing.length === 0) return;
+
+  try {
+    const sb = getSupabase();
+    const res = await sb
+      .from('customers')
+      .select('*')
+      .eq('household_id', householdId)
+      .in('id', missing);
+    if (!res.error && res.data && res.data.length > 0) {
+      const fetched = (res.data as CustomerRow[]).map(mapCustomer);
+      const merged = [...store.customers, ...fetched];
+      store.setCustomers(merged);
+      void cacheSet('customers', merged);
+    }
+  } catch (err) {
+    console.warn('[listQuery] ensureCustomersInStore failed:', err);
+  }
 }
 
 async function queryProductsCloud(
@@ -426,6 +464,22 @@ async function queryCustomersCloud(
   const { data, error, count } = await q.range(from, to);
   if (error) throw new Error(error.message);
   const items = ((data ?? []) as CustomerRow[]).map(mapCustomer);
+  if (items.length > 0) {
+    const store = useCustomerStore.getState();
+    const existingMap = new Map(store.customers.map((c) => [c.id, c]));
+    let hasNew = false;
+    for (const item of items) {
+      if (!existingMap.has(item.id)) {
+        existingMap.set(item.id, item);
+        hasNew = true;
+      }
+    }
+    if (hasNew) {
+      const merged = [...existingMap.values()];
+      store.setCustomers(merged);
+      void cacheSet('customers', merged);
+    }
+  }
   return {
     items,
     total: count ?? items.length,

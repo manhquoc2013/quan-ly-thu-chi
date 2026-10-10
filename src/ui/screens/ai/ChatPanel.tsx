@@ -33,7 +33,7 @@ interface ChatMessage {
 }
 
 const WELCOME =
-  'Xin chào! Gõ chi/thu để lưu ngay (vd: cà phê 25k). Đính kèm ảnh/PDF/CSV cần xác nhận. Có thể dùng mic hoặc hỏi phân tích.';
+  '🐱 Xin chào! Mình là Mèo Lucy — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi, kiểm tra công nợ, phân tích dòng tiền hoặc xin lời khuyên kinh doanh bất cứ lúc nào!';
 
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { fabOpen, requestRecordDetail } = useUIStore();
@@ -262,7 +262,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
 
   if (!fabOpen) return null;
 
-  const QUICK_ACTIONS = ['Phân tích chi phí', 'Tổng quan tháng', 'Dự báo'] as const;
+  const QUICK_ACTIONS = ['Phân tích kinh doanh', 'Kiểm tra công nợ', 'Tư vấn chi phí'] as const;
 
   return (
     <div className="flex flex-col h-full bg-background" role="dialog" aria-label="AI Chat Panel">
@@ -287,7 +287,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               <Plus size={14} />
             </button>
             <span className="text-sm">🤖</span>
-            <h3 className="text-sm font-semibold text-text-primary">🐱 Mèo Lucky</h3>
+            <h3 className="text-sm font-semibold text-text-primary">🐱 Mèo Lucy</h3>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -463,24 +463,38 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setInput('Chi 35k tiền cà phê sáng')}
+                  onClick={() => setInput('Hôm nay tình hình thu chi và lợi nhuận tiệm thế nào em?')}
                   className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
                 >
-                  ☕ Cà phê 35k
+                  📊 Tình hình tiệm
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInput('Bán 2 áo thun 300k cho khách lẻ')}
+                  onClick={() => setInput('Phân tích chi phí và tư vấn cách tối ưu cho cửa hàng giúp mình')}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
+                >
+                  💡 Tư vấn chi phí
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInput('Kiểm tra danh sách đơn công nợ chưa thanh toán')}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
+                >
+                  🧾 Đơn nợ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInput('Bán 2 áo thun 300k cho bạn Linh')}
                   className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
                 >
                   🛍️ Bán 2 áo 300k
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInput('Hôm nay thu chi thế nào?')}
+                  onClick={() => setInput('Chi 35k tiền cà phê sáng tiếp khách')}
                   className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
                 >
-                  📊 Hôm nay
+                  ☕ Cà phê 35k
                 </button>
               </div>
 

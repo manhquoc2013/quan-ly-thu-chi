@@ -79,6 +79,7 @@ function customerLabel(row: Revenue, customers: Array<{ id: string; name: string
   if (isWalkInCustomerId(row.customerId)) return 'Khách vãng lai';
   return (
     customers.find((c) => c.id === row.customerId)?.name ||
+    (row as { customerName?: string }).customerName ||
     row.notes?.replace(/^Khách:\s*/i, '') ||
     '—'
   );

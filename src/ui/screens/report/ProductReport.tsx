@@ -1,5 +1,5 @@
 /** ProductReport — top products by revenue (toggle: quantity) */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -23,6 +23,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LIST_ROW_ANIM, listRowStyle } from "@/ui/components/listRowAnim";
 
+import { getAllRevenues } from "@/services/revenueService";
+import { getAllProducts } from "@/services/productService";
+
 type SortMode = "revenue" | "quantity";
 
 const TOP_N = 5;
@@ -33,6 +36,11 @@ export function ProductReport() {
   const products = useProductStore((s) => s.products);
   const { from, to } = useReportStore((s) => s.dateRange);
   const [sortMode, setSortMode] = useState<SortMode>("revenue");
+
+  useEffect(() => {
+    if (revenues.length === 0) void getAllRevenues();
+    if (products.length === 0) void getAllProducts();
+  }, [revenues.length, products.length]);
 
   const filtered = useMemo(
     () =>
@@ -138,13 +146,13 @@ export function ProductReport() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[280px] overflow-hidden">
+          <div className="h-[280px] w-full min-w-0 max-w-full overflow-hidden">
             {chartData.length === 0 ? (
               <div className="flex items-center justify-center h-full text-xs text-text-muted">
                 Chưa có dữ liệu trong khoảng này
               </div>
             ) : (
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} barCategoryGap="30%">
                   <CartesianGrid
                     strokeDasharray="3 3"

@@ -196,30 +196,41 @@ export function buildFinanceContext(): string {
     .map((p) => `${p.name}${p.sku ? ` (${p.sku})` : ''}`)
     .join(', ');
 
-  return `DỮ LIỆU THỰC TẾ (dùng để phân tích/tra cứu/thao tác):
-Tổng chi: ${formatCurrency(totalExpense)} (${expenses.length} khoản)
-Tổng thu (đã thanh toán): ${formatCurrency(totalRevenue)}
-Công nợ (chưa thanh toán): ${formatCurrency(unpaid)} (${unpaidN} đơn)
-Lợi nhuận: ${formatCurrency(totalRevenue - totalExpense)}
-Đơn đang xử lý: ${pendingOrders.length}${pendingOrders
+  const netProfit = totalRevenue - totalExpense;
+  const netMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+
+  return `DỮ LIỆU THỰC TẾ CỬA HÀNG (dùng để phân tích/tra cứu/tư vấn):
+- Tổng thu (đã thực thu): ${formatCurrency(totalRevenue)}
+- Tổng chi phí: ${formatCurrency(totalExpense)} (${expenses.length} khoản)
+- Lợi nhuận ròng: ${formatCurrency(netProfit)} (Biên LN: ${netMargin}%, ${netProfit >= 0 ? 'Dương/Có lãi' : 'Âm/Đang thâm hụt'})
+- Công nợ phải thu: ${formatCurrency(unpaid)} (${unpaidN} đơn hàng chưa trả hết)
+- Đơn đang xử lý: ${pendingOrders.length} đơn${pendingOrders
     .slice(0, 5)
     .map((r) => `\n  - ${r.orderCode} (${r.orderStatus})`)
     .join('')}
-Khách hàng: ${customerNames || '(chưa có)'}
-Sản phẩm: ${productNames || '(chưa có)'}
-Chi theo danh mục:
+Khách hàng tiêu biểu: ${customerNames || '(chưa có)'}
+Sản phẩm nổi bật: ${productNames || '(chưa có)'}
+Cơ cấu chi phí theo danh mục:
 ${categorySummary || '  (chưa có)'}
-Chi gần đây:
+Khoản chi gần nhất:
 ${recentExp || '  (trống)'}
-Đơn gần đây:
+Đơn hàng gần nhất:
 ${recentRev || '  (trống)'}`;
 }
 
 export function shouldAttachFinanceContext(message: string): boolean {
-  // Do NOT attach for create — store entities bleed into small local models
-  // (hallucinated customer/platform). Create only needs the user message.
-  return /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu|tổng quan|công nợ|phân tích|báo cáo|thống kê|dự báo|so sánh|xu hướng|tổng hợp|lợi nhuận|tổng chi|tổng thu)\b/i.test(
-    message,
+  const trimmed = message.trim();
+  const lower = trimmed.toLowerCase();
+
+  // Do NOT attach for short pure create commands — prevent small local models
+  // from hallucinating store entities into simple transactions.
+  const isPureCreate =
+    /^(bán|thu|chi|nhập|uống|mua|thêm (sp|khách|kênh|sản phẩm))\b/i.test(lower) &&
+    !/(tình hình|thế nào|sao rồi|hôm nay|tháng này|tổng quan|báo cáo|tư vấn|lời khuyên|phân tích|đánh giá|dòng tiền|lợi nhuận|công nợ|ổn không)/i.test(lower);
+  if (isPureCreate) return false;
+
+  return /\b(sửa|xóa|xoá|đổi|cập nhật|tra|tìm|liệt kê|cho biết|bao nhiêu|tổng quan|công nợ|nợ|phân tích|báo cáo|thống kê|dự báo|so sánh|xu hướng|tổng hợp|lợi nhuận|lãi|lỗ|tổng chi|tổng thu|doanh thu|chi phí|dòng tiền|tình hình|thế nào|sao rồi|hôm nay|tháng này|dạo này|kinh doanh|buôn bán|bán chạy|tồn kho|kho hàng|khách hàng|tư vấn|lời khuyên|giúp|hướng dẫn|làm sao|chiến lược|đánh giá|quá tay|sổ sách)\b/i.test(
+    lower,
   );
 }
 

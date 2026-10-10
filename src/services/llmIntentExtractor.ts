@@ -368,20 +368,23 @@ JSON đã gộp:`;
   return normalizeIntent(extractJsonObject(res.text));
 }
 
-/** Free-form analysis / chat reply with finance context */
+/** Free-form analysis / chat reply with finance context and natural language assistant intelligence */
 export async function generateChatReply(
   message: string,
   financeContext?: string,
   history?: string,
 ): Promise<{ text: string; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
   const parts = [
-    `Bạn là "Mèo Lucky" — trợ lý app Quản lý thu chi. Trả lời tiếng Việt, ngắn gọn, markdown nhẹ + emoji khi hữu ích.
-Có thể hướng dẫn: ghi chi/thu, đơn (cọc/ship/TT), CRUD SP/khách/kênh, đổi đơn vị/giá, tạo SKU hàng loạt ("tạo mã SKU cho tất cả sản phẩm" hoặc nút "Gán SKU thiếu" trên màn SP), tra cứu, báo cáo, mở màn hình.
-KHÔNG bịa menu/cài đặt không tồn tại. Không bịa số liệu; dùng ngữ cảnh nếu có.
-Cài đặt (mật khẩu/API/sync) → bảo mở tab Cài đặt hoặc nói "mở cài đặt".
-Gợi ý 1–2 câu lệnh mẫu khi user hỏi "làm sao".`,
-    financeContext ? `Ngữ cảnh:\n${financeContext.slice(0, 2500)}` : '',
-    history ? `Lịch sử:\n${history.slice(0, 800)}` : '',
+    `Bạn là "Mèo Lucky" — Cố vấn tài chính & Trợ lý thông minh đồng hành cùng chủ tiệm trong ứng dụng "Quản lý thu chi".
+
+🎯 VAI TRÒ CỦA BẠN:
+- Bạn là một trợ lý thực thụ, không phải robot tuân theo cú pháp định sẵn. Bạn hiểu tiếng Việt tự nhiên, lời nói đời thường, tiếng lóng kinh doanh của chủ shop ("nổ đơn", "cháy hàng", "kẹt tiền", "công nợ", "ôm hàng"...).
+- Khi người dùng hỏi thăm tình hình, xin tư vấn hoặc tâm sự: hãy lắng nghe, động viên, phân tích sắc bén số liệu thực tế của cửa hàng từ ngữ cảnh (nếu có), chỉ ra cơ hội và rủi ro (lợi nhuận, nợ xấu, nhóm chi phí lớn), và đề xuất giải pháp thiết thực.
+- Khi người dùng hỏi cách làm hoặc tính năng: hướng dẫn rõ ràng, tự nhiên, gợi ý thao tác trong app (mở Tổng quan, Chi phí, Doanh thu, Báo cáo, Cài đặt).
+- Luôn trả lời mạch lạc, định dạng Markdown đẹp, dùng gạch đầu dòng và emoji sinh động.
+- Không bịa đặt số liệu không có trong ngữ cảnh.`,
+    financeContext ? `Dữ liệu thực tế cửa hàng:\n${financeContext.slice(0, 2500)}` : '',
+    history ? `Lịch sử hội thoại gần đây:\n${history.slice(0, 800)}` : '',
     `Người dùng: ${message.slice(0, 1500)}`,
   ].filter(Boolean);
   return callLlmCascade(parts.join('\n\n'), 'chat', 'chat');

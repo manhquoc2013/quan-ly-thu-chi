@@ -44,14 +44,45 @@ function assertAddress(address: string | undefined): void {
   }
 }
 
+import { isCloudSyncActive, getActiveHouseholdId } from './cloudSync';
+import { getSupabase, isSupabaseConfigured } from './supabaseClient';
+import { mapCustomer, type CustomerRow } from './supabaseMappers';
+
 export async function getAllCustomers(): Promise<Customer[]> {
   const records = await cacheGet<Customer[]>(CACHE_KEY);
   const store = useCustomerStore.getState();
-  if (records) {
+  if (records && records.length > 0) {
     store.setCustomers(records);
   } else {
     store.setCustomers([]);
   }
+
+  // If cloud sync is active, ensure we fetch the latest customer directory from Supabase
+  // especially when local cache is empty (e.g. newly opened browser like Chrome) or stale
+  if (isCloudSyncActive()) {
+    const hid = getActiveHouseholdId();
+    if (hid && isSupabaseConfigured() && (typeof navigator === 'undefined' || navigator.onLine)) {
+      try {
+        const sb = getSupabase();
+        const { data, error } = await sb
+          .from('customers')
+          .select('*')
+          .eq('household_id', hid)
+          .order('name', { ascending: true });
+        if (!error && data) {
+          const cloudList = (data as CustomerRow[]).map(mapCustomer);
+          if (!records || records.length === 0 || cloudList.length > 0) {
+            await cacheSet(CACHE_KEY, cloudList);
+            store.setCustomers(cloudList);
+            return cloudList;
+          }
+        }
+      } catch (err) {
+        console.warn('[customerService] sync customers from cloud failed:', err);
+      }
+    }
+  }
+
   return records ?? [];
 }
 

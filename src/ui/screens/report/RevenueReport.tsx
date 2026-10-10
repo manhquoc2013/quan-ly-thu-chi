@@ -104,13 +104,13 @@ export function RevenueReport() {
             <CardTitle>Theo tháng thu tiền</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] overflow-hidden">
+            <div className="h-[280px] w-full min-w-0 max-w-full overflow-hidden">
               {byMonth.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-xs text-text-muted">
                   Chưa có dữ liệu trong khoảng này
                 </div>
               ) : (
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byMonth} barCategoryGap="30%">
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -145,13 +145,13 @@ export function RevenueReport() {
             <CardTitle>Cọc vs thanh toán</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] overflow-hidden">
+            <div className="h-[280px] w-full min-w-0 max-w-full overflow-hidden">
               {byKind.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-xs text-text-muted">
                   Chưa có dữ liệu trong khoảng này
                 </div>
               ) : (
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={byKind}

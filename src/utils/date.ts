@@ -43,9 +43,11 @@ export function getPreviousMonthRange(): { start: string; end: string } {
 
 /** Inclusive ISO date-only range check. Empty from/to = open bound. */
 export function isDateInRange(date: string | undefined, from: string, to: string): boolean {
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  if (from && date < from) return false;
-  if (to && date > to) return false;
+  if (!date) return false;
+  const d = date.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  if (from && d < from) return false;
+  if (to && d > to) return false;
   return true;
 }
 

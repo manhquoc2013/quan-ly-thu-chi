@@ -97,13 +97,13 @@ export function PlatformReport() {
             <CardTitle>Doanh thu theo kênh</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[320px] overflow-hidden">
+            <div className="h-[320px] w-full min-w-0 max-w-full overflow-hidden">
               {pieData.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-xs text-text-muted">
                   Chưa có dữ liệu trong khoảng này
                 </div>
               ) : (
-                <ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={pieData}

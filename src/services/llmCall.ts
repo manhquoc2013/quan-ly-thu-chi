@@ -85,7 +85,7 @@ async function tryProvider(
       try {
         const text = await webLLM.generate(prompt, {
           mode: localMode,
-          maxTokens: localMode === 'raw' ? 256 : 512,
+          maxTokens: localMode === 'raw' ? 256 : 768,
         });
         if (
           text &&

@@ -211,6 +211,10 @@ function tryParseVnAction(jsonStr: string): { cleanText: string; action?: ChatAc
 
     // XEM_BAO_CAO → lookup (no immediate action, handled by intent extractor)
     // TAN_GAU → chat (no action)
+    if (a.action === 'TAN_GAU' || a.action === 'XEM_BAO_CAO') {
+      const replyText = (a.mascot_say || a.message || a.reply || a.text || '').trim();
+      return { cleanText: replyText, action: undefined };
+    }
     return { cleanText: '', action: undefined };
   } catch {
     return null;
@@ -817,7 +821,12 @@ export const aiRouter = {
       ) {
         const out = await runIntentTool(intent);
         const lower = trimmed.toLowerCase();
-        if (intent.intent === 'lookup' && /phân tích|so sánh|xu hướng|bất thường/.test(lower)) {
+        if (
+          intent.intent === 'lookup' &&
+          /phân tích|so sánh|xu hướng|bất thường|thế nào|sao rồi|ổn không|tư vấn|lời khuyên|gợi ý|nên|làm sao|chiến lược|đánh giá|nhận xét|quá tay|giúp/i.test(
+            lower,
+          )
+        ) {
           const aiExtra = await generateChatReply(trimmed, financeCtx, history);
           if (aiExtra?.text) {
             const text = `${out.text}\n\n${aiExtra.text}`;
@@ -844,8 +853,9 @@ export const aiRouter = {
         addToHistory(trimmed, text);
         return { text, source: ai.source };
       }
-      addToHistory(trimmed, cleanText);
-      return { text: cleanText, source: ai.source };
+      const replyText = cleanText.trim() || ai.text.trim();
+      addToHistory(trimmed, replyText);
+      return { text: replyText, source: ai.source };
     }
 
     if (!webLLM.isDisabled && !webLLM.isLoaded && !webLLM.isLoading) {
