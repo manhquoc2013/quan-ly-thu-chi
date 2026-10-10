@@ -30,6 +30,7 @@ const NAV_ITEMS: Result[] = [
   { id: 'nav-customers', type: 'nav', title: 'Khách hàng', subtitle: 'Danh sách khách', route: '/customers' },
   { id: 'nav-products', type: 'nav', title: 'Sản phẩm', subtitle: 'Danh mục sản phẩm', route: '/products' },
   { id: 'nav-report', type: 'nav', title: 'Báo cáo', subtitle: 'Thống kê', route: '/report' },
+  { id: 'nav-standardize', type: 'nav', title: '✨ Chuẩn hoá dữ liệu (AI)', subtitle: 'Sửa lỗi chính tả, SĐT, danh mục, đơn vị', route: 'action:standardize' },
   { id: 'nav-settings', type: 'nav', title: 'Cài đặt', subtitle: 'Cấu hình', route: '/settings' },
 ];
 
@@ -103,6 +104,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const handleSelect = useCallback((item: Result) => {
     onClose();
+    if (item.route === 'action:standardize') {
+      useUIStore.getState().openStandardization('all');
+      return;
+    }
     const realId = item.id.includes('-') ? item.id.slice(item.id.indexOf('-') + 1) : item.id;
     if (item.type === 'nav' && item.route) { navigate(item.route); return; }
     if (item.type === 'revenue') { navigate('/revenue'); setTimeout(() => requestRecordDetail('revenue', realId), 80); return; }

@@ -31,6 +31,7 @@ export type ChatIntentKind =
   | 'update_order_status'
   | 'lookup'
   | 'navigate'
+  | 'standardize_data'
   | 'chat';
 
 export interface ChatIntent {

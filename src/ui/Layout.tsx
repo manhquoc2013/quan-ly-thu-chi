@@ -9,7 +9,7 @@ import {
   Bot, Users, Package, Store,
   Sun, Moon, Monitor, Bell, Search, LogOut,
   ChevronLeft, ChevronRight, RefreshCw, X, Menu,
-  FileUp, Radio, AlertTriangle, CheckCheck,
+  FileUp, Radio, AlertTriangle, CheckCheck, Sparkles,
 } from 'lucide-react';
 import { useUIStore } from '@store/uiStore';
 import { useAuthStore, useNotificationStore, useUnreadCount, useMotionStore } from '@/store';
@@ -18,6 +18,7 @@ import { formatRelativeTime } from '@/utils/date';
 import { ChatPanel } from '@screens/ai/ChatPanel';
 import { MascotOverlay } from '@/ui/components/MascotOverlay';
 import { CommandPalette } from '@/ui/components/CommandPalette';
+import { DataStandardizationDialog } from '@/ui/components/DataStandardizationDialog';
 import { useWebLLMLoad } from '@/ui/components/WebLLMLoader';
 import { bootstrapAppData } from '@/services/bootstrap';
 import { pendingCount } from '@/services/syncOutbox';
@@ -49,6 +50,7 @@ export function Layout() {
   const fabOpen = useUIStore((s) => s.fabOpen);
   const toggleFab = useUIStore((s) => s.toggleFab);
   const setFabOpen = useUIStore((s) => s.setFabOpen);
+  const openStandardization = useUIStore((s) => s.openStandardization);
   const userId = useAuthStore((s) => s.userId);
   const userProfile = useAuthStore((s) => s.userProfile);
   const enableWebLLM = useAuthStore((s) => s.enableWebLLM);
@@ -345,6 +347,17 @@ export function Layout() {
               {mode === 'system' ? <Monitor size={18} /> : isDark ? <Moon size={18} /> : <Sun size={18} />}
             </button>
 
+            {/* Quick Data Standardization button */}
+            <button
+              type="button"
+              onClick={() => openStandardization('all')}
+              className="size-9 flex items-center justify-center rounded-lg hover:bg-surface-hover text-text-muted hover:text-accent-fg transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+              title="Chuẩn hoá dữ liệu nhập liệu (AI)"
+              aria-label="Chuẩn hoá dữ liệu với AI"
+            >
+              <Sparkles size={18} />
+            </button>
+
             {/* Notification Bell */}
             <div className="relative shrink-0">
               <button
@@ -615,6 +628,7 @@ export function Layout() {
       )}
 
       <CommandPalette open={showSearch} onClose={() => setShowSearch(false)} />
+      <DataStandardizationDialog />
     </div>
   );
 }

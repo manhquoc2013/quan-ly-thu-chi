@@ -61,6 +61,7 @@ import { useRevenueStore } from '@/store/revenueStore';
 import { useCustomerStore } from '@/store';
 import { useProductStore } from '@/store/productStore';
 import { usePlatformStore } from '@/store/platformStore';
+import { useUIStore } from '@/store/uiStore';
 
 export interface ToolResult {
   ok: boolean;
@@ -283,6 +284,14 @@ export async function executeChatIntent(
     return executeSkuBatch(intent);
   }
   switch (intent.intent) {
+    case 'standardize_data': {
+      useUIStore.getState().openStandardization();
+      return {
+        ok: true,
+        message: '🐱 Mình đã mở công cụ **Chuẩn hoá dữ liệu với AI**! Bạn có thể xem bảng so sánh Dữ liệu cũ ➔ Dữ liệu mới được AI đề xuất và duyệt áp dụng nhé.',
+      };
+    }
+
     case 'create_expense': {
       const draft = intentToDraft(intent, 'text');
       if (!draft) {

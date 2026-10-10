@@ -23,7 +23,7 @@ Paste nhiều dòng có header (chi/thu/SP) → app có bulk parser; nếu chỉ
 
 Schema:
 {
-  "intent": "create_expense"|"create_revenue"|"create_product"|"create_customer"|"create_platform"|"update_expense"|"update_revenue"|"update_product"|"update_customer"|"update_platform"|"delete_expense"|"delete_revenue"|"delete_product"|"delete_customer"|"delete_platform"|"update_order_status"|"lookup"|"navigate"|"chat",
+  "intent": "create_expense"|"create_revenue"|"create_product"|"create_customer"|"create_platform"|"update_expense"|"update_revenue"|"update_product"|"update_customer"|"update_platform"|"delete_expense"|"delete_revenue"|"delete_product"|"delete_customer"|"delete_platform"|"update_order_status"|"lookup"|"navigate"|"standardize_data"|"chat",
   "amount": number|null,
   "unitPrice": number|null,
   "quantity": number|null,
@@ -225,6 +225,14 @@ export async function extractChatIntent(
   message: string,
   financeContext?: string,
 ): Promise<{ intent: ChatIntent; source: 'cloud' | 'local' | 'kilo' | 'groq' | 'gemini' | 'openrouter' | 'siliconflow' } | null> {
+  // Fast path for data standardization
+  if (/\b(chuẩn\s*hoá|chuan\s*hoa|chuẩn\s*hóa|làm\s*sạch\s*dữ\s*liệu|standardize)\b/i.test(message)) {
+    return {
+      intent: emptyIntent('standardize_data'),
+      source: 'local',
+    };
+  }
+
   const useCloud = canUseCloudLlm();
   const ctxLimit = useCloud ? 3500 : 400;
   const ctx = financeContext

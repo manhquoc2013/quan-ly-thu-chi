@@ -58,6 +58,7 @@ export function AIChatScreen() {
     { label: '📊 Tình hình tiệm hôm nay', text: 'Hôm nay tình hình thu chi và lợi nhuận tiệm thế nào em?' },
     { label: '💡 Tư vấn tối ưu chi phí', text: 'Phân tích chi phí và tư vấn cách tối ưu cho cửa hàng giúp mình' },
     { label: '🧾 Kiểm tra đơn công nợ', text: 'Kiểm tra danh sách đơn công nợ chưa thanh toán' },
+    { label: '✨ Chuẩn hoá dữ liệu', text: 'Chuẩn hoá dữ liệu hệ thống giúp mình' },
     { label: '🛍️ Bán 2 áo 300k cho Linh', text: 'Bán 2 áo thun 300k cho bạn Linh' },
     { label: '☕ Chi 35k tiền cà phê', text: 'Chi 35k tiền cà phê sáng tiếp khách' },
     { label: '📎 Đính kèm hóa đơn', isUpload: true },

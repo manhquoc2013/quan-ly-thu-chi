@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
+import { useUIStore } from '@/store/uiStore';
 import { useMascotStore, type MascotActivity, type VoiceTone, VOICE_TONES } from '@/store/mascotStore';
 import { speechService } from '@/services/speechService';
 import { geminiService } from '@/services/geminiService';
@@ -397,6 +398,37 @@ export function SettingsScreen() {
           <section aria-label="Local AI settings">
             <Card><CardHeader><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><Bot className="h-4 w-4 text-accent-fg shrink-0" /><CardTitle>AI Cục Bộ (WebLLM)</CardTitle></div><div className="flex items-center gap-2 shrink-0">{enableWebLLM ? <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1"><CheckCircle size={12} />Đang bật</Badge> : <Badge variant="outline" className="gap-1"><XCircle size={12} />Tắt</Badge>}<ToggleSwitch aria-label="Bật AI cục bộ" checked={enableWebLLM} onCheckedChange={(on) => { setEnableWebLLM(on); queueUserSettingsSync(); }} /></div></div></CardHeader>
               <CardContent><p className="text-xs text-text-muted">Chạy model AI Qwen3-4B trực tiếp trên máy qua WebGPU. Có thể gây giật lag trên máy yếu.</p><p className="text-[11px] text-text-muted mt-1">⏱ Rate limit: Không giới hạn (local)</p></CardContent>
+            </Card>
+          </section>
+
+          <section aria-label="Data standardization settings">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-accent-fg" />
+                    <CardTitle>Chuẩn hoá dữ liệu nhập liệu (AI)</CardTitle>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs gap-1.5 border-accent-fg/40 text-accent-fg hover:bg-accent-bg"
+                    onClick={() => useUIStore.getState().openStandardization('all')}
+                  >
+                    <Sparkles size={13} />
+                    Mở công cụ chuẩn hoá
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-text-muted">
+                  Tự động rà soát toàn bộ sổ chi phí, danh mục khách hàng, sản phẩm và đơn hàng. Phát hiện các lỗi sai chính tả, thiếu dấu tiếng Việt, số điện thoại sai định dạng, danh mục chưa phù hợp và đồng bộ đơn vị tính bằng LLM hoặc AI Cục bộ.
+                </p>
+                <div className="mt-2.5 flex items-center gap-2 text-xs text-text-secondary">
+                  <Badge variant="secondary" className="text-[10px]">An toàn</Badge>
+                  <span>Xem bảng so sánh Dữ liệu cũ ➔ Dữ liệu mới trước khi duyệt áp dụng.</span>
+                </div>
+              </CardContent>
             </Card>
           </section>
         </>)}

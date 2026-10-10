@@ -24,6 +24,7 @@ export interface DialogConfig {
 }
 
 export type RecordDetailKind = 'expense' | 'revenue' | 'customer' | 'product';
+export type StandardizationTargetKind = 'all' | 'expense' | 'customer' | 'product' | 'revenue';
 
 interface UIState {
   sidebarOpen: boolean;
@@ -32,6 +33,8 @@ interface UIState {
   fabOpen: boolean;
   globalDialog: DialogConfig | null;
   recordDetailRequest: { kind: RecordDetailKind; id: string } | null;
+  standardizationOpen: boolean;
+  standardizationTargetKind: StandardizationTargetKind;
 }
 
 export interface UIActions {
@@ -45,6 +48,8 @@ export interface UIActions {
   closeDialog: () => void;
   requestRecordDetail: (kind: RecordDetailKind, id: string) => void;
   clearRecordDetailRequest: () => void;
+  openStandardization: (targetKind?: StandardizationTargetKind) => void;
+  closeStandardization: () => void;
 }
 
 function generateId(): string {
@@ -61,6 +66,8 @@ export const useUIStore = create<UIStore>()(
     fabOpen: false,
     globalDialog: null,
     recordDetailRequest: null,
+    standardizationOpen: false,
+    standardizationTargetKind: 'all',
 
     toggleSidebar: () =>
       set((state) => {
@@ -116,6 +123,17 @@ export const useUIStore = create<UIStore>()(
     clearRecordDetailRequest: () =>
       set((state) => {
         state.recordDetailRequest = null;
+      }),
+
+    openStandardization: (targetKind = 'all') =>
+      set((state) => {
+        state.standardizationOpen = true;
+        state.standardizationTargetKind = targetKind;
+      }),
+
+    closeStandardization: () =>
+      set((state) => {
+        state.standardizationOpen = false;
       }),
   })),
 );
