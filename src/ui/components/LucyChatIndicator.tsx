@@ -7,7 +7,7 @@ interface LucyChatThinkingProps {
 }
 
 const THINKING_PHRASES = [
-  'Lucy đang suy nghĩ...',
+  'Nấm đang suy nghĩ...',
   'Đang phân tích số liệu tài chính...',
   'Đang kiểm tra dữ liệu tiệm...',
   'Đang tổng hợp câu trả lời cho bạn...',
@@ -191,7 +191,7 @@ export function LucyChatThinking({ customText, subText }: LucyChatThinkingProps)
           {/* Header row: Lucy label & status */}
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-xs font-semibold text-text-primary flex items-center gap-1">
-              <span>Lucy AI</span>
+              <span>Nấm AI</span>
               <Sparkles size={11} className="text-amber-500 animate-spin" style={{ animationDuration: '4s' }} />
             </span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
@@ -246,7 +246,7 @@ export function LucyAvatarMini({ size = 22 }: { size?: number }) {
     <div
       className="rounded-full bg-amber-500/15 border border-amber-500/35 flex items-center justify-center shrink-0 overflow-hidden shadow-xs group"
       style={{ width: size, height: size }}
-      title="Lucy AI Assistant"
+      title="Nấm AI Assistant"
     >
       <span className="text-xs leading-none select-none group-hover:scale-110 transition-transform">🐱</span>
     </div>

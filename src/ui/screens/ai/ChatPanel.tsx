@@ -33,7 +33,7 @@ interface ChatMessage {
 }
 
 const WELCOME =
-  '🐱 Xin chào! Mình là Mèo Lucy — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi, kiểm tra công nợ, phân tích dòng tiền hoặc xin lời khuyên kinh doanh bất cứ lúc nào!';
+  '🐱 Xin chào! Mình là Mèo Nấm — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi, kiểm tra công nợ, phân tích dòng tiền hoặc xin lời khuyên kinh doanh bất cứ lúc nào!';
 
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { fabOpen, requestRecordDetail } = useUIStore();
@@ -287,7 +287,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               <Plus size={14} />
             </button>
             <span className="text-sm">🤖</span>
-            <h3 className="text-sm font-semibold text-text-primary">🐱 Mèo Lucy</h3>
+            <h3 className="text-sm font-semibold text-text-primary">🐱 Mèo Nấm</h3>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -401,7 +401,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                   {msg.role !== 'user' && (
                     <div className="flex items-center gap-1.5 mr-auto pl-1">
                       <LucyAvatarMini size={16} />
-                      <span className="text-[10px] font-semibold text-text-secondary">Lucy AI</span>
+                      <span className="text-[10px] font-semibold text-text-secondary">Nấm AI</span>
                       {msg.source && (
                         <span className="text-[9px] text-text-muted">· {llmSourceLabel(msg.source)}</span>
                       )}

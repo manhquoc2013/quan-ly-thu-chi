@@ -270,7 +270,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
                   {formatTime(focusSecondsLeft)}
                 </div>
                 <div className="text-[11px] text-text-muted leading-tight">
-                  Lucy đang canh chừng giúp bạn.<br />Giữ vững kỷ luật nhé!
+                  Nấm đang canh chừng giúp bạn.<br />Giữ vững kỷ luật nhé!
                 </div>
               </div>
               <button
@@ -324,11 +324,11 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={handleReadFinancialBrief}
               disabled={loadingFinance || !financialData}
-              title="Lucy đọc to tóm tắt tài chính hôm nay"
+              title="Nấm đọc to tóm tắt tài chính hôm nay"
               className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-medium disabled:opacity-50"
             >
               <Volume2 size={12} />
-              Nghe Lucy đọc
+              Nghe Nấm đọc
             </button>
           </div>
 
@@ -374,7 +374,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 text-text-secondary">
               <Volume2 size={14} className={voiceEnabled ? 'text-amber-500' : 'text-text-muted'} />
-              Giọng đọc tiếng Việt (Lucy nói chuyện)
+              Giọng đọc tiếng Việt (Nấm nói chuyện)
             </span>
             <button
               type="button"
@@ -511,7 +511,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
           className="w-full py-2 px-3 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 text-amber-700 dark:text-amber-300 font-medium text-xs transition-colors flex items-center justify-center gap-2"
         >
           <MessageSquare size={13} />
-          Mở khung trò chuyện chi tiết với Lucy
+          Mở khung trò chuyện chi tiết với Nấm
         </button>
       </div>
     </div>

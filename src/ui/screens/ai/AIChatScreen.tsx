@@ -39,7 +39,7 @@ export function AIChatScreen() {
     {
       id: 'welcome',
       role: 'ai',
-      text: '🐱 Xin chào! Mình là Mèo Lucy — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi/đơn hàng, xem báo cáo, phân tích dòng tiền, kiểm tra công nợ hoặc hỏi tư vấn kinh doanh bất cứ lúc nào!',
+      text: '🐱 Xin chào! Mình là Mèo Nấm — Trợ lý quản lý tài chính & vận hành cửa hàng của bạn. Bạn có thể trò chuyện tự nhiên với mình: ghi nhanh thu chi/đơn hàng, xem báo cáo, phân tích dòng tiền, kiểm tra công nợ hoặc hỏi tư vấn kinh doanh bất cứ lúc nào!',
       timestamp: new Date(),
     },
   ]);
@@ -277,7 +277,7 @@ export function AIChatScreen() {
             {msg.role !== 'user' && (
               <div className="flex items-center gap-1.5 mr-auto pl-1">
                 <LucyAvatarMini size={18} />
-                <span className="text-[11px] font-semibold text-text-secondary">Lucy AI</span>
+                <span className="text-[11px] font-semibold text-text-secondary">Nấm AI</span>
                 {msg.source && (
                   <span className="text-[10px] text-text-muted">· {llmSourceLabel(msg.source)}</span>
                 )}

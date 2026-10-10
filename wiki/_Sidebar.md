@@ -10,12 +10,12 @@
 - [Báo cáo](Báo-cáo)
 - [Trợ lý AI](Trợ-lý-AI)
 - [Chuẩn hoá Dữ liệu](Chuẩn-hoá-Dữ-liệu)
-- [Trợ lý Mèo Lucy](Mèo-Lucy)
+- [Trợ lý Mèo Nấm](Mèo-Nấm)
 
 ## ⚙️ Cấu hình
 - [Cài đặt](Cài-đặt)
 - [AI Provider](Kết-nối-AI-Provider)
-- [Trợ lý Mèo Lucy](Mèo-Lucy)
+- [Trợ lý Mèo Nấm](Mèo-Nấm)
 
 ## 🆘 Hỗ trợ
 - [FAQ](FAQ)

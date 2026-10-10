@@ -53,7 +53,7 @@ export const mascotAnnouncer = {
     const lines = [
       `Chủ tiệm ơi! Có đơn hàng mới ${code}, trị giá ${amountStr} nè! Chúc quán đắt khách nha!`,
       `Ting ting! Đơn hàng mới ${code} vừa tới nè, giá trị ${amountStr}. Mau chuẩn bị hàng thôi!`,
-      `Lucy báo cáo: Đơn hàng mới ${code} trị giá ${amountStr} đã được tạo thành công! May mắn ngập tràn nhé!`,
+      `Nấm báo cáo: Đơn hàng mới ${code} trị giá ${amountStr} đã được tạo thành công! May mắn ngập tràn nhé!`,
     ];
     const line = lines[Math.floor(Math.random() * lines.length)]!;
     store.speak(line, 'celebrate', { forceVoice: true });

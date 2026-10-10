@@ -26,13 +26,13 @@ Bảng quản lý trực quan bao gồm các cột thông tin:
 4. Điều chỉnh giảm giá và phí vận chuyển (chọn người chịu ship: Khách hoặc Shop).
 5. Bấm **Lưu đơn hàng**.
 
-> **🎙️ Lucy thông báo**: Khi tạo đơn hàng thành công, Mèo Lucy sẽ tự động cất giọng chúc mừng bằng tiếng Việt và đọc to giá trị đơn hàng (nếu đang bật tuỳ chọn thông báo đơn hàng).
+> **🎙️ Nấm thông báo**: Khi tạo đơn hàng thành công, Mèo Nấm sẽ tự động cất giọng chúc mừng bằng tiếng Việt và đọc to giá trị đơn hàng (nếu đang bật tuỳ chọn thông báo đơn hàng).
 
 ---
 
 ## 3. Hoàn thành đơn hàng
 - Khi đơn hàng được chuyển sang trạng thái **"Hoàn thành"**, hệ thống tự động ghi nhận doanh thu thực tế.
-- Mèo Lucy sẽ tự động reo vui ăn mừng, phát âm thanh chúc mừng bằng tiếng Việt.
+- Mèo Nấm sẽ tự động reo vui ăn mừng, phát âm thanh chúc mừng bằng tiếng Việt.
 
 ---
 
@@ -42,4 +42,4 @@ Bảng quản lý trực quan bao gồm các cột thông tin:
 
 ---
 
-→ [Trang chủ Wiki](Home) · [Trợ lý Linh vật Lucy](Mèo-Lucy)
+→ [Trang chủ Wiki](Home) · [Trợ lý Linh vật Nấm](Mèo-Nấm)

@@ -436,14 +436,14 @@ export function SettingsScreen() {
         {/* ═══ TAB: Mascot ═══ */}
         {tab === 'mascot' && (
           <section aria-label="Mascot settings">
-            <Card><CardHeader><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Lucy — Trợ lý tài chính & Đồng hành</CardTitle></div><Button size="sm" onClick={() => setMenuOpen(true)} className="text-xs">Mở Bảng điều khiển Lucy</Button></div></CardHeader>
+            <Card><CardHeader><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Nấm — Trợ lý tài chính & Đồng hành</CardTitle></div><Button size="sm" onClick={() => setMenuOpen(true)} className="text-xs">Mở Bảng điều khiển Mèo Nấm</Button></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-md)]">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-semibold text-text-primary">Mức độ hoạt động của Lucy</span>
-                    <span className="text-[11px] text-accent-fg font-medium">Lucy luôn tuân theo đúng cấu hình này</span>
+                    <span className="text-xs font-semibold text-text-primary">Mức độ hoạt động của Nấm</span>
+                    <span className="text-[11px] text-accent-fg font-medium">Nấm luôn tuân theo đúng cấu hình này</span>
                   </div>
-                  <p className="text-xs text-text-muted mb-2.5">Cấu hình tần suất di chuyển và hoạt động của Lucy quanh màn hình:</p>
+                  <p className="text-xs text-text-muted mb-2.5">Cấu hình tần suất di chuyển và hoạt động của Nấm quanh màn hình:</p>
                   <div className="grid grid-cols-3 gap-2">
                     {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => {
                       const active = activity === level;
@@ -471,7 +471,7 @@ export function SettingsScreen() {
                   <div className="space-y-2.5 p-3 rounded-xl bg-surface/50 border border-border">
                     <div className="flex items-center justify-between text-xs">
                       <div>
-                        <div className="font-semibold text-text-primary">Giọng đọc tiếng Việt (Lucy nói chuyện)</div>
+                        <div className="font-semibold text-text-primary">Giọng đọc tiếng Việt (Nấm nói chuyện)</div>
                         <div className="text-[11px] text-text-muted">Phát âm tiếng Việt tự nhiên và khẩu hình nhép môi</div>
                       </div>
                       <ToggleSwitch aria-label="Bật giọng đọc tiếng Việt" checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
@@ -481,7 +481,7 @@ export function SettingsScreen() {
                       <div className="pt-2.5 border-t border-border/60 space-y-3 animate-fade-in">
                         {/* Voice Tone Presets */}
                         <div>
-                          <Label className="text-[11px] text-text-secondary font-medium block mb-1.5">Tông giọng Lucy:</Label>
+                          <Label className="text-[11px] text-text-secondary font-medium block mb-1.5">Tông giọng Nấm:</Label>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                             {(Object.keys(VOICE_TONES) as VoiceTone[]).map((tone) => {
                               const item = VOICE_TONES[tone];
@@ -492,7 +492,7 @@ export function SettingsScreen() {
                                   type="button"
                                   onClick={() => {
                                     setVoiceTone(tone);
-                                    speakMascot(`Lucy đang dùng tông giọng ${item.label.split(' ')[0]} nè!`, 'happy', { forceVoice: true });
+                                    speakMascot(`Nấm đang dùng tông giọng ${item.label.split(' ')[0]} nè!`, 'happy', { forceVoice: true });
                                   }}
                                   className={[
                                     'py-2 px-2 rounded-lg border text-left transition-all text-xs flex flex-col gap-0.5',
@@ -528,7 +528,7 @@ export function SettingsScreen() {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 text-xs shrink-0"
-                                onClick={() => speakMascot('Xin chào chủ tiệm! Lucy đã sẵn sàng đồng hành cùng bạn rồi nè! 🐾', 'happy', { forceVoice: true })}
+                                onClick={() => speakMascot('Xin chào chủ tiệm! Nấm đã sẵn sàng đồng hành cùng bạn rồi nè! 🐾', 'happy', { forceVoice: true })}
                               >
                                 🔊 Thử giọng
                               </Button>
@@ -561,7 +561,7 @@ export function SettingsScreen() {
                   <div className="flex items-center justify-between text-xs p-2.5 rounded-lg border border-border/70">
                     <div>
                       <div className="text-text-secondary font-medium">Ghim tại góc bàn (Desk Companion)</div>
-                      <div className="text-[10px] text-text-muted">Lucy sẽ ngồi yên tĩnh ở góc phải dưới để bạn tập trung làm việc</div>
+                      <div className="text-[10px] text-text-muted">Nấm sẽ ngồi yên tĩnh ở góc phải dưới để bạn tập trung làm việc</div>
                     </div>
                     <ToggleSwitch aria-label="Ghim tại góc bàn" checked={isDocked} onCheckedChange={setDocked} />
                   </div>
@@ -571,11 +571,11 @@ export function SettingsScreen() {
 
             <Card className="mt-[var(--s-lg)]"><CardHeader><div className="flex items-center gap-2"><Info className="h-4 w-4 text-accent-fg" /><CardTitle>Tương tác & Tính năng mới</CardTitle></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-sm)] text-xs text-text-muted">
-                <p>🐱 <strong>Mèo Lucy</strong> — Tối ưu hoạt hoạ theo cảm hứng từ Rive, Pixi-Live2D, TalkingHead & Lottie:</p>
+                <p>🐱 <strong>Mèo Nấm</strong> — Tối ưu hoạt hoạ 3D Pixar Chibi, 5 trang phục module và tương tác vật lý sinh động:</p>
                 <div className="space-y-1 mt-2">
-                  <p>🗣️ <strong>Thông báo đơn hàng</strong> — Khi có đơn mới hoặc đơn hoàn thành, Lucy sẽ chúc mừng bằng giọng nói tiếng Việt</p>
-                  <p>🐾 <strong>Tương tác vật lý 5 vùng</strong> — Kéo đuôi giật mình, bẹo má nảy tưng, xoa đầu gừ purr, gãi bụng cười nhột, búng tai</p>
-                  <p>🌀 <strong>Lắc chuột chóng mặt</strong> — Lắc nhanh Lucy qua lại sẽ làm Lucy hoa mắt xoay vòng @_@</p>
+                  <p>🗣️ <strong>Thông báo đơn hàng</strong> — Khi có đơn mới hoặc đơn hoàn thành, Nấm sẽ chúc mừng bằng giọng nói tiếng Việt</p>
+                  <p>🐾 <strong>Tương tác vật lý đa dạng</strong> — Kéo đuôi giật mình, bẹo má nảy tưng, xoa đầu gừ purr, gãi bụng cười nhột, búng tai</p>
+                  <p>🌀 <strong>Lắc chuột chóng mặt</strong> — Lắc nhanh Nấm qua lại sẽ làm Nấm hoa mắt xoay vòng @_@</p>
                   <p>👀 <strong>Theo dõi con trỏ (LookAt)</strong> — Mắt và đầu mèo chuyển động theo chuột của bạn</p>
                   <p>👄 <strong>Nói chuyện & Khẩu hình (Lip-Sync)</strong> — Miệng mèo mở theo nhịp khi phát giọng nói tiếng Việt</p>
                   <p>🎯 <strong>Chế độ Tập Trung (Pomodoro)</strong> — Đếm giờ 25m, nhắc nhở không phân tâm, giữ kỷ luật</p>
@@ -725,18 +725,18 @@ export function SettingsScreen() {
                 <div className="flex items-center justify-between text-xs p-3 rounded-xl border border-border/70 bg-surface-raised/20">
                   <div className="pr-4">
                     <div className="text-text-primary font-medium flex items-center gap-1.5">
-                      <span>🐱 Hoạt hoạ & Cử động Mèo Lucy (Mascot Motion)</span>
+                      <span>🐱 Hoạt hoạ & Cử động Mèo Nấm (Mascot Motion)</span>
                     </div>
                     <div className="text-[11px] text-text-muted mt-0.5">
-                      Cho phép Lucy bước đi tự do, cử động đuôi, mắt nhìn theo chuột (lookAt) và các tương tác vật lý.
+                      Cho phép Nấm bước đi tự do, cử động đuôi, mắt nhìn theo chuột (lookAt) và các tương tác vật lý.
                     </div>
                   </div>
                   <ToggleSwitch
-                    aria-label="Hoạt hoạ Mèo Lucy"
+                    aria-label="Hoạt hoạ Mèo Nấm"
                     checked={mascotAnimations}
                     onCheckedChange={(val) => {
                       setMascotAnimations(val);
-                      toast.success(val ? 'Đã bật hoạt hoạ Mèo Lucy' : 'Đã giảm tối đa cử động Mèo Lucy');
+                      toast.success(val ? 'Đã bật hoạt hoạ Mèo Nấm' : 'Đã giảm tối đa cử động Mèo Nấm');
                     }}
                   />
                 </div>

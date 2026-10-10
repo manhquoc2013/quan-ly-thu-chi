@@ -2206,7 +2206,7 @@ export function MascotOverlay() {
     if (zone === 'tail') {
       setIsTailPulled(true);
       lucyAudio.startled();
-      useMascotStore.getState().speak('Á! Đừng kéo đuôi Lucy mà! >_<', 'warning');
+      useMascotStore.getState().speak('Á! Đừng kéo đuôi Nấm mà! >_<', 'warning');
     } else if (zone === 'ear') {
       lucyAudio.pop();
     } else if (zone === 'head') {
@@ -2215,7 +2215,7 @@ export function MascotOverlay() {
     } else if (zone === 'belly') {
       setIsBellyTickle(true);
       lucyAudio.giggle();
-      useMascotStore.getState().speak('Hihi nhột quá! Lucy chịu hổng nổi đâu nha~ :3', 'happy');
+      useMascotStore.getState().speak('Hihi nhột quá! Nấm chịu hổng nổi đâu nha~ :3', 'happy');
     } else if (zone === 'cheek') {
       setIsCheekPinched(true);
     }
@@ -2287,7 +2287,7 @@ export function MascotOverlay() {
       if (activeZoneRef.current === 'cheek') {
         setIsCheekPinched(false);
         lucyAudio.boing();
-        useMascotStore.getState().speak('Bẹo má Lucy đau nha! Nhưng mà cũng thích... :3', 'happy');
+        useMascotStore.getState().speak('Bẹo má Nấm đau nha! Nhưng mà cũng thích... :3', 'happy');
       }
 
       // Rapid shake dizziness trigger
@@ -2309,7 +2309,7 @@ export function MascotOverlay() {
       applyPos(posRef.current.x, posRef.current.y, true);
       if (dist < 12) {
         if (activeZoneRef.current === 'ear') {
-          useMascotStore.getState().speak('Nhột tai Lucy quá à! :3', 'happy');
+          useMascotStore.getState().speak('Nhột tai Nấm quá à! :3', 'happy');
         } else if (activeZoneRef.current !== 'head' && activeZoneRef.current !== 'belly' && activeZoneRef.current !== 'tail') {
           playTapReaction();
         }
@@ -2413,7 +2413,7 @@ export function MascotOverlay() {
           e.preventDefault();
           setMenuOpen(true);
         }}
-        title="🐱 Kéo để ném · Gõ để chọc · Click đúp đổi hoạt động · Click chuột phải/nút ⚙️ mở Trợ lý Lucy"
+        title="🐱 Kéo để ném · Gõ để chọc · Click đúp đổi hoạt động · Click chuột phải/nút ⚙️ mở Trợ lý Nấm"
       >
         {/* Floating Focus Badge when focusMode is active */}
         {focusMode && (
@@ -2441,7 +2441,7 @@ export function MascotOverlay() {
               setMenuOpen(true);
             }}
             className="hover:scale-110 transition-transform text-amber-500"
-            title="Bảng điều khiển Lucy"
+            title="Bảng điều khiển Mèo Nấm"
           >
             ⚙️
           </button>

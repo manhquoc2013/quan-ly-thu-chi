@@ -24,11 +24,11 @@ Trang chủ khi mở ứng dụng, hiển thị bức tranh toàn cảnh về s�
 
 ---
 
-## 3. Bạn đồng hành Mèo Lucy trên Dashboard
+## 3. Bạn đồng hành Mèo Nấm trên Dashboard
 
-- Mèo Lucy tự động xuất hiện ở góc dưới màn hình làm việc, đồng hành cùng chủ tiệm.
-- Lucy chủ động đưa ra lời khuyên thu chi hôm nay, nhắc nhở kỷ luật tài chính và cung cấp [Chế độ tập trung Pomodoro](Mèo-Lucy).
-- Bấm vào Lucy hoặc nhấp chuột phải để mở [Bảng điều khiển Lucy](Mèo-Lucy).
+- Mèo Nấm tự động xuất hiện ở góc dưới màn hình làm việc, đồng hành cùng chủ tiệm.
+- Nấm chủ động đưa ra lời khuyên thu chi hôm nay, nhắc nhở kỷ luật tài chính và cung cấp [Chế độ tập trung Pomodoro](Mèo-Nấm).
+- Bấm vào Nấm hoặc nhấp chuột phải để mở [Bảng điều khiển Mèo Nấm](Mèo-Nấm).
 
 ---
 

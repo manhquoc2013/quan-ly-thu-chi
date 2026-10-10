@@ -27,26 +27,26 @@ Quản lý toàn diện các mô hình trí tuệ nhân tạo:
 
 ---
 
-## 3. Tab Mascot (Linh vật Lucy)
+## 3. Tab Mascot (Linh vật Nấm)
 
 Cấu hình trợ lý tài chính và bạn đồng hành ảo:
 
-![Cấu hình Linh vật Lucy](images/07-settings-mascot.png)
+![Cấu hình Linh vật Nấm](images/07-settings-mascot.png)
 
 - **Mức độ hoạt động**:
-  * **Ít (thư giãn)**: Lucy yên tĩnh, ít đi lại.
+  * **Ít (thư giãn)**: Nấm yên tĩnh, ít đi lại.
   * **Vừa (mặc định)**: Đi dạo tự nhiên quanh bàn làm việc.
   * **Nhiều (năng động)**: Chạy nhảy hoạt bát, nhiều biểu cảm.
-  * *Lưu ý: Lucy luôn tuân thủ nghiêm ngặt mức độ đã cấu hình, không bị tự ý thay đổi khi tương tác.*
-- **Giọng đọc tiếng Việt (Lucy nói chuyện)**:
+  * *Lưu ý: Nấm luôn tuân thủ nghiêm ngặt mức độ đã cấu hình, không bị tự ý thay đổi khi tương tác.*
+- **Giọng đọc tiếng Việt (Nấm nói chuyện)**:
   * Bật/tắt phát âm tiếng Việt tự nhiên và mấp máy khẩu hình.
   * Lựa chọn 4 âm sắc: **Dễ thương**, **Tự nhiên**, **Điềm đạm**, **Năng động**.
   * Chọn giọng đọc TTS trong hệ thống kèm nút **🔊 Thử giọng**.
 - **Thông báo đơn hàng bằng giọng nói**: Tự động đọc to chúc mừng khi có đơn mới hoặc khi đơn hoàn thành.
-- **Hiệu ứng âm thanh (SFX)**: Bật/tắt âm thanh leng keng, meow, purr. Khi tắt, Lucy tuyệt đối không phát ra âm thanh.
-- **Ghim tại góc bàn (Desk Companion)**: Giữ cố định Lucy ở góc phải dưới màn hình.
+- **Hiệu ứng âm thanh (SFX)**: Bật/tắt âm thanh leng keng, meow, purr. Khi tắt, Nấm tuyệt đối không phát ra âm thanh.
+- **Ghim tại góc bàn (Desk Companion)**: Giữ cố định Nấm ở góc phải dưới màn hình.
 
-Xem chi tiết tại: [Trợ lý Linh vật Mèo Lucy](Mèo-Lucy).
+Xem chi tiết tại: [Trợ lý Linh vật Mèo Nấm](Mèo-Nấm).
 
 ---
 
@@ -64,7 +64,7 @@ Quản lý toàn bộ hiệu ứng chuyển động và hoạt hoạ trong ứng
   * **Vệt sáng con trỏ (Cursor Glow)**: Bật/tắt hiệu ứng quầng sáng theo sau chuột.
   * **Hoạt hoạ Splash & Loading**: Bật/tắt hiệu ứng xoay khi tải ứng dụng.
   * **Chuyển cảnh trang (Page Transitions)**: Hiệu ứng trượt mượt mà giữa các màn hình.
-  * **Hoạt hoạ Linh vật (Mascot Animations)**: Chuyển động đi lại và biểu cảm của Mèo Lucy.
+  * **Hoạt hoạ Linh vật (Mascot Animations)**: Chuyển động đi lại và biểu cảm của Mèo Nấm.
   * **Tăng tốc phần cứng GPU**: Ép buộc render bằng GPU để tối ưu khung hình.
 - **Khung thử nghiệm (Motion Playground)**: Tương tác trực tiếp với các nút Bounce, Spin, Pulse, Slide để kiểm tra tốc độ phản hồi chuyển động thực tế.
 
@@ -72,9 +72,9 @@ Quản lý toàn bộ hiệu ứng chuyển động và hoạt hoạ trong ứng
 
 ## 5. Tab Thông tin
 
-- Phiên bản ứng dụng hiện tại: **v2.2.0**.
+- Phiên bản ứng dụng hiện tại: **v2.3.0**.
 - Công nghệ sử dụng: React 19, Vite 6, Tailwind CSS v4, Zustand 5, IndexedDB, WebLLM, Playwright.
 
 ---
 
-→ [Trang chủ Wiki](Home) · [Trợ lý Linh vật Lucy](Mèo-Lucy) · [Chuẩn hoá Dữ liệu](Chuẩn-hoá-Dữ-liệu)
+→ [Trang chủ Wiki](Home) · [Trợ lý Linh vật Nấm](Mèo-Nấm) · [Chuẩn hoá Dữ liệu](Chuẩn-hoá-Dữ-liệu)

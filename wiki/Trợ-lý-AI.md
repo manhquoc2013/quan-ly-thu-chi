@@ -9,7 +9,7 @@ Trò chuyện trực tiếp với AI để tự động nhập liệu, phân tí
 ## 1. Mở khung trò chuyện AI
 - Bấm biểu tượng **FAB 🤖** ở góc phải dưới mọi màn hình.
 - Hoặc chọn mục **AI** trên thanh điều hướng bên trái (sidebar).
-- Hoặc bấm nút **"Mở khung trò chuyện chi tiết với Lucy"** ngay trên [Bảng điều khiển Lucy](Mèo-Lucy).
+- Hoặc bấm nút **"Mở khung trò chuyện chi tiết với Nấm"** ngay trên [Bảng điều khiển Mèo Nấm](Mèo-Nấm).
 
 ---
 
@@ -43,7 +43,7 @@ Khi nhập liệu vội vàng, thông tin thường bị lỗi: thiếu dấu ti
 - **Cách kích hoạt**:
   * Bấm nút **Sparkles ✨** trên thanh Header.
   * Nhấn `⌘K` hoặc `Ctrl+K` và chọn **✨ Chuẩn hoá dữ liệu (AI)**.
-  * Nhắn tin trực tiếp với Trợ lý AI hoặc Mèo Lucy: *"chuẩn hoá dữ liệu"* / *"làm sạch sổ sách"*.
+  * Nhắn tin trực tiếp với Trợ lý AI hoặc Mèo Nấm: *"chuẩn hoá dữ liệu"* / *"làm sạch sổ sách"*.
   * Vào **Cài đặt → AI Providers → Chuẩn hoá dữ liệu nhập liệu (AI)**.
 - **Cơ chế**: Hệ thống tự động so sánh bản ghi cũ và bản ghi sau chuẩn hoá dạng **Diff Trước ➔ Sau**, cho phép người dùng kiểm tra kỹ lưỡng trước khi quyết định áp dụng vào sổ cái.
 
@@ -51,4 +51,4 @@ Xem hướng dẫn chi tiết tại: [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-
 
 ---
 
-→ [Trang chủ Wiki](Home) · [Kết nối AI Provider](Kết-nối-AI-Provider) · [Trợ lý Linh vật Lucy](Mèo-Lucy) · [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-Dữ-liệu)
+→ [Trang chủ Wiki](Home) · [Kết nối AI Provider](Kết-nối-AI-Provider) · [Trợ lý Linh vật Nấm](Mèo-Nấm) · [Chuẩn hoá Dữ liệu AI](Chuẩn-hoá-Dữ-liệu)

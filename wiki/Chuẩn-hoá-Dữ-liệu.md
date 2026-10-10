@@ -50,7 +50,7 @@ Bạn có thể mở tính năng bằng bất kỳ cách nào thuận tiện nh�
 - **Thanh Header**: Bấm biểu tượng tia sáng **Sparkles ✨** ở góc phải trên màn hình.
 - **Command Palette (`⌘K` hoặc `Ctrl+K`)**: Gõ tìm kiếm và chọn **✨ Chuẩn hoá dữ liệu (AI)**.
 - **Cài đặt Hệ thống**: Vào **Cài đặt ⚙️ → AI Providers → Chuẩn hoá dữ liệu nhập liệu (AI)**.
-- **Trò chuyện với AI / Lucy**: Nhắn tin *"chuẩn hoá dữ liệu"* hoặc *"làm sạch sổ sách"*.
+- **Trò chuyện với AI / Mèo Nấm**: Nhắn tin *"chuẩn hoá dữ liệu"* hoặc *"làm sạch sổ sách"*.
 
 ### Bước 2: Xem trước Thay đổi (Diff View)
 - Hộp thoại hiển thị thống kê tổng số bản ghi vi phạm.

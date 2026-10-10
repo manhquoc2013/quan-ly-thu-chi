@@ -93,7 +93,7 @@ export async function getTodayFinancialSummary(): Promise<TodayFinancialSummary>
     adviceMessage = `Hôm nay đã có ${orderCountToday} đơn mới vào sổ! Tiếp tục giữ vững phong độ nào! ✨`;
   } else {
     adviceEmotion = 'happy';
-    adviceMessage = 'Sẵn sàng một ngày kinh doanh hồng phát! Có phát sinh thu chi gì nhớ nói Lucy ghi liền nha! 🐱';
+    adviceMessage = 'Sẵn sàng một ngày kinh doanh hồng phát! Có phát sinh thu chi gì nhớ nói Nấm ghi liền nha! 🐱';
   }
 
   return {

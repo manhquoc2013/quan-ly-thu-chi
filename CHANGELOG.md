@@ -6,6 +6,39 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.3.0] — 2026-10-11
+
+🔗 [So sánh với v2.2.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.2.0...v2.3.0)
+
+### Tái Thiết Kế Mascot Mèo Nấm 3D Pixar Chibi & Hệ Thống Tương Tác Đa Năng
+- **Hình tượng Nhân vật Mèo Nấm (`NamCatPuppet.tsx`)**:
+  - Tái thiết kế toàn diện linh vật từ mô hình mèo cũ thành **Mèo Nấm** (mèo mướp xám bạc sọc M trán, mắt ngọc lục bảo to tròn ngây thơ, nơ cổ hồng pastel, đuôi sọc vòng, tỉ lệ Chibi 3.5 đầu chuẩn phong cách Pixar/Disney).
+  - Tích hợp hiệu ứng đổ bóng đa tầng (Gradients & Radial highlights), phản chiếu ánh sáng tự nhiên và chuyển động tai/đuôi/chân/tay độc lập.
+- **5 Bộ Trang Phục Module Đa Năng (Modular Outfits)**:
+  - 💼 **Tài chính (Financial)**: Vest navy trang trọng, sơ mi trắng, cà vạt đỏ cam, kẹp sổ cái vàng kim lấp lánh.
+  - 🎧 **Hỗ trợ khách hàng (Support)**: Tai nghe headset công nghệ cao với micro phát sáng, thẻ nhân viên đeo cổ dây xanh cyan.
+  - 💻 **Kỹ thuật & Hệ thống (Tech)**: Kính gọng tròn trí tuệ, áo hoodie xám/xanh hiện đại, ba lô công nghệ phía sau.
+  - 📢 **Kinh doanh & Marketing (Marketing)**: Áo khoác thời trang, loa pin cầm tay, huy hiệu doanh số rực rỡ.
+  - ☕ **Thư giãn & Thường ngày (System / Casual)**: Tạp dề nâu cà phê, cốc trà sữa/cà phê mini trên tay, phong thái thư thái.
+- **Hệ Thống Hoạt Hoạ Tương Tác Vật Lý Đa Dạng (`MascotOverlay.tsx`)**:
+  - Bổ sung ma trận cử động phong phú: Đi bộ (`walk`), chạy nước rút (`run`), nhảy cao nảy bóng (`jump`), vấp ngã chúi đầu vui nhộn (`trip`), bò trườn nấp mép trang (`sneak` / `peek`), leo trèo lề màn hình (`climb`), và ăn mừng vung tay reo vui (`celebrate`).
+  - Dò tìm và bước đi trên các dòng văn bản DOM thực tế (`detectTextLinesLocomotion`), tự động bám thanh footer / header.
+  - Hệ thống âm thanh procedural Web Audio synthesizer: Tiếng biến hình ma thuật khi đổi đồ (`transform`), tiếng va chạm vấp ngã (`trip`), tiếng bò rón rén (`sneak`), kết hợp giọng meow và purr êm dịu.
+- **Tự Động Thích Ứng Trang Phục Theo Ngữ Cảnh (Smart Auto-Outfit Switching)**:
+  - Khi bật chế độ `autoOutfit`, Nấm tự động đổi trang phục tương ứng với tính năng người dùng đang mở:
+    - Trang Chi phí / Doanh thu / Báo cáo ➔ Trang phục **Tài chính (Financial)**
+    - Trang Trò chuyện AI / Khách hàng ➔ Trang phục **Hỗ trợ (Support)**
+    - Trang Cài đặt / Đồng bộ / Cấu hình ➔ Trang phục **Kỹ thuật (Tech)**
+    - Thao tác đơn hàng / Thêm nhanh ➔ Trang phục **Kinh doanh (Marketing)**
+    - Trang Tổng quan / Nghỉ ngơi ➔ Trang phục **Thư giãn (Casual)**
+- **Nâng Cấp Bảng Điều Khiển Mèo Nấm (Control Deck)**:
+  - Bổ sung **Tủ đồ trang phục (Wardrobe Selector)** cho phép đổi 1-chạm giữa 5 phong cách kèm nút gạt Tự động đổi thông minh.
+  - Bổ sung **Khu vực diễn tập (Action Playground)** với 8 nút kích hoạt hành động tức thì để người dùng trực tiếp vui đùa cùng Nấm.
+- **Đồng Bộ Toàn Bộ Tên Trợ Lý Thành Mèo Nấm**:
+  - Chuẩn hoá toàn bộ tên gọi từ Mèo Lucy sang **Mèo Nấm** trên tất cả các màn hình (Khung trò chuyện AI, Bảng cài đặt, lời thoại tương tác, thông báo đơn hàng và tài liệu hệ thống Wiki).
+
+---
+
 ## [2.2.0] — 2026-10-10
 
 🔗 [So sánh với v2.1.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.1.0...v2.2.0)

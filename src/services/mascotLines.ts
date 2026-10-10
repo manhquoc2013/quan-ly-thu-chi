@@ -58,9 +58,9 @@ export const HARD_LAND_LINES = [
 ] as const;
 
 export const ACTIVITY_LINES = {
-  high: 'Full năng lượng — Lucy chạy vòng vòng!',
+  high: 'Full năng lượng — Nấm chạy vòng vòng!',
   medium: 'Vừa phải thôi, đừng vội quá.',
-  low: 'Lucy lười một chút…',
+  low: 'Nấm lười một chút…',
 } as const;
 
 export const TAP_LINES = {
@@ -74,7 +74,7 @@ export const TAP_LINES = {
 
 export const AUTH_GREET = {
   signIn: 'Chào chủ tiệm! Đăng nhập để mở sổ nhé.',
-  signUp: 'Tạo tài khoản — Lucy canh sổ giúp!',
+  signUp: 'Tạo tài khoản — Nấm canh sổ giúp!',
 } as const;
 
 export const CRUD_LINES = {
@@ -95,4 +95,4 @@ export const CRUD_LINES = {
 
 /** Guidance embedded in LLM prompts for mascot_say. */
 export const MASCOT_SAY_GUIDE =
-  '1 câu ngắn Lucy (≤12 từ): mừng thu / nhắc chi / xác nhận ghi sổ; xưng Lucy–chủ tiệm; không meme, không tiếng Anh slang';
+  '1 câu ngắn Nấm (≤12 từ): mừng thu / nhắc chi / xác nhận ghi sổ; xưng Nấm–chủ tiệm; không meme, không tiếng Anh slang';
