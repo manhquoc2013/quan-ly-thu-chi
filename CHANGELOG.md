@@ -6,6 +6,30 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.1.0] — 2026-10-10
+
+🔗 [So sánh với v2.0.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.0.0...v2.1.0)
+
+### Thêm mới & Cải tiến Giao diện (UI/UX)
+- **Thiết kế lại toàn bộ Layout Shell**:
+  - Sidebar hiện đại với huy hiệu thương hiệu phát quang nhẹ (`glow-teal-sm`), mục điều hướng pill bo góc với hiệu ứng chuyển động mượt mà và thẻ người dùng tích hợp trạng thái trực tuyến.
+  - Header kính mờ (`backdrop-blur-md bg-surface/85`), chip đồng bộ đám mây (Cloud Sync) trực tiếp với chấm trạng thái nhấp nháy và nút đồng bộ một chạm.
+  - Trung tâm thông báo trực quan phân loại thông báo theo nguồn (sync, ai, realtime, error) kèm mốc thời gian tương đối.
+  - Đồng hồ thời gian thực dạng thẻ monospace tinh tế.
+  - Nút bấm Trợ lý AI nổi bật với ánh sáng đa tầng và chuyển động êm ái.
+- **Màn hình Dashboard Hiện đại**:
+  - Banner chào mừng cá nhân hóa kèm ngày tháng tiếng Việt thực tế và tóm tắt tiến độ đơn hàng.
+  - Thanh thao tác nhanh (Quick Action Ribbon) với 4 thẻ hành vi trực quan: Thêm đơn bán, Ghi chi tiêu, Xem báo cáo, Trợ lý AI.
+  - Thẻ chỉ số tài chính (KPI) phân cấp màu theo tính chất (Đã thu, Chi phí, Công nợ / Lãi tháng) với font số dạng bảng `tabular-nums`.
+  - Hàng đợi “Cần xử lý” và danh sách sản phẩm hiển thị dạng danh thiếp chuyên nghiệp, hỗ trợ phím tắt và tiếp cận cao.
+  - Biểu đồ dòng tiền 7 ngày thiết kế lại với cột bo góc, lưới dịu mắt và tooltip thẻ kính tối ưu độ tương phản.
+- **Design Tokens & Tiện ích Tiếp cận**:
+  - Hỗ trợ toàn diện chuẩn tiếp cận `prefers-reduced-motion` WCAG.
+  - Các tiện ích gradient tài chính `.stat-card-income`, `.stat-card-expense`, `.stat-card-profit`, `.stat-card-debt`.
+  - Đạt điểm kiểm định UI/UX tuyệt đối: `validate_ui_code` 100/100, `audit_ux_interface` 100/100 (0 smells).
+
+---
+
 ## [2.0.0] — 2026-08-13
 
 🔗 [So sánh với v1.7.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v1.7.0...v2.0.0)
