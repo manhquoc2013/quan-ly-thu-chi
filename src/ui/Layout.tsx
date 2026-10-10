@@ -165,102 +165,251 @@ export function Layout() {
   const syncLabel = syncState === 'synced' ? 'Đã đồng bộ' : syncState === 'pending' ? `${pending} thay đổi` : 'Đang sync...';
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background min-w-0 overflow-hidden">
+    <div className="fixed inset-0 flex flex-col bg-background min-w-0 overflow-hidden font-sans">
       <div className="flex flex-1 min-h-0 min-w-0">
         {/* Sidebar — inline styles for smooth animation */}
         <aside
-          className="hidden md:flex flex-col shrink-0 bg-sidebar-bg text-sidebar-fg border-r border-sidebar-border overflow-hidden"
-          style={{ width: sidebarCollapsed ? 64 : 240, transition: 'width 0.3s ease' }}
+          className="hidden md:flex flex-col shrink-0 bg-sidebar-bg text-sidebar-fg border-r border-sidebar-border overflow-hidden select-none transition-all duration-300"
+          style={{ width: sidebarCollapsed ? 68 : 252 }}
         >
-          <div className={`flex items-center h-12 shrink-0 border-b border-sidebar-border overflow-hidden ${sidebarCollapsed ? 'justify-center px-0' : 'px-3'}`}>
-            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="" width={28} height={28} className="size-7 rounded-full shrink-0 object-contain" />
-            <span style={{
-              opacity: sidebarCollapsed ? 0 : 1,
-              maxWidth: sidebarCollapsed ? 0 : 200,
-              marginLeft: sidebarCollapsed ? 0 : 12,
-              transition: 'opacity 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease',
-            }} className="text-sm font-semibold text-sidebar-fg truncate overflow-hidden whitespace-nowrap">Quản Lý Tài Chính</span>
+          {/* Brand header */}
+          <div className={`flex items-center h-14 shrink-0 border-b border-sidebar-border overflow-hidden ${sidebarCollapsed ? 'justify-center px-0' : 'px-4'}`}>
+            <div className="size-9 rounded-xl bg-gradient-to-tr from-teal-600 via-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-sm shadow-teal-700/20 shrink-0 font-bold glow-teal-sm">
+              <Coins size={18} className="stroke-[2.2]" />
+            </div>
+            <div
+              style={{
+                opacity: sidebarCollapsed ? 0 : 1,
+                maxWidth: sidebarCollapsed ? 0 : 200,
+                marginLeft: sidebarCollapsed ? 0 : 12,
+                transition: 'opacity 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease',
+              }}
+              className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap"
+            >
+              <span className="text-xs font-bold text-sidebar-fg tracking-tight uppercase">Quản Lý Thu Chi</span>
+              <span className="text-[10px] text-text-muted truncate">Sổ quỹ & Bán hàng thông minh</span>
+            </div>
           </div>
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 scrollbar-thin overscroll-contain">
-            {navItems.map((item) => (
-              <NavLink key={item.route} to={item.route} end={item.route === '/'}
-                className={`flex items-center mb-0.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${isActive(item.route) ? 'bg-sidebar-active-bg text-sidebar-active-fg' : `text-sidebar-fg hover:bg-sidebar-hover`} ${sidebarCollapsed ? 'justify-center mx-0 px-0 h-10' : 'mx-2 px-3 h-10'}`}
-                title={sidebarCollapsed ? item.label : undefined}
-              >
-                <span className="shrink-0 flex items-center justify-center w-5">{item.icon}</span>
-                <span style={{
-                  opacity: sidebarCollapsed ? 0 : 1,
-                  maxWidth: sidebarCollapsed ? 0 : 160,
-                  marginLeft: sidebarCollapsed ? 0 : 12,
-                  transition: 'opacity 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease',
-                }} className="text-sm font-medium truncate overflow-hidden whitespace-nowrap">{item.label}</span>
-              </NavLink>
-            ))}
+
+          {/* Navigation Links */}
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 scrollbar-thin overscroll-contain space-y-1">
+            {navItems.map((item) => {
+              const active = isActive(item.route);
+              return (
+                <NavLink
+                  key={item.route}
+                  to={item.route}
+                  end={item.route === '/'}
+                  className={`group relative flex items-center rounded-xl transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg ${
+                    active
+                      ? 'bg-accent-fg text-white shadow-sm shadow-teal-700/30 font-semibold'
+                      : 'text-sidebar-fg hover:bg-sidebar-hover/80 hover:text-text-primary font-medium'
+                  } ${sidebarCollapsed ? 'justify-center mx-auto size-11 p-0' : 'px-3 h-10 w-full'}`}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  <span className={`shrink-0 flex items-center justify-center w-5 transition-transform duration-200 group-hover:scale-110 ${active ? 'text-white' : 'text-text-muted group-hover:text-text-primary'}`}>
+                    {item.icon}
+                  </span>
+                  <span
+                    style={{
+                      opacity: sidebarCollapsed ? 0 : 1,
+                      maxWidth: sidebarCollapsed ? 0 : 160,
+                      marginLeft: sidebarCollapsed ? 0 : 12,
+                      transition: 'opacity 0.3s ease, max-width 0.3s ease, margin-left 0.3s ease',
+                    }}
+                    className="text-xs truncate overflow-hidden whitespace-nowrap"
+                  >
+                    {item.label}
+                  </span>
+                </NavLink>
+              );
+            })}
           </nav>
-          <div className={`shrink-0 border-t border-sidebar-border flex items-center overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'justify-center px-0 h-12' : 'px-3 h-12'}`}>
+
+          {/* User profile / Bottom bar */}
+          <div className={`shrink-0 border-t border-sidebar-border flex items-center overflow-hidden transition-all duration-300 p-2 ${sidebarCollapsed ? 'justify-center h-14' : 'h-14'}`}>
             {sidebarCollapsed ? (
-              <button type="button" onClick={() => logout()} className="p-1.5 rounded-lg hover:bg-sidebar-hover text-sidebar-fg hover:text-accent-fg transition-colors"><LogOut size={16} /></button>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="size-10 rounded-xl flex items-center justify-center hover:bg-sidebar-hover text-sidebar-fg hover:text-danger-fg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+                title="Đăng xuất"
+                aria-label="Đăng xuất"
+              >
+                <LogOut size={16} />
+              </button>
             ) : (
-              <div className="flex items-center gap-2 min-w-0 w-full">
-                <div className="size-7 rounded-full bg-sidebar-active-bg text-white flex items-center justify-center text-xs font-semibold shrink-0">{avatarLetter}</div>
-                <span className="text-xs text-sidebar-fg truncate flex-1 min-w-0">{displayName}</span>
-                <button type="button" onClick={() => logout()} className="p-1 rounded hover:bg-sidebar-hover text-sidebar-fg hover:text-accent-fg transition-colors shrink-0"><LogOut size={15} /></button>
+              <div className="flex items-center gap-2.5 min-w-0 w-full px-2 py-1.5 rounded-xl hover:bg-sidebar-hover/40 transition-colors">
+                <div className="relative size-8 rounded-full bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
+                  {avatarLetter}
+                  <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-400 ring-1 ring-sidebar-bg" />
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-sidebar-fg truncate leading-tight">{displayName}</span>
+                  <span className="text-[10px] text-text-muted truncate leading-tight">Chủ cửa hàng</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="p-1.5 rounded-lg hover:bg-sidebar-hover text-sidebar-fg hover:text-danger-fg transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-fg"
+                  title="Đăng xuất"
+                  aria-label="Đăng xuất"
+                >
+                  <LogOut size={16} />
+                </button>
               </div>
             )}
           </div>
         </aside>
 
+        {/* Content Viewport */}
         <div className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
-          <header className="flex shrink-0 items-center gap-3 px-4 h-12 bg-surface border-b border-border z-20">
-            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden p-1.5 rounded-md hover:bg-surface-hover text-text-muted"><Menu size={18} /></button>
-            <button type="button" onClick={toggleSidebar} className="hidden md:block p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95 shrink-0">
+          {/* Frosted Topbar */}
+          <header className="flex shrink-0 items-center gap-3 px-4 md:px-5 h-14 bg-surface/85 backdrop-blur-md border-b border-border/80 z-20">
+            {/* Mobile menu trigger */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden size-11 flex items-center justify-center rounded-xl hover:bg-surface-hover text-text-secondary cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+              aria-label="Mở menu điều hướng"
+            >
+              <Menu size={20} />
+            </button>
+
+            {/* Desktop sidebar toggle */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="hidden md:flex size-9 items-center justify-center rounded-lg hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-150 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+              aria-label={sidebarCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+            >
               {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
-            <h1 className="text-sm font-semibold text-text-primary truncate flex-1">{pageTitle}</h1>
-            <button type="button" onClick={() => setShowSearch(true)}
-              className="hidden lg:flex items-center gap-2 bg-background border border-border rounded-md px-3 py-1.5 text-xs text-text-muted w-56 hover:border-accent-fg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
-              <Search size={14} /><span className="flex-1 text-left">Tìm kiếm...</span>
-              <kbd className="text-[10px] font-mono bg-surface border border-border rounded px-1.5 py-0.5 text-text-disabled">⌘K</kbd>
+
+            {/* Page title */}
+            <h1 className="text-sm md:text-base font-bold text-text-primary truncate flex-1 flex items-center gap-2 tracking-tight">
+              <span>{pageTitle}</span>
+            </h1>
+
+            {/* Quick Search Bar */}
+            <button
+              type="button"
+              onClick={() => setShowSearch(true)}
+              className="hidden lg:flex items-center gap-2 bg-background/80 hover:bg-background border border-border/80 hover:border-accent-fg rounded-xl px-3.5 py-1.5 text-xs text-text-muted w-64 transition-all duration-200 shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+              aria-label="Tìm kiếm nhanh (Command + K)"
+            >
+              <Search size={14} className="text-text-muted shrink-0" />
+              <span className="flex-1 text-left truncate">Tìm kiếm nhanh...</span>
+              <kbd className="text-[10px] font-mono bg-surface border border-border rounded-md px-1.5 py-0.5 text-text-disabled shadow-2xs">⌘K</kbd>
             </button>
-            <button type="button" onClick={toggleDark} className="p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95 shrink-0">
+
+            {/* Cloud Sync Status Chip */}
+            <button
+              type="button"
+              onClick={handleSync}
+              disabled={syncing}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg ${
+                syncState === 'synced'
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/15'
+                  : syncState === 'offline'
+                  ? 'bg-neutral-500/10 text-text-muted border-border hover:bg-neutral-500/15'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 hover:bg-amber-500/15'
+              }`}
+              title={syncing ? 'Đang đồng bộ...' : 'Nhấp để đồng bộ ngay'}
+              aria-label={`Trạng thái đồng bộ: ${syncLabel}`}
+            >
+              {syncing ? (
+                <RefreshCw size={12} className="animate-spin text-accent-fg shrink-0" />
+              ) : (
+                <span className={`size-2 rounded-full shrink-0 ${
+                  syncState === 'synced'
+                    ? 'bg-emerald-500'
+                    : syncState === 'offline'
+                    ? 'bg-text-disabled'
+                    : 'bg-amber-500 animate-pulse'
+                }`} />
+              )}
+              <span className="tabular-nums leading-none">{syncing ? 'Đang sync...' : syncLabel}</span>
+            </button>
+
+            {/* Theme switch button */}
+            <button
+              type="button"
+              onClick={toggleDark}
+              className="size-9 flex items-center justify-center rounded-lg hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+              title={`Giao diện: ${mode === 'system' ? 'Hệ thống' : isDark ? 'Tối' : 'Sáng'}`}
+              aria-label="Chuyển đổi giao diện Sáng / Tối"
+            >
               {mode === 'system' ? <Monitor size={18} /> : isDark ? <Moon size={18} /> : <Sun size={18} />}
             </button>
+
+            {/* Notification Bell */}
             <div className="relative shrink-0">
-              <button type="button" onClick={() => setShowBell((v) => !v)}
-                className="relative p-1.5 rounded-md hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-110 active:scale-95">
+              <button
+                type="button"
+                onClick={() => setShowBell((v) => !v)}
+                className="relative size-9 flex items-center justify-center rounded-lg hover:bg-surface-hover text-text-muted hover:text-text-primary transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+                title="Thông báo hệ thống"
+                aria-label={`Thông báo ${unreadCount > 0 ? `(${unreadCount} chưa đọc)` : ''}`}
+              >
                 <Bell size={18} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 size-4 rounded-full bg-accent-fg text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface">
+                  <span className="absolute 1 top-1 right-1 size-4 rounded-full bg-accent-fg text-white text-[10px] font-bold flex items-center justify-center border-2 border-surface animate-pulse">
                     {unreadCount}
                   </span>
                 )}
               </button>
+
               {showBell && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowBell(false)} />
-                  <div className="absolute right-0 top-full mt-2 z-40 w-80 bg-surface border border-border rounded-xl shadow-xl animate-scale-in max-h-[70vh] flex flex-col">
+                  <div className="absolute right-0 top-full mt-2 z-40 w-84 bg-surface border border-border rounded-2xl shadow-2xl animate-scale-in max-h-[75vh] flex flex-col overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border shrink-0">
-                      <p className="text-sm font-semibold text-text-primary">Thông báo</p>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface/70 backdrop-blur-sm shrink-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-text-primary">Thông báo</p>
+                        {unreadCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-accent-bg text-accent-fg text-[10px] font-bold">
+                            {unreadCount} mới
+                          </span>
+                        )}
+                      </div>
                       {unreadCount > 0 && (
-                        <button type="button" onClick={() => markAllRead()}
-                          className="text-xs text-accent-fg hover:text-accent-fg-hover transition-colors flex items-center gap-1">
-                          <CheckCheck size={13} /> Đánh dấu đã đọc
+                        <button
+                          type="button"
+                          onClick={() => markAllRead()}
+                          className="text-xs font-medium text-accent-fg hover:text-accent-fg-hover transition-colors flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:underline"
+                        >
+                          <CheckCheck size={13} /> Đã đọc hết
                         </button>
                       )}
                     </div>
 
-                    {/* Sync status bar */}
-                    <div className="flex items-center gap-2 px-4 py-1.5 shrink-0">
-                      <span className={`size-2 rounded-full ${syncState === 'synced' ? 'bg-success-fg' : syncState === 'offline' ? 'bg-text-disabled' : 'bg-warning-fg animate-pulse'}`} />
-                      <span className="text-xs text-text-secondary">{syncLabel}</span>
+                    {/* Sync status bar in panel */}
+                    <div className="flex items-center justify-between px-4 py-2 bg-surface-hover/40 border-b border-border/50 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`size-2 rounded-full ${syncState === 'synced' ? 'bg-success-fg' : syncState === 'offline' ? 'bg-text-disabled' : 'bg-warning-fg animate-pulse'}`} />
+                        <span className="text-xs text-text-secondary">{syncLabel}</span>
+                      </div>
+                      {pending > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleSync}
+                          disabled={syncing}
+                          className="text-xs text-accent-fg hover:underline font-medium cursor-pointer"
+                        >
+                          {syncing ? 'Đang gửi...' : 'Đồng bộ'}
+                        </button>
+                      )}
                     </div>
 
                     {/* Notification list */}
-                    <div className="flex-1 overflow-y-auto min-h-0">
+                    <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-border/40">
                       {notifications.length === 0 ? (
-                        <div className="flex items-center justify-center py-8 text-xs text-text-muted">
-                          Chưa có thông báo
+                        <div className="flex flex-col items-center justify-center py-10 text-center px-4">
+                          <Bell size={28} className="text-text-muted/40 mb-2" />
+                          <p className="text-xs font-medium text-text-secondary">Chưa có thông báo nào</p>
+                          <p className="text-[11px] text-text-muted mt-0.5">Mọi cập nhật đồng bộ và AI sẽ xuất hiện tại đây</p>
                         </div>
                       ) : (
                         <div className="py-1">
@@ -269,16 +418,26 @@ export function Layout() {
                               key={item.id}
                               type="button"
                               onClick={() => markRead(item.id)}
-                              className={`w-full text-left px-4 py-2.5 border-b border-border/50 last:border-b-0 transition-colors hover:bg-surface-hover ${!item.read ? 'bg-surface-hover/50' : ''}`}
+                              className={`w-full text-left px-4 py-3 transition-colors hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:bg-surface-hover ${!item.read ? 'bg-accent-fg/5' : ''}`}
                             >
-                              <div className="flex items-start gap-2.5">
-                                <span className={`mt-0.5 shrink-0 ${item.type === 'error' ? 'text-error-fg' : item.type === 'sync' ? 'text-success-fg' : item.type === 'import' ? 'text-accent-fg' : item.type === 'ai' ? 'text-info-fg' : 'text-warning-fg'}`}>
+                              <div className="flex items-start gap-3">
+                                <span className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
+                                  item.type === 'error'
+                                    ? 'bg-danger-bg text-danger-fg'
+                                    : item.type === 'sync'
+                                    ? 'bg-success-bg text-success-fg'
+                                    : item.type === 'import'
+                                    ? 'bg-accent-bg text-accent-fg'
+                                    : item.type === 'ai'
+                                    ? 'bg-info-bg text-info-fg'
+                                    : 'bg-warning-bg text-warning-fg'
+                                }`}>
                                   {NOTIFICATION_ICON[item.type]}
                                 </span>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-semibold text-text-primary truncate">{item.title}</p>
-                                  <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{item.message}</p>
-                                  <p className="text-[10px] text-text-muted mt-1">{formatRelativeTime(item.timestamp)}</p>
+                                  <p className="text-xs text-text-secondary mt-0.5 line-clamp-2 leading-relaxed">{item.message}</p>
+                                  <p className="text-[10px] text-text-muted mt-1 tabular-nums">{formatRelativeTime(item.timestamp)}</p>
                                 </div>
                                 {!item.read && (
                                   <span className="mt-1.5 size-2 rounded-full bg-accent-fg shrink-0" />
@@ -287,7 +446,7 @@ export function Layout() {
                             </button>
                           ))}
                           {notifications.length > 8 && (
-                            <p className="text-center text-[10px] text-text-muted py-1.5">
+                            <p className="text-center text-[10px] text-text-muted py-2 bg-surface-hover/20">
                               +{notifications.length - 8} thông báo trước đó
                             </p>
                           )}
@@ -295,12 +454,16 @@ export function Layout() {
                       )}
                     </div>
 
-                    {/* Sync button */}
+                    {/* Sync button in dropdown */}
                     {pending > 0 && (
-                      <div className="px-4 py-2 border-t border-border shrink-0">
-                        <button type="button" onClick={handleSync} disabled={syncing}
-                          className="w-full flex items-center justify-center gap-2 text-xs bg-accent-fg text-white rounded-lg px-3 py-2 hover:bg-accent-fg-hover transition-colors">
-                          {syncing ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />} Đồng bộ ngay
+                      <div className="p-3 border-t border-border bg-surface shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleSync}
+                          disabled={syncing}
+                          className="w-full flex items-center justify-center gap-2 text-xs font-semibold bg-accent-fg text-white rounded-xl py-2.5 hover:bg-accent-fg-hover transition-colors shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+                        >
+                          {syncing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />} Đồng bộ {pending} thay đổi
                         </button>
                       </div>
                     )}
@@ -308,73 +471,141 @@ export function Layout() {
                 </>
               )}
             </div>
-            <span className="text-xs text-text-muted tabular-nums shrink-0 w-12 text-right">{clock || '--:--'}</span>
+
+            {/* Monospace Clock */}
+            <span className="hidden sm:inline-block text-xs font-mono font-medium text-text-secondary bg-surface-hover/60 border border-border/50 rounded-lg px-2 py-1 tabular-nums shrink-0">
+              {clock || '--:--'}
+            </span>
           </header>
+
+          {/* Main Scroller Content */}
           <main
             ref={(node) => {
               if (node) node.scrollLeft = 0;
             }}
             className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-clip overscroll-y-contain"
           >
-            <div key={location.pathname} className="animate-fade-in-up w-full max-w-full mx-auto min-w-0 p-[var(--s-md)] md:p-[var(--s-xl)] pb-[calc(var(--dimens-fabClearance)+0.5rem)]">
-              <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="flex gap-1.5">{ [0,1,2].map(i => <div key={i} className="size-2 rounded-full bg-accent-fg animate-pulse" style={{animationDelay:`${i*0.2}s`}} />) }</div></div>}>
+            <div key={location.pathname} className="animate-fade-in-up w-full max-w-7xl mx-auto min-w-0 p-4 sm:p-6 pb-[calc(var(--dimens-fabClearance)+1rem)]">
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-24">
+                    <div className="flex gap-2">
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="size-2.5 rounded-full bg-accent-fg animate-pulse"
+                          style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                }
+              >
                 <Outlet />
               </Suspense>
             </div>
           </main>
         </div>
       </div>
+
+      {/* Mobile Drawer Navigation */}
       {(mobileMenuOpen || menuClosing) && (
         <div className="md:hidden">
-            <div className="fixed inset-0 z-50 bg-black/30 animate-fade-in" onClick={closeMobileMenu} />
-            <div className={`fixed inset-y-0 left-0 z-50 w-60 bg-sidebar-bg border-r border-sidebar-border shadow-xl flex flex-col ${menuClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
-              <div className="flex items-center justify-between h-12 px-3 shrink-0 border-b border-sidebar-border">
-                <span className="text-sm font-semibold text-sidebar-fg">Quản Lý Tài Chính</span>
-                <button type="button" onClick={closeMobileMenu} className="p-1 rounded hover:bg-sidebar-hover text-sidebar-fg"><X size={16} /></button>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs animate-fade-in" onClick={closeMobileMenu} />
+          <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-sidebar-bg border-r border-sidebar-border shadow-2xl flex flex-col ${menuClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
+            <div className="flex items-center justify-between h-14 px-4 shrink-0 border-b border-sidebar-border">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-lg bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-xs font-bold">
+                  <Coins size={16} />
+                </div>
+                <span className="text-sm font-bold text-sidebar-fg">Quản Lý Thu Chi</span>
               </div>
-              <nav className="flex-1 overflow-y-auto py-2">
-                {navItems.map((item) => (
-                  <NavLink key={item.route} to={item.route} end={item.route === '/'}
-                    onClick={closeMobileMenu}
-                    className={`flex items-center gap-3 mx-2 px-3 h-10 rounded-lg text-sm transition-colors ${isActive(item.route) ? 'bg-sidebar-active-bg text-sidebar-active-fg' : 'text-sidebar-fg hover:bg-sidebar-hover'}`}>
-                    {item.icon}<span>{item.label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-              <div className="shrink-0 border-t border-sidebar-border px-3 py-3 flex items-center gap-2">
-                <div className="size-7 rounded-full bg-sidebar-active-bg text-white flex items-center justify-center text-xs font-semibold shrink-0">{avatarLetter}</div>
-                <span className="text-xs text-sidebar-fg truncate flex-1">{displayName}</span>
-                <button type="button" onClick={() => { closeMobileMenu(); logout(); }} className="p-1 rounded hover:bg-sidebar-hover text-sidebar-fg hover:text-accent-fg transition-colors"><LogOut size={15} /></button>
+              <button
+                type="button"
+                onClick={closeMobileMenu}
+                className="size-11 flex items-center justify-center rounded-lg hover:bg-sidebar-hover text-sidebar-fg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-fg"
+                aria-label="Đóng menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.route}
+                  to={item.route}
+                  end={item.route === '/'}
+                  onClick={closeMobileMenu}
+                  className={`flex items-center gap-3 px-3.5 h-11 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                    isActive(item.route)
+                      ? 'bg-accent-fg text-white shadow-xs font-semibold'
+                      : 'text-sidebar-fg hover:bg-sidebar-hover'
+                  }`}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <div className="shrink-0 border-t border-sidebar-border p-4 flex items-center gap-3">
+              <div className="size-8 rounded-full bg-accent-fg text-white flex items-center justify-center text-xs font-bold shrink-0">
+                {avatarLetter}
               </div>
+              <span className="text-xs font-semibold text-sidebar-fg truncate flex-1">{displayName}</span>
+              <button
+                type="button"
+                onClick={() => { closeMobileMenu(); logout(); }}
+                className="p-2 rounded-lg hover:bg-sidebar-hover text-sidebar-fg hover:text-danger-fg transition-colors cursor-pointer"
+                title="Đăng xuất"
+                aria-label="Đăng xuất"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
-        )}
-      <div className="flex items-center justify-between px-[var(--s-md)] h-8 bg-surface border-t border-border text-[10px] text-text-muted shrink-0">
-        <span>© 2026 Quản Lý Tài Chính</span><span>{APP_VERSION_LABEL}</span>
-      </div>
-      <button type="button" onClick={toggleFab}
-        className="fixed z-50 flex items-center justify-center size-12 rounded-full shadow-xl bg-accent-fg hover:bg-accent-fg-hover text-white transition-all duration-150 hover:scale-110 right-4 md:right-6 bottom-[var(--dimens-statusBarHeight)]"
-        aria-label="Toggle AI chat"><Bot size={20} /></button>
+        </div>
+      )}
+
+      {/* Footer / Status bar */}
+      <footer className="flex items-center justify-between px-4 h-8 bg-surface/90 backdrop-blur-xs border-t border-border text-[11px] text-text-muted shrink-0 z-10">
+        <span className="font-medium">© 2026 Quản Lý Thu Chi</span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] text-text-disabled">{APP_VERSION_LABEL}</span>
+        </div>
+      </footer>
+
+      {/* Floating Action AI Button */}
+      <button
+        type="button"
+        onClick={toggleFab}
+        className="fixed z-50 flex items-center justify-center size-13 rounded-full shadow-xl shadow-teal-700/30 bg-gradient-to-tr from-teal-600 via-emerald-600 to-teal-400 hover:from-teal-500 hover:to-emerald-400 text-white transition-all duration-200 hover:scale-105 active:scale-95 right-5 md:right-7 bottom-[calc(var(--dimens-statusBarHeight)+0.5rem)] ring-2 ring-white/25 cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent-fg"
+        aria-label="Mở Trợ lý AI Thông Minh"
+        title="Trợ lý AI"
+      >
+        <Bot size={22} className="stroke-[2.2]" />
+      </button>
+
       {enableWebLLM && !webLLMDone && (
         <div
-          className="fixed z-50 flex items-center gap-2 rounded-full border border-border bg-surface/95 px-3 py-1.5 shadow-md backdrop-blur right-4 md:right-6 bottom-[calc(var(--dimens-statusBarHeight)+3.5rem)]"
+          className="fixed z-50 flex items-center gap-2.5 rounded-full border border-border bg-surface/95 px-3.5 py-1.5 shadow-lg backdrop-blur right-5 md:right-7 bottom-[calc(var(--dimens-statusBarHeight)+4.25rem)]"
           title={`Đang tải AI cục bộ… ${Math.round(webLLMProgress)}%`}
         >
           <Bot size={14} className="text-accent-fg shrink-0" />
-          <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
             <div className="h-full bg-accent-fg transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, webLLMProgress))}%` }} />
           </div>
-          <span className="text-[10px] text-text-muted tabular-nums">{Math.round(webLLMProgress)}%</span>
+          <span className="text-[10px] font-mono font-medium text-text-muted tabular-nums">{Math.round(webLLMProgress)}%</span>
         </div>
       )}
+
       <MascotOverlay />
+
       {(fabOpen || chatClosing) && (
-        <>
-          <div className={`fixed z-50 right-4 md:right-6 w-[calc(100vw-2rem)] max-w-[400px] h-[520px] max-h-[calc(100vh-8rem)] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden bottom-[calc(var(--dimens-statusBarHeight)+var(--dimens-fabSize)+0.75rem)] ${chatClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
-            <ChatPanel onClose={closeChat} />
-          </div>
-        </>
+        <div className={`fixed z-50 right-4 md:right-7 w-[calc(100vw-2rem)] max-w-[420px] h-[540px] max-h-[calc(100vh-8rem)] bg-surface border border-border rounded-3xl shadow-2xl flex flex-col overflow-hidden bottom-[calc(var(--dimens-statusBarHeight)+var(--dimens-fabSize)+1rem)] ${chatClosing ? 'animate-scale-out' : 'animate-scale-in'}`}>
+          <ChatPanel onClose={closeChat} />
+        </div>
       )}
+
       <CommandPalette open={showSearch} onClose={() => setShowSearch(false)} />
     </div>
   );

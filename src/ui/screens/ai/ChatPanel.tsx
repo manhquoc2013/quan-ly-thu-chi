@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-  X, Send, Plus, History, Trash2, Paperclip, Mic, MicOff, ExternalLink,
+  X, Send, Plus, History, Trash2, Paperclip, Mic, MicOff, ExternalLink, Sparkles,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@store/uiStore';
@@ -456,6 +456,34 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
             </div>
 
             <div className="p-[var(--s-sm)] border-t border-border bg-surface">
+              {/* Quick suggestions */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1.5 scrollbar-none mb-0.5">
+                <span className="text-[10px] text-text-muted flex items-center gap-0.5 shrink-0 font-medium mr-0.5">
+                  <Sparkles size={10} className="text-accent-fg" /> Gợi ý:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInput('Chi 35k tiền cà phê sáng')}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
+                >
+                  ☕ Cà phê 35k
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInput('Bán 2 áo thun 300k cho khách lẻ')}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
+                >
+                  🛍️ Bán 2 áo 300k
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInput('Hôm nay thu chi thế nào?')}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary whitespace-nowrap shrink-0 transition-colors"
+                >
+                  📊 Hôm nay
+                </button>
+              </div>
+
               <input
                 ref={fileRef}
                 type="file"

@@ -19,6 +19,8 @@ const WALK_IN_ALIASES = [
   'khach vang lai',
   'vãng lai',
   'vang lai',
+  'khách lẻ',
+  'khach le',
   'walk-in',
   'walk in',
 ] as const;

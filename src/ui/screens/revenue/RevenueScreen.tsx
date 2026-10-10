@@ -22,7 +22,7 @@ import { filterRevenues } from '@/services/revenueFilters';
 import { usePagedList } from '@/hooks/usePagedList';
 import { formatCurrency } from '@/utils/currency';
 import { sumPaidRevenue } from '@/utils/revenueMetrics';
-import { Plus, Star } from 'lucide-react';
+import { Plus, Star, Search, X, CircleDollarSign, Package, AlertCircle, FilterX } from 'lucide-react';
 import { RevenueGrid } from './RevenueGrid';
 import { OrderDialog } from './OrderDialog';
 import { OrderRowCard } from './OrderRowCard';
@@ -253,21 +253,37 @@ export function RevenueScreen() {
   return (
     <div className="flex flex-col bg-background w-full min-w-0 max-w-full overflow-x-clip">
       <div className="flex flex-wrap items-center gap-[var(--s-sm)] p-[var(--s-md)] border-b border-border bg-surface min-w-0">
-        <input
-          type="search"
-          value={searchInput}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Tìm theo mã đơn, tên khách, ghi chú..."
-          className={
-            'h-8 px-3 text-xs flex-1 min-w-[160px] max-w-[280px] ' +
-            'bg-input-bg ' +
-            'border border-input-border rounded-field ' +
-            'text-text-primary placeholder-input-placeholder ' +
-            'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
-            'transition-colors duration-[var(--d-fast)]'
-          }
-          aria-label="Tìm kiếm đơn hàng"
-        />
+        <div className="relative flex-1 min-w-[200px] max-w-[320px]">
+          <Search
+            size={14}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+          />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Tìm mã đơn, tên khách, ghi chú..."
+            className={
+              'h-8 pl-8 pr-7 text-xs w-full ' +
+              'bg-input-bg ' +
+              'border border-input-border rounded-field ' +
+              'text-text-primary placeholder-input-placeholder ' +
+              'focus:outline-none focus:ring-2 focus:ring-input-focus-ring ' +
+              'transition-colors duration-[var(--d-fast)]'
+            }
+            aria-label="Tìm kiếm đơn hàng"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => handleSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-0.5"
+              aria-label="Xóa từ khóa tìm kiếm"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
 
         <Dropdown
           options={STATUS_FILTER_OPTIONS}
@@ -275,7 +291,7 @@ export function RevenueScreen() {
           onChange={handleStatusFilter}
           placeholder="Trạng thái"
           clearable
-          className="w-[150px] h-8"
+          className="w-[140px] h-8"
           aria-label="Lọc trạng thái"
         />
 
@@ -285,7 +301,7 @@ export function RevenueScreen() {
           onChange={handlePaymentFilter}
           placeholder="Thanh toán"
           clearable
-          className="w-[150px] h-8"
+          className="w-[140px] h-8"
           aria-label="Lọc thanh toán"
         />
 
@@ -305,32 +321,70 @@ export function RevenueScreen() {
             value={filters.dateFrom}
             onChange={handleDateFrom}
             placeholder="Từ ngày"
-            className="w-[130px] h-8"
+            className="w-[125px] h-8"
           />
           <span className="text-xs text-text-muted shrink-0 hidden sm:inline">→</span>
           <DatePicker
             value={filters.dateTo}
             onChange={handleDateTo}
             placeholder="Đến ngày"
-            className="w-[130px] h-8"
+            className="w-[125px] h-8"
           />
         </span>
 
-        <Button variant="default" size="sm" className="md:ml-auto" onClick={handleCreateClick}>
+        <Button variant="default" size="sm" className="md:ml-auto shadow-sm" onClick={handleCreateClick}>
           <Plus size={14} /> Thêm đơn hàng
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-[var(--s-md)] py-2 bg-surface/50 border-b border-border-subtle">
-        <span className="text-xs text-text-muted">Doanh thu đã thu:</span>
-        <span className="text-sm font-semibold text-text-primary">{formatCurrency(paidTotal)}</span>
-        <span className="text-xs text-text-muted">·</span>
-        <span className="text-xs text-text-muted">{total} đơn</span>
-        {unpaidCount > 0 && (
-          <>
-            <span className="text-xs text-text-muted">·</span>
-            <span className="text-xs text-warning-fg font-medium">{unpaidCount} chưa thanh toán</span>
-          </>
+      {/* KPI & Summary Metrics Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-[var(--s-md)] py-2.5 bg-surface/70 border-b border-border-subtle backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success-bg/60 text-success-fg border border-success-bg-badge font-medium">
+            <CircleDollarSign size={14} className="shrink-0" />
+            <span>Đã thu:</span>
+            <span className="font-semibold text-text-primary ml-0.5">{formatCurrency(paidTotal)}</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border-subtle text-text-secondary font-medium">
+            <Package size={14} className="shrink-0 text-text-muted" />
+            <span>Tổng đơn:</span>
+            <span className="font-semibold text-text-primary ml-0.5">{total}</span>
+          </div>
+
+          {unpaidCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setFilters({
+                  paymentStatus: filters.paymentStatus === 'unpaid' ? undefined : 'unpaid',
+                })
+              }
+              className={[
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors font-medium border cursor-pointer',
+                filters.paymentStatus === 'unpaid'
+                  ? 'bg-warning-fg text-white border-warning-fg shadow-sm'
+                  : 'bg-warning-bg/70 text-warning-fg border-warning-fg/30 hover:bg-warning-bg',
+              ].join(' ')}
+              title="Nhấp để lọc đơn chưa thanh toán"
+            >
+              <AlertCircle size={14} className="shrink-0" />
+              <span>Chưa thanh toán:</span>
+              <span className="font-bold ml-0.5">{unpaidCount}</span>
+            </button>
+          )}
+        </div>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={handleClearFilters}
+            className="text-text-muted hover:text-text-primary gap-1 h-7 text-xs"
+          >
+            <FilterX size={13} />
+            Xóa bộ lọc
+          </Button>
         )}
       </div>
 

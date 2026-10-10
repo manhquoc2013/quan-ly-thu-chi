@@ -102,39 +102,48 @@ export function DataEntryHelper({
         </div>
         <div className="flex items-center gap-1">
           {ocrEngine && (
-            <Badge variant="outline">
+            <Badge variant="outline" className="text-[10px]">
               {ocrEngine === 'gemini' ? 'Gemini OCR' : 'Tesseract'}
             </Badge>
           )}
-          <Badge variant="default">{kind === 'expense' ? 'Chi phí' : 'Doanh thu'}</Badge>
+          <Badge
+            variant="outline"
+            className={
+              kind === 'expense'
+                ? 'bg-destructive/10 text-destructive border-destructive/20 font-medium text-[11px]'
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-medium text-[11px]'
+            }
+          >
+            {kind === 'expense' ? 'Khoản Chi' : 'Khoản Thu'}
+          </Badge>
         </div>
       </div>
 
       {onChangeKind && (
-        <div className="flex gap-1 mb-[var(--s-sm)]">
+        <div className="flex gap-1.5 mb-[var(--s-sm)]">
           <button
             type="button"
             onClick={() => onChangeKind('expense')}
             className={[
-              'text-[11px] px-2 py-1 rounded-field border',
+              'text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors border cursor-pointer',
               kind === 'expense'
-                ? 'bg-accent-fg text-white border-accent-fg'
-                : 'border-border text-text-muted',
+                ? 'bg-destructive text-white border-destructive shadow-xs'
+                : 'border-border text-text-muted hover:bg-surface-hover',
             ].join(' ')}
           >
-            Chi phí
+            💸 Khoản Chi phí
           </button>
           <button
             type="button"
             onClick={() => onChangeKind('revenue')}
             className={[
-              'text-[11px] px-2 py-1 rounded-field border',
+              'text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors border cursor-pointer',
               kind === 'revenue'
-                ? 'bg-accent-fg text-white border-accent-fg'
-                : 'border-border text-text-muted',
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                : 'border-border text-text-muted hover:bg-surface-hover',
             ].join(' ')}
           >
-            Doanh thu
+            💰 Khoản Thu (Doanh thu)
           </button>
         </div>
       )}

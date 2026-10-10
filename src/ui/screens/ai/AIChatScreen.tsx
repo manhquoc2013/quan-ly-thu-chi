@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Send, Paperclip, Mic, MicOff, ExternalLink } from 'lucide-react';
+import { Send, Paperclip, Mic, MicOff, ExternalLink, Sparkles, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiRouter } from '@/services/aiRouter';
 import { CatBody } from '@/ui/components/MascotOverlay';
@@ -50,8 +50,16 @@ export function AIChatScreen() {
   const sendingRef = useRef(false);
   const [aiReady, setAiReady] = useState<boolean>(aiRouter.isConfigured);
   const [modelProgress, setModelProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const QUICK_PROMPTS = [
+    { label: '☕ Chi cà phê 35k', text: 'Chi 35k tiền cà phê sáng' },
+    { label: '🛍️ Bán 2 áo 300k', text: 'Bán 2 áo thun 300k cho khách lẻ' },
+    { label: '📊 Thu chi hôm nay', text: 'Hôm nay thu chi thế nào?' },
+    { label: '📎 Đính kèm hóa đơn', isUpload: true },
+  ];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -215,7 +223,34 @@ export function AIChatScreen() {
   }
 
   return (
-    <div className="flex flex-col w-full min-w-0">
+    <div
+      className="flex flex-col w-full min-w-0 relative"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) void handleFile(f);
+      }}
+    >
+      {/* Drag & drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-background/85 backdrop-blur-sm border-2 border-dashed border-accent-fg flex flex-col items-center justify-center gap-3 p-6 text-center animate-in fade-in duration-200">
+          <div className="size-16 rounded-full bg-accent-bg flex items-center justify-center text-accent-fg">
+            <UploadCloud size={32} />
+          </div>
+          <p className="text-base font-semibold text-text-primary">Thả file vào đây để AI bóc tách</p>
+          <p className="text-xs text-text-muted">Hỗ trợ ảnh hóa đơn (.jpg, .png), hóa đơn PDF hoặc file CSV / Excel</p>
+        </div>
+      )}
+
       <div className="px-[var(--s-md)] py-[var(--s-sm)] bg-info-banner border-b border-border-subtle">
         <div className="flex items-center gap-[var(--s-xs)]">
           <span className="text-sm">🤖</span>
@@ -223,7 +258,7 @@ export function AIChatScreen() {
             {webLLM.isLoading
               ? `🔄 Đang tải model offline (${modelProgress}%) — vẫn dùng được lệnh rõ / CSV / mic`
               : aiReady
-                ? '🟢 AI Assistant sẵn sàng — text, ảnh, file, giọng nói.'
+                ? '🟢 AI Assistant sẵn sàng — gõ lệnh, gửi ảnh, file hoặc giọng nói.'
                 : '🟡 Đang khởi tạo AI — cấu hình Gemini trong Cài đặt để OCR tốt hơn.'}
           </span>
         </div>
@@ -238,10 +273,10 @@ export function AIChatScreen() {
           <div key={msg.id} className="flex flex-col gap-2">
             <div
               className={[
-                'max-w-[80%] rounded-panel px-[var(--s-md)] py-[var(--s-sm)] text-sm',
+                'max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all',
                 msg.role === 'user'
-                  ? 'bg-accent-fg text-white ml-auto'
-                  : 'bg-surface border border-border text-text-primary mr-auto',
+                  ? 'bg-accent-fg text-white ml-auto rounded-tr-xs'
+                  : 'bg-surface border border-border text-text-primary mr-auto rounded-tl-xs',
               ].join(' ')}
             >
               {msg.role === 'user' ? (
@@ -295,6 +330,29 @@ export function AIChatScreen() {
       </div>
 
       <div className="p-[var(--s-md)] border-t border-border bg-surface">
+        {/* Quick prompts strip */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none mb-1">
+          <span className="text-[10px] text-text-muted flex items-center gap-1 shrink-0 font-medium mr-0.5">
+            <Sparkles size={11} className="text-accent-fg" /> Gợi ý:
+          </span>
+          {QUICK_PROMPTS.map((qp, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                if (qp.isUpload) {
+                  fileRef.current?.click();
+                } else if (qp.text) {
+                  setInput(qp.text);
+                }
+              }}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-surface-hover hover:bg-surface-active border border-border-subtle text-text-secondary hover:text-text-primary whitespace-nowrap shrink-0 transition-colors shadow-xs"
+            >
+              {qp.label}
+            </button>
+          ))}
+        </div>
+
         <input
           ref={fileRef}
           type="file"

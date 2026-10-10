@@ -115,38 +115,81 @@ export function OverviewReport({ onNavigateTab }: OverviewReportProps) {
 
   return (
     <div className="space-y-[var(--s-lg)]">
-      <Card className="min-w-0 overflow-hidden">
-        <CardContent className="pt-6 pb-5 px-4 sm:px-6 text-center">
-          <p className="text-xs text-text-muted mb-1">Lợi nhuận tiền mặt</p>
-          <p
-            className={`text-2xl sm:text-3xl font-bold tabular-nums break-words leading-tight ${
-              snapshot.profit >= 0 ? "text-success-fg" : "text-danger-fg"
-            }`}
-          >
-            {formatCurrency(snapshot.profit)}
-          </p>
-          <p className="mt-1.5 text-sm text-text-secondary tabular-nums">
-            Biên lợi nhuận{" "}
-            <span className="font-semibold text-accent-fg">
-              {snapshot.marginPct.toFixed(1)}%
-            </span>
-          </p>
+      {/* Executive P&L Hero Card */}
+      <Card
+        className={`min-w-0 overflow-hidden border ${
+          snapshot.profit >= 0
+            ? "bg-gradient-to-br from-emerald-500/8 via-surface to-surface border-emerald-500/25 shadow-xs"
+            : "bg-gradient-to-br from-rose-500/8 via-surface to-surface border-rose-500/25 shadow-xs"
+        }`}
+      >
+        <CardContent className="pt-6 pb-6 px-4 sm:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div>
+              <p className="text-xs font-medium text-text-muted mb-1">Lợi nhuận tiền mặt ròng</p>
+              <p
+                className={`text-2xl sm:text-4xl font-extrabold tabular-nums break-words leading-tight ${
+                  snapshot.profit >= 0 ? "text-success-fg" : "text-danger-fg"
+                }`}
+              >
+                {formatCurrency(snapshot.profit)}
+              </p>
+              <div className="flex items-center gap-2 justify-center sm:justify-start mt-2">
+                <span className="text-xs text-text-muted">Biên lợi nhuận:</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-accent-bg text-accent-fg">
+                  {snapshot.marginPct.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Visual ratio strip */}
+            <div className="flex flex-col gap-2 w-full sm:w-64">
+              <div className="flex justify-between text-xs text-text-muted">
+                <span>Thu: <strong className="text-text-primary">{formatCurrency(snapshot.cashIn)}</strong></span>
+                <span>Chi: <strong className="text-text-primary">{formatCurrency(snapshot.expenseTotal)}</strong></span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-surface-active overflow-hidden flex">
+                <div
+                  className="bg-emerald-500 h-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      snapshot.cashIn + snapshot.expenseTotal > 0
+                        ? Math.round((snapshot.cashIn / (snapshot.cashIn + snapshot.expenseTotal)) * 100)
+                        : 50
+                    }%`,
+                  }}
+                  title="Tỷ lệ Thu"
+                />
+                <div
+                  className="bg-rose-500 h-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      snapshot.cashIn + snapshot.expenseTotal > 0
+                        ? Math.round((snapshot.expenseTotal / (snapshot.cashIn + snapshot.expenseTotal)) * 100)
+                        : 50
+                    }%`,
+                  }}
+                  title="Tỷ lệ Chi"
+                />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-3 gap-2 min-w-0">
+      <div className="grid grid-cols-3 gap-2.5 min-w-0">
         {strip.map((s) => (
           <button
             key={s.key}
             type="button"
             onClick={() => onNavigateTab(s.key)}
-            className="rounded-lg border border-border-subtle bg-surface px-2 py-3 text-center hover:bg-surface-hover transition-colors min-w-0"
+            className="rounded-xl border border-border-subtle bg-surface/85 hover:bg-surface p-3 text-center shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all min-w-0 cursor-pointer"
           >
-            <s.icon size={14} className={`mx-auto mb-1 ${s.className}`} />
-            <p className="text-[10px] sm:text-xs text-text-muted">{s.label}</p>
-            <p
-              className={`text-xs sm:text-sm font-semibold tabular-nums break-words leading-snug ${s.className}`}
-            >
+            <div className="flex items-center justify-center size-7 rounded-lg bg-surface-hover mx-auto mb-1.5">
+              <s.icon size={15} className={s.className} />
+            </div>
+            <p className="text-[11px] font-medium text-text-muted">{s.label}</p>
+            <p className={`text-xs sm:text-sm font-bold tabular-nums break-words leading-snug mt-0.5 ${s.className}`}>
               {s.value}
             </p>
           </button>

@@ -28,11 +28,12 @@ import { todayISO } from '@/utils/date';
 import { notify } from '@/utils/notify';
 import { defaultPaidAmount } from '@/utils/revenueMetrics';
 import { computeOrderTotals } from '@/utils/orderTotals';
-import { X, Plus, Check } from 'lucide-react';
+import { X, Plus, Check, Copy, Zap } from 'lucide-react';
 import { createRevenue, updateRevenue, buildOrderCode } from '@/services/revenueService';
 import { createCustomer } from '@/services/customerService';
 import { createProduct, searchProducts } from '@/services/productService';
 import { getDefaultPlatformId } from '@/services/platformService';
+import { WALK_IN_LOCAL_ID, isWalkInCustomerId } from '@/services/walkIn';
 import { useRevenueStore } from '@/store/revenueStore';
 import { useCustomerStore } from '@/store/customerStore';
 import { useProductStore } from '@/store/productStore';
@@ -283,6 +284,28 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
     [],
   );
 
+  const duplicateItem = useCallback((idx: number) => {
+    setForm((prev) => {
+      const target = prev.items[idx];
+      if (!target) return prev;
+      const cloned: OrderItem = {
+        ...target,
+        id: generateId(),
+      };
+      const items = [...prev.items];
+      items.splice(idx + 1, 0, cloned);
+      return { ...prev, items };
+    });
+  }, []);
+
+  const handleSelectWalkIn = useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
+      customerId: WALK_IN_LOCAL_ID,
+      customerSearch: 'Khách vãng lai',
+    }));
+  }, []);
+
   /* ─── Customer search & quick-add ─── */
 
   const customerOptions = useMemo(() => {
@@ -512,13 +535,37 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
 
           {/* Customer search + quick-add */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-text-muted">Khách hàng</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-text-muted">Khách hàng</label>
+              {!form.customerId && (
+                <button
+                  type="button"
+                  onClick={handleSelectWalkIn}
+                  className="text-[11px] text-accent-fg hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Zap size={11} className="fill-warning-fg text-warning-fg" />
+                  Chọn nhanh khách lẻ / vãng lai
+                </button>
+              )}
+            </div>
             {form.customerId ? (
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs bg-success-bg text-success-fg border-success-bg">
-                  {form.customerId === 'walk-in'
-                    ? 'Khách vãng lai'
-                    : (customers.find((c) => c.id === form.customerId)?.name ?? form.customerSearch) || 'Đã chọn'}
+                <Badge
+                  variant="outline"
+                  className={
+                    isWalkInCustomerId(form.customerId)
+                      ? 'text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-medium'
+                      : 'text-xs bg-success-bg text-success-fg border-success-bg'
+                  }
+                >
+                  {isWalkInCustomerId(form.customerId) ? (
+                    <>
+                      <Zap size={11} className="fill-amber-500 text-amber-500" />
+                      Khách vãng lai (Khách lẻ)
+                    </>
+                  ) : (
+                    (customers.find((c) => c.id === form.customerId)?.name ?? form.customerSearch) || 'Đã chọn'
+                  )}
                 </Badge>
                 <button
                   type="button"
@@ -547,6 +594,15 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
                     }
                     aria-label="Tìm khách hàng"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    className="h-8 gap-1 text-xs border-dashed text-text-secondary hover:text-accent-fg shrink-0"
+                    onClick={handleSelectWalkIn}
+                  >
+                    <Zap size={12} className="text-warning-fg" /> Khách lẻ
+                  </Button>
                   {form.customerSearch.trim() && (
                     <Button variant="secondary" size="xs" onClick={handleQuickAddCustomer}>
                       <Plus size={12} /> Thêm nhanh
@@ -554,7 +610,18 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
                   )}
                 </div>
                 {customerOptions.length > 0 && (
-                  <div className="max-h-40 overflow-y-auto border border-border-subtle rounded-field bg-surface">
+                  <div className="max-h-40 overflow-y-auto border border-border-subtle rounded-field bg-surface shadow-sm">
+                    <div
+                      className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover flex items-center justify-between border-b border-border-subtle bg-amber-500/5 text-amber-700 dark:text-amber-300 font-medium"
+                      onClick={handleSelectWalkIn}
+                      role="option"
+                      aria-selected={false}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Zap size={12} className="text-amber-500 fill-amber-500" />
+                        Khách vãng lai (Khách lẻ không lưu thông tin)
+                      </span>
+                    </div>
                     {customerOptions.map((c) => (
                       <div
                         key={c.id}
@@ -590,7 +657,7 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
                     <th className="text-right py-1 px-2 font-medium text-text-muted w-[60px]">SL</th>
                     <th className="text-right py-1 px-2 font-medium text-text-muted w-[120px]">Đơn giá (₫)</th>
                     <th className="text-right py-1 px-2 font-medium text-text-muted w-[120px]">Thành tiền</th>
-                    <th className="w-[32px]" />
+                    <th className="w-[52px]" />
                   </tr>
                 </thead>
                 <tbody>
@@ -703,16 +770,28 @@ export function OrderDialog({ open, onClose, editRevenue, onSuccess }: OrderDial
                       <td className="py-1 px-2 text-right text-text-primary font-semibold font-mono whitespace-nowrap">
                         {formatCurrency(item.total)}
                       </td>
-                      <td className="py-1 px-1 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeItem(idx)}
-                          className="text-text-muted hover:text-danger-fg transition-colors text-sm"
-                          aria-label={`Xóa dòng ${idx + 1}`}
-                          disabled={form.items.length === 1}
-                        >
-                          ✕
-                        </button>
+                      <td className="py-1 px-1 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => duplicateItem(idx)}
+                            className="text-text-muted hover:text-accent-fg transition-colors p-1"
+                            aria-label={`Nhân bản dòng ${idx + 1}`}
+                            title="Nhân bản dòng"
+                          >
+                            <Copy size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            className="text-text-muted hover:text-danger-fg transition-colors p-1"
+                            aria-label={`Xóa dòng ${idx + 1}`}
+                            title="Xóa dòng"
+                            disabled={form.items.length === 1}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     );

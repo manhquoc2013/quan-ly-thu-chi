@@ -126,13 +126,41 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-surface .auth-bg,
-  .auth-surface .auth-veil,
-  .auth-surface .auth-rise,
-  .auth-surface .auth-rise-delay {
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
+
+/* ── Modern Financial UI Utilities ── */
+.stat-card-income {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, var(--color-surface) 100%);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+.stat-card-expense {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, var(--color-surface) 100%);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+.stat-card-profit {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.06) 0%, var(--color-surface) 100%);
+  border-color: rgba(13, 148, 136, 0.22);
+}
+.stat-card-debt {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, var(--color-surface) 100%);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.glow-teal-sm {
+  box-shadow: 0 0 16px -2px rgba(13, 148, 136, 0.25);
+}
+.glow-emerald-sm {
+  box-shadow: 0 0 16px -2px rgba(16, 185, 129, 0.25);
+}
+
 
 /* ── Smooth color transitions on theme change ── */
 html {
@@ -957,6 +985,36 @@ aside nav a[title]:hover::after {
   margin: 8px 0 10px;
   opacity: 0.85;
 }
+.order-bill__stamp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1.5px solid;
+  text-transform: uppercase;
+}
+.order-bill__stamp--paid {
+  border-color: #15803d;
+  color: #15803d;
+}
+.order-bill__stamp--partial {
+  border-color: #d97706;
+  color: #d97706;
+}
+.order-bill__stamp--unpaid {
+  border-color: #dc2626;
+  color: #dc2626;
+  border-style: dashed;
+}
+.order-bill__customer-box {
+  margin: 0 0 10px;
+  font-size: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
 .order-bill__identity {
   display: flex;
   justify-content: space-between;
@@ -1046,12 +1104,28 @@ aside nav a[title]:hover::after {
   color: var(--bill-muted);
   white-space: pre-wrap;
 }
+.order-bill__qr-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--bill-line);
+}
+.order-bill__qr-svg {
+  color: var(--bill-ink);
+  flex-shrink: 0;
+}
 .order-bill__footer {
-  margin-top: 14px;
+  margin-top: 10px;
   text-align: center;
   font-family: "Be Vietnam Pro", Figtree, sans-serif;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
+  color: var(--bill-muted);
+}
+.order-bill__thanks {
+  margin: 0;
 }
 
 @media print {
