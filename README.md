@@ -86,7 +86,7 @@ Không có Supabase, app vẫn chạy offline với SQLite local.
 
 | # | Tài liệu | Nội dung |
 |:--|:---|:---|
-| | [Wiki](wiki/Home.md) | Tài liệu hướng dẫn sử dụng & ảnh chụp màn hình v2.1.0 |
+| | [Wiki](https://github.com/manhquoc2013/quan-ly-thu-chi/wiki) | Tài liệu hướng dẫn sử dụng & ảnh chụp màn hình v2.2.0 |
 | | [README](README.md) | Tổng quan dự án |
 | | [RELEASE](RELEASE.md) | Lịch sử phát hành & quy trình release |
 | | [CHANGELOG](CHANGELOG.md) | Nhật ký thay đổi qua các phiên bản |
