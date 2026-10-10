@@ -4,9 +4,25 @@
  */
 
 let audioCtx: AudioContext | null = null;
+let soundEnabled = true;
+
+function isSoundAllowed(): boolean {
+  if (!soundEnabled) return false;
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = localStorage.getItem('mascot-settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.state?.soundEnabled === false) return false;
+    }
+  } catch {
+    // ignore
+  }
+  return true;
+}
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+  if (!isSoundAllowed()) return null;
   const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass) return null;
   if (!audioCtx) {
@@ -24,6 +40,13 @@ function getAudioContext(): AudioContext | null {
 }
 
 export const lucyAudio = {
+  /**
+   * Toggle procedural audio playback on/off.
+   */
+  setEnabled(enabled: boolean): void {
+    soundEnabled = enabled;
+  },
+
   /**
    * Cat purr — low frequency rumble with amplitude modulation.
    */

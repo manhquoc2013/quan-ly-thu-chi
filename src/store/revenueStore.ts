@@ -15,6 +15,7 @@ import type { Revenue, OrderStatus, PaymentStatus } from '@/models';
 import { cacheSet } from '@/services/cacheManager';
 import { filterRevenues } from '@/services/revenueFilters';
 import { useCustomerStore } from '@/store/customerStore';
+import { mascotAnnouncer } from '@/services/mascotAnnouncer';
 
 const CACHE_KEY = 'revenues';
 
@@ -158,16 +159,25 @@ export const useRevenueStore = create<RevenueStore>()(
         state.records.unshift(record);
       });
       persistRevenues(get);
+      mascotAnnouncer.notifyNewOrder(record);
     },
 
     updateRecord: (id, patch) => {
+      let completedRecord: Revenue | undefined;
       set((state) => {
         const idx = state.records.findIndex((r: Revenue) => r.id === id);
         if (idx !== -1) {
+          const prev = state.records[idx]!;
+          if (prev.orderStatus !== 'completed' && patch.orderStatus === 'completed') {
+            completedRecord = { ...prev, ...patch };
+          }
           Object.assign(state.records[idx]!, patch, { updatedAt: new Date().toISOString() });
         }
       });
       persistRevenues(get);
+      if (completedRecord) {
+        mascotAnnouncer.notifyOrderCompleted(completedRecord);
+      }
     },
 
     deleteRecords: (ids) => {

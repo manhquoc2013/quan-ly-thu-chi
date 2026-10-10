@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
-import { useMascotStore, type MascotActivity } from '@/store/mascotStore';
+import { useMascotStore, type MascotActivity, type VoiceTone, VOICE_TONES } from '@/store/mascotStore';
+import { speechService } from '@/services/speechService';
 import { geminiService } from '@/services/geminiService';
 import { groqService } from '@/services/groqService';
 import { kiloService } from '@/services/kiloService';
@@ -68,9 +69,27 @@ export function SettingsScreen() {
   const setVoiceEnabled = useMascotStore((s) => s.setVoiceEnabled);
   const soundEnabled = useMascotStore((s) => s.soundEnabled);
   const setSoundEnabled = useMascotStore((s) => s.setSoundEnabled);
+  const voiceURI = useMascotStore((s) => s.voiceURI);
+  const setVoiceURI = useMascotStore((s) => s.setVoiceURI);
+  const voiceTone = useMascotStore((s) => s.voiceTone);
+  const setVoiceTone = useMascotStore((s) => s.setVoiceTone);
+  const announceOrders = useMascotStore((s) => s.announceOrders);
+  const setAnnounceOrders = useMascotStore((s) => s.setAnnounceOrders);
   const isDocked = useMascotStore((s) => s.isDocked);
   const setDocked = useMascotStore((s) => s.setDocked);
   const setMenuOpen = useMascotStore((s) => s.setMenuOpen);
+  const speakMascot = useMascotStore((s) => s.speak);
+
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useEffect(() => {
+    const updateVoices = () => {
+      setAvailableVoices(speechService.getAvailableVoices());
+    };
+    updateVoices();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+  }, []);
 
   const [apiKey, setApiKey] = useState(geminiApiKey ?? '');
   const [testing, setTesting] = useState(false);
@@ -370,36 +389,131 @@ export function SettingsScreen() {
           <section aria-label="Mascot settings">
             <Card><CardHeader><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Lucy — Trợ lý tài chính & Đồng hành</CardTitle></div><Button size="sm" onClick={() => setMenuOpen(true)} className="text-xs">Mở Bảng điều khiển Lucy</Button></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-md)]">
-                <p className="text-xs text-text-muted">Mèo Lucy hỗ trợ tương tác giọng nói tiếng Việt, đồng hành tập trung Pomodoro và tư vấn dòng tiền. Chọn mức hoạt động hoặc vị trí ghim góc bàn.</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => {
-                    const active = activity === level;
-                    return (
-                      <button key={level} type="button" onClick={() => {
-                        if (activity === level) return;
-                        setActivity(level);
-                        toast.success(`Đã lưu: ${ACTIVITY_LABELS[level]}`);
-                      }}
-                        className={['flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition-all',
-                          active ? 'border-accent-fg bg-accent-bg text-accent-fg shadow-sm' : 'border-border bg-neutral-bg hover:bg-surface-hover text-text-secondary'].join(' ')}>
-                        <span className="text-lg">{level === 'low' ? '🐢' : level === 'high' ? '🐇' : '🐱'}</span>
-                        <span className="text-xs font-medium">{ACTIVITY_LABELS[level]}</span>
-                      </button>
-                    );
-                  })}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-text-primary">Mức độ hoạt động của Lucy</span>
+                    <span className="text-[11px] text-accent-fg font-medium">Lucy luôn tuân theo đúng cấu hình này</span>
+                  </div>
+                  <p className="text-xs text-text-muted mb-2.5">Cấu hình tần suất di chuyển và hoạt động của Lucy quanh màn hình:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => {
+                      const active = activity === level;
+                      return (
+                        <button key={level} type="button" onClick={() => {
+                          if (activity === level) return;
+                          setActivity(level);
+                          toast.success(`Đã lưu mức độ: ${ACTIVITY_LABELS[level]}`);
+                        }}
+                          className={['flex flex-col items-center gap-1 py-3 px-2 rounded-lg border transition-all text-center',
+                            active ? 'border-accent-fg bg-accent-bg text-accent-fg shadow-sm' : 'border-border bg-neutral-bg hover:bg-surface-hover text-text-secondary'].join(' ')}>
+                          <span className="text-lg">{level === 'low' ? '🐢' : level === 'high' ? '🐇' : '🐱'}</span>
+                          <span className="text-xs font-medium">{ACTIVITY_LABELS[level]}</span>
+                          <span className="text-[10px] text-text-muted leading-tight">
+                            {level === 'low' ? 'Yên tĩnh, ít đi lại' : level === 'high' ? 'Chạy nhảy hoạt bát' : 'Đi dạo tự nhiên'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="pt-2 border-t border-border space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-text-secondary font-medium">Giọng đọc tiếng Việt (Lucy nói chuyện)</span>
-                    <ToggleSwitch aria-label="Bật giọng đọc tiếng Việt" checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+                <div className="pt-2 border-t border-border space-y-3">
+                  {/* Voice Settings */}
+                  <div className="space-y-2.5 p-3 rounded-xl bg-surface/50 border border-border">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-semibold text-text-primary">Giọng đọc tiếng Việt (Lucy nói chuyện)</div>
+                        <div className="text-[11px] text-text-muted">Phát âm tiếng Việt tự nhiên và khẩu hình nhép môi</div>
+                      </div>
+                      <ToggleSwitch aria-label="Bật giọng đọc tiếng Việt" checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+                    </div>
+
+                    {voiceEnabled && (
+                      <div className="pt-2.5 border-t border-border/60 space-y-3 animate-fade-in">
+                        {/* Voice Tone Presets */}
+                        <div>
+                          <Label className="text-[11px] text-text-secondary font-medium block mb-1.5">Tông giọng Lucy:</Label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            {(Object.keys(VOICE_TONES) as VoiceTone[]).map((tone) => {
+                              const item = VOICE_TONES[tone];
+                              const active = voiceTone === tone;
+                              return (
+                                <button
+                                  key={tone}
+                                  type="button"
+                                  onClick={() => {
+                                    setVoiceTone(tone);
+                                    speakMascot(`Lucy đang dùng tông giọng ${item.label.split(' ')[0]} nè!`, 'happy', { forceVoice: true });
+                                  }}
+                                  className={[
+                                    'py-2 px-2 rounded-lg border text-left transition-all text-xs flex flex-col gap-0.5',
+                                    active ? 'border-accent-fg bg-accent-bg text-accent-fg font-semibold' : 'border-border bg-surface hover:bg-surface-hover text-text-secondary',
+                                  ].join(' ')}
+                                >
+                                  <span className="text-xs">{item.label}</span>
+                                  <span className="text-[10px] text-text-muted line-clamp-1">{item.desc}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* System Voices selector if multiple available */}
+                        {availableVoices.length > 0 && (
+                          <div>
+                            <Label className="text-[11px] text-text-secondary font-medium block mb-1">Giọng đọc hệ thống (TTS Voice):</Label>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={voiceURI ?? ''}
+                                onChange={(e) => setVoiceURI(e.target.value || undefined)}
+                                className="flex-1 h-8 rounded-lg border border-border bg-surface text-xs px-2 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-fg"
+                              >
+                                <option value="">Tự động (Ưu tiên giọng tiếng Việt chuẩn)</option>
+                                {availableVoices.map((v) => (
+                                  <option key={v.voiceURI} value={v.voiceURI}>
+                                    {v.name} ({v.lang})
+                                  </option>
+                                ))}
+                              </select>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs shrink-0"
+                                onClick={() => speakMascot('Xin chào chủ tiệm! Lucy đã sẵn sàng đồng hành cùng bạn rồi nè! 🐾', 'happy', { forceVoice: true })}
+                              >
+                                🔊 Thử giọng
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Order Announcement Toggle */}
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+                          <div>
+                            <div className="font-medium text-text-secondary">Thông báo đơn hàng bằng giọng nói</div>
+                            <div className="text-[10px] text-text-muted">Tự động đọc to chào mừng khi có đơn mới hoặc đơn hoàn thành</div>
+                          </div>
+                          <ToggleSwitch aria-label="Bật thông báo đơn hàng bằng giọng nói" checked={announceOrders} onCheckedChange={setAnnounceOrders} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-text-secondary font-medium">Hiệu ứng âm thanh sinh động (Leng keng, purr)</span>
+
+                  {/* Sound Effects */}
+                  <div className="flex items-center justify-between text-xs p-2.5 rounded-lg border border-border/70">
+                    <div>
+                      <div className="text-text-secondary font-medium">Hiệu ứng âm thanh sinh động (SFX)</div>
+                      <div className="text-[10px] text-text-muted">Tiếng gừ rù rì (purr), leng keng (coin), bẹo má nảy lò xo (boing), va chạm (thud)</div>
+                    </div>
                     <ToggleSwitch aria-label="Bật hiệu ứng âm thanh" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-text-secondary font-medium">Ghim tại góc bàn (Desk Companion)</span>
+
+                  {/* Docked Desk Companion */}
+                  <div className="flex items-center justify-between text-xs p-2.5 rounded-lg border border-border/70">
+                    <div>
+                      <div className="text-text-secondary font-medium">Ghim tại góc bàn (Desk Companion)</div>
+                      <div className="text-[10px] text-text-muted">Lucy sẽ ngồi yên tĩnh ở góc phải dưới để bạn tập trung làm việc</div>
+                    </div>
                     <ToggleSwitch aria-label="Ghim tại góc bàn" checked={isDocked} onCheckedChange={setDocked} />
                   </div>
                 </div>
@@ -410,10 +524,12 @@ export function SettingsScreen() {
               <CardContent><div className="space-y-[var(--s-sm)] text-xs text-text-muted">
                 <p>🐱 <strong>Mèo Lucy</strong> — Tối ưu hoạt hoạ theo cảm hứng từ Rive, Pixi-Live2D, TalkingHead & Lottie:</p>
                 <div className="space-y-1 mt-2">
+                  <p>🗣️ <strong>Thông báo đơn hàng</strong> — Khi có đơn mới hoặc đơn hoàn thành, Lucy sẽ chúc mừng bằng giọng nói tiếng Việt</p>
+                  <p>🐾 <strong>Tương tác vật lý 5 vùng</strong> — Kéo đuôi giật mình, bẹo má nảy tưng, xoa đầu gừ purr, gãi bụng cười nhột, búng tai</p>
+                  <p>🌀 <strong>Lắc chuột chóng mặt</strong> — Lắc nhanh Lucy qua lại sẽ làm Lucy hoa mắt xoay vòng @_@</p>
                   <p>👀 <strong>Theo dõi con trỏ (LookAt)</strong> — Mắt và đầu mèo chuyển động theo chuột của bạn</p>
                   <p>👄 <strong>Nói chuyện & Khẩu hình (Lip-Sync)</strong> — Miệng mèo mở theo nhịp khi phát giọng nói tiếng Việt</p>
                   <p>🎯 <strong>Chế độ Tập Trung (Pomodoro)</strong> — Đếm giờ 25m, nhắc nhở không phân tâm, giữ kỷ luật</p>
-                  <p>💖 <strong>Vuốt ve (Petting)</strong> — Click xoa đầu mèo phát tiếng gầm gừ purr và bung tim may mắn</p>
                   <p>👓 <strong>Kính vàng tri thức</strong> — Tự động đeo kính khi tư vấn tài chính hoặc suy nghĩ</p>
                   <p>⚙️ <strong>Menu nhanh / Chuột phải</strong> — Click chuột phải hoặc nút ⚙️ cạnh mèo để mở bảng điều khiển</p>
                 </div>

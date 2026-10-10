@@ -23,7 +23,7 @@ import {
   X,
   Lightbulb,
 } from 'lucide-react';
-import { useMascotStore, type MascotActivity } from '@/store/mascotStore';
+import { useMascotStore, type MascotActivity, VOICE_TONES, type VoiceTone } from '@/store/mascotStore';
 import { useUIStore } from '@/store/uiStore';
 import { getTodayFinancialSummary, type TodayFinancialSummary } from '@/services/mascotAdvisor';
 import { FINANCIAL_TIPS, pickLine } from '@/services/mascotLines';
@@ -32,6 +32,10 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
   const {
     voiceEnabled,
     soundEnabled,
+    voiceTone,
+    setVoiceTone,
+    announceOrders,
+    setAnnounceOrders,
     setVoiceEnabled,
     setSoundEnabled,
     focusMode,
@@ -249,7 +253,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
 
         {/* Section 3: Voice & Sound Preferences */}
         <div className="p-3 rounded-xl bg-card border border-border shadow-xs space-y-2">
-          <div className="text-xs font-semibold text-text-secondary mb-1">Âm thanh và Vị trí</div>
+          <div className="text-xs font-semibold text-text-secondary mb-1">Âm thanh & Tương tác giọng nói</div>
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 text-text-secondary">
               <Volume2 size={14} className={voiceEnabled ? 'text-amber-500' : 'text-text-muted'} />
@@ -273,10 +277,55 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
+          {voiceEnabled && (
+            <div className="p-2 rounded-lg bg-surface-hover/50 border border-border-subtle space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-text-muted">Âm sắc giọng đọc:</span>
+                <div className="flex items-center gap-1">
+                  {(Object.keys(VOICE_TONES) as VoiceTone[]).map((tone) => (
+                    <button
+                      key={tone}
+                      type="button"
+                      onClick={() => setVoiceTone(tone)}
+                      className={[
+                        'px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors',
+                        voiceTone === tone
+                          ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/40'
+                          : 'bg-surface hover:bg-surface-hover text-text-muted border border-border-subtle',
+                      ].join(' ')}
+                    >
+                      {VOICE_TONES[tone].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-border-subtle">
+                <span className="text-text-muted">Đọc khi có đơn mới & hoàn thành:</span>
+                <button
+                  type="button"
+                  onClick={() => setAnnounceOrders(!announceOrders)}
+                  className={[
+                    'w-8 h-4.5 rounded-full p-0.5 transition-colors relative inline-flex items-center',
+                    announceOrders ? 'bg-emerald-500' : 'bg-surface-hover border border-border',
+                  ].join(' ')}
+                  aria-label="Bật tắt thông báo đơn hàng bằng giọng nói"
+                >
+                  <span
+                    className={[
+                      'size-3.5 rounded-full bg-white shadow-xs transform transition-transform',
+                      announceOrders ? 'translate-x-3.5' : 'translate-x-0',
+                    ].join(' ')}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 text-text-secondary">
               <Sparkles size={14} className={soundEnabled ? 'text-amber-500' : 'text-text-muted'} />
-              Hiệu ứng âm thanh (Leng keng, gầm gừ)
+              Hiệu ứng âm thanh (Leng keng, tiếng mèo)
             </span>
             <button
               type="button"
@@ -311,7 +360,10 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex items-center justify-between text-xs pt-1 border-t border-border-subtle">
-            <span className="text-text-secondary">Mức độ hoạt động</span>
+            <div>
+              <span className="text-text-secondary">Mức độ hoạt động:</span>
+              <span className="text-[10px] text-text-muted block">Tuân thủ nghiêm ngặt</span>
+            </div>
             <div className="flex items-center gap-1">
               {(['low', 'medium', 'high'] as MascotActivity[]).map((level) => (
                 <button
@@ -325,7 +377,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
                       : 'bg-surface hover:bg-surface-hover text-text-muted border border-border-subtle',
                   ].join(' ')}
                 >
-                  {level === 'low' ? 'Lười' : level === 'high' ? 'Nhanh' : 'Vừa'}
+                  {level === 'low' ? 'Lười (Ít đi)' : level === 'high' ? 'Nhanh (Năng động)' : 'Vừa phải'}
                 </button>
               ))}
             </div>

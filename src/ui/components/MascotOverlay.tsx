@@ -6,7 +6,6 @@
 import { useMascotStore } from '@/store/mascotStore';
 import type { MascotActivity } from '@/store/mascotStore';
 import {
-  ACTIVITY_LINES,
   HARD_LAND_LINES,
   IDLE_LINES,
   FOCUS_LINES,
@@ -93,15 +92,15 @@ interface RopeAnchor { ax: number; ay: number }
 
 const PROFILES: Record<MascotActivity, ActivityProfile> = {
   low: {
-    delay: [4000, 9000],
-    maxSpeed: 2.4,
-    walkDur: 0.85,
-    runDur: 0.58,
-    weights: { walk: 0.55, run: 0.05, jump: 0.08, climb: 0.08, crawl: 0.06, attack: 0.04, runJump: 0.02 },
+    delay: [6000, 14000],
+    maxSpeed: 2.0,
+    walkDur: 0.92,
+    runDur: 0.65,
+    weights: { walk: 0.7, run: 0.04, jump: 0.06, climb: 0.06, crawl: 0.08, attack: 0.03, runJump: 0.01 },
   },
   medium: {
-    delay: [2000, 5000],
-    maxSpeed: 4.5,
+    delay: [2500, 6000],
+    maxSpeed: 4.2,
     walkDur: 0.68,
     runDur: 0.48,
     weights: { walk: 0.4, run: 0.12, jump: 0.12, climb: 0.14, crawl: 0.1, attack: 0.06, runJump: 0.06 },
@@ -1265,7 +1264,6 @@ export function MascotOverlay() {
   const message = useMascotStore((s) => s.message);
   const emotion = useMascotStore((s) => s.emotion);
   const activity = useMascotStore((s) => s.activity);
-  const setActivity = useMascotStore((s) => s.setActivity);
   const isTalking = useMascotStore((s) => s.isTalking);
   const viseme = useMascotStore((s) => s.viseme);
   const focusMode = useMascotStore((s) => s.focusMode);
@@ -2392,21 +2390,11 @@ export function MascotOverlay() {
     };
   }, []);
 
-  const cycleActivity = useCallback(() => {
-    const now = Date.now();
-    if (now - lastClick.current < 400) {
-      const next: Record<MascotActivity, MascotActivity> = { low: 'medium', medium: 'high', high: 'low' };
-      setActivity(next[activity]);
-      useMascotStore.getState().speak(ACTIVITY_LINES[next[activity]], 'celebrate');
-    }
-    lastClick.current = now;
-  }, [activity, setActivity]);
-
   /** Poke / knock — physical hops & flinches, not CSS spin loops. */
   const playTapReaction = useCallback(() => {
     const now = Date.now();
     tapCombo.current = now - lastClick.current < 550 ? tapCombo.current + 1 : 1;
-    cycleActivity();
+    lastClick.current = now;
     const combo = tapCombo.current;
 
     type Tap = {
@@ -2447,7 +2435,7 @@ export function MascotOverlay() {
     doBallistic(dir * rand(0.08, 0.18), -rand(0.2, 0.35), false, {
       interact: true, vibe: 'hop', noChute: true, silent: true,
     });
-  }, [doBallistic, cycleActivity]);
+  }, [doBallistic]);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();

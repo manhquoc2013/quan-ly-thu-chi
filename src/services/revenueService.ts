@@ -19,6 +19,7 @@ import { cacheGet, cacheSet } from './cacheManager';
 import { createExpense, updateExpense, deleteExpenses } from './expenseService';
 import { reverseOrderStockOut, syncOrderStock } from './stockService';
 import { notifyListInvalidated } from './listQuery';
+import { mascotAnnouncer } from './mascotAnnouncer';
 
 const CACHE_KEY = 'revenues';
 
@@ -273,6 +274,7 @@ export async function createRevenue(
   notifyListInvalidated('revenues');
 
   notify.success(`Đã thêm đơn ${record.orderCode}`, opts);
+  mascotAnnouncer.notifyNewOrder(record);
   return record;
 }
 
@@ -403,6 +405,11 @@ export async function updateRevenue(
   } else {
     notify.success(`Đã cập nhật đơn ${updated.orderCode}`, opts);
   }
+
+  if (prev.orderStatus !== 'completed' && updated.orderStatus === 'completed') {
+    mascotAnnouncer.notifyOrderCompleted(updated);
+  }
+
   return updated;
 }
 
@@ -543,5 +550,10 @@ export async function updateRevenuesBatch(
       : `Đã cập nhật đơn ${updatedList[0]?.orderCode ?? ''}`,
     opts,
   );
+
+  if (patch.orderStatus === 'completed' && updatedList[0]) {
+    mascotAnnouncer.notifyOrderCompleted(updatedList[0]);
+  }
+
   return updatedList;
 }

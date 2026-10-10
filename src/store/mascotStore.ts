@@ -15,6 +15,14 @@ import { lucyAudio } from '@/services/lucyAudio';
 
 export type MascotEmotion = 'happy' | 'sad' | 'warning' | 'celebrate' | 'thinking' | 'idle' | 'focus';
 export type MascotActivity = 'low' | 'medium' | 'high';
+export type VoiceTone = 'cute' | 'natural' | 'calm' | 'energetic';
+
+export const VOICE_TONES: Record<VoiceTone, { label: string; pitch: number; rate: number; desc: string }> = {
+  cute: { label: 'Dễ thương (Mèo con)', pitch: 1.35, rate: 1.08, desc: 'Giọng cao trong trẻo, tinh nghịch' },
+  natural: { label: 'Tự nhiên (Thân thiện)', pitch: 1.12, rate: 1.02, desc: 'Giọng cân bằng, ấm áp' },
+  calm: { label: 'Điềm đạm (Trợ lý)', pitch: 0.95, rate: 0.96, desc: 'Giọng trầm ổn, tập trung' },
+  energetic: { label: 'Năng động (Cổ vũ)', pitch: 1.25, rate: 1.18, desc: 'Giọng nhanh nhẹn, sôi nổi' },
+};
 
 export interface MascotState {
   visible: boolean;
@@ -28,6 +36,11 @@ export interface MascotState {
   soundEnabled: boolean;
   isTalking: boolean;
   viseme: VisemeShape;
+  voiceURI?: string;
+  voiceTone: VoiceTone;
+  voicePitch: number;
+  voiceRate: number;
+  announceOrders: boolean; // Tự động thông báo giọng nói khi có đơn mới / hoàn thành
   
   // Focus Companion Mode (Pomodoro)
   focusMode: boolean;
@@ -49,6 +62,11 @@ export interface MascotActions {
   // Sound & Voice
   setVoiceEnabled: (enabled: boolean) => void;
   setSoundEnabled: (enabled: boolean) => void;
+  setVoiceURI: (voiceURI: string | undefined) => void;
+  setVoiceTone: (tone: VoiceTone) => void;
+  setVoicePitch: (pitch: number) => void;
+  setVoiceRate: (rate: number) => void;
+  setAnnounceOrders: (enabled: boolean) => void;
   setTalking: (talking: boolean, viseme?: VisemeShape) => void;
   
   // Focus Mode
@@ -79,6 +97,11 @@ export const useMascotStore = create<MascotStore>()(
       soundEnabled: true,
       isTalking: false,
       viseme: 'closed',
+      voiceURI: undefined,
+      voiceTone: 'cute',
+      voicePitch: 1.35,
+      voiceRate: 1.08,
+      announceOrders: true,
       
       focusMode: false,
       focusSecondsLeft: 25 * 60,
@@ -107,6 +130,9 @@ export const useMascotStore = create<MascotStore>()(
             onStart: () => set({ isTalking: true }),
             onEnd: () => set({ isTalking: false, viseme: 'closed' }),
             onViseme: (viseme) => set({ viseme, isTalking: viseme !== 'closed' }),
+            voiceURI: state.voiceURI,
+            pitch: state.voicePitch,
+            rate: state.voiceRate,
           });
         }
 
@@ -158,7 +184,27 @@ export const useMascotStore = create<MascotStore>()(
         }
       },
 
-      setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+      setSoundEnabled: (soundEnabled) => {
+        set({ soundEnabled });
+        lucyAudio.setEnabled(soundEnabled);
+      },
+
+      setVoiceURI: (voiceURI) => set({ voiceURI }),
+
+      setVoiceTone: (voiceTone) => {
+        const preset = VOICE_TONES[voiceTone];
+        set({
+          voiceTone,
+          voicePitch: preset.pitch,
+          voiceRate: preset.rate,
+        });
+      },
+
+      setVoicePitch: (voicePitch) => set({ voicePitch }),
+
+      setVoiceRate: (voiceRate) => set({ voiceRate }),
+
+      setAnnounceOrders: (announceOrders) => set({ announceOrders }),
 
       setTalking: (isTalking, viseme = 'closed') => set({ isTalking, viseme }),
 
@@ -247,6 +293,11 @@ export const useMascotStore = create<MascotStore>()(
         voiceEnabled: state.voiceEnabled,
         soundEnabled: state.soundEnabled,
         isDocked: state.isDocked,
+        voiceURI: state.voiceURI,
+        voiceTone: state.voiceTone,
+        voicePitch: state.voicePitch,
+        voiceRate: state.voiceRate,
+        announceOrders: state.announceOrders,
       }),
     },
   ),

@@ -113,7 +113,19 @@ export const speechService = {
   },
 
   /**
-   * Speak text out loud using Web Speech API with simulated talking visemes.
+   * Get all available TTS voices from the browser.
+   */
+  getAvailableVoices(): SpeechSynthesisVoice[] {
+    if (!this.isTtsSupported) return [];
+    try {
+      return window.speechSynthesis.getVoices();
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Speak text out loud using Web Speech API with simulated talking visemes and configurable voice.
    */
   speakText(
     text: string,
@@ -121,6 +133,9 @@ export const speechService = {
       onStart?: () => void;
       onEnd?: () => void;
       onViseme?: (viseme: VisemeShape) => void;
+      voiceURI?: string;
+      pitch?: number;
+      rate?: number;
     },
   ): boolean {
     if (!this.isTtsSupported) return false;
@@ -147,15 +162,25 @@ export const speechService = {
 
     const utterance = new SpeechSynthesisUtterance(plain);
     utterance.lang = 'vi-VN';
-    utterance.pitch = 1.15; // Slightly cute and clear cat voice
-    utterance.rate = 1.05;
+    utterance.pitch = options?.pitch ?? 1.15; // Customizable tone pitch
+    utterance.rate = options?.rate ?? 1.05;   // Customizable speech speed
 
-    // Prefer high-quality Vietnamese voice if installed
+    // Select specific configured voice or fallback to best Vietnamese voice
     const voices = window.speechSynthesis.getVoices();
-    const viVoice = voices.find((v) => v.lang.startsWith('vi') || v.lang === 'vi_VN') ||
-      voices.find((v) => v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('tieng viet'));
-    if (viVoice) {
-      utterance.voice = viVoice;
+    let selectedVoice: SpeechSynthesisVoice | undefined;
+
+    if (options?.voiceURI) {
+      selectedVoice = voices.find((v) => v.voiceURI === options.voiceURI || v.name === options.voiceURI);
+    }
+
+    if (!selectedVoice) {
+      selectedVoice = voices.find((v) => v.lang.startsWith('vi') || v.lang === 'vi_VN') ||
+        voices.find((v) => v.name.toLowerCase().includes('vietnam') || v.name.toLowerCase().includes('tieng viet'));
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      utterance.lang = selectedVoice.lang || 'vi-VN';
     }
 
     utterance.onstart = () => {
