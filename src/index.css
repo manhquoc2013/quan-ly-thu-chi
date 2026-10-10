@@ -1355,3 +1355,84 @@ aside nav a[title]:hover::after {
   animation: motionTestSlideReduced 1.4s ease-in-out infinite;
 }
 
+/* ── Lucy Chat Animations ── */
+@keyframes lucyThinkBob {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(1.2deg);
+  }
+}
+
+@keyframes lucyTailSwish {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-15deg);
+  }
+}
+
+@keyframes lucyGlint {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes lucyFloatParticle1 {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-5px, -10px) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-10px, -20px) scale(0.6);
+  }
+}
+
+@keyframes lucyFloatParticle2 {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(6px, -12px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(12px, -22px) scale(0.6);
+  }
+}
+
+@keyframes typingDotWave {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmerSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+

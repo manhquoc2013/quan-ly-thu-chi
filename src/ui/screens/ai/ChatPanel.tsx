@@ -20,7 +20,7 @@ import { MarkdownText } from '@components/MarkdownText';
 import { DataEntryHelper } from './DataEntryHelper';
 import { toast } from 'sonner';
 import { llmSourceLabel } from '@/services/llmCall';
-import { CatBody } from '@/ui/components/MascotOverlay';
+import { LucyChatThinking, LucyAvatarMini } from '@/ui/components/LucyChatIndicator';
 
 interface ChatMessage {
   id: string;
@@ -376,12 +376,12 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
             </div>
 
             {webLLM.isLoading && (
-              <div className="mx-[var(--s-md)] mt-[var(--s-sm)] p-[var(--s-sm)] rounded-panel bg-surface border border-border">
-                <div className="flex items-center gap-2 mb-1">
-                  <CatBody emotion="thinking" action="walk" />
-                  <span className="text-[11px]">Đang tải AI offline {modelProgress}%</span>
-                </div>
-                <div className="w-full h-1 bg-surface-hover rounded-full overflow-hidden">
+              <div className="mx-[var(--s-md)] mt-[var(--s-sm)]">
+                <LucyChatThinking
+                  customText={`Đang tải AI offline ${modelProgress}%`}
+                  subText="Tải mô hình WebLLM vào bộ nhớ đệm trình duyệt"
+                />
+                <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden mt-2">
                   <div
                     className="h-full bg-accent-fg rounded-full transition-all"
                     style={{ width: `${modelProgress}%` }}
@@ -397,7 +397,16 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
               aria-label="Chat messages"
             >
               {messages.map((msg) => (
-                <div key={msg.id} className="flex flex-col gap-2">
+                <div key={msg.id} className="flex flex-col gap-1.5">
+                  {msg.role !== 'user' && (
+                    <div className="flex items-center gap-1.5 mr-auto pl-1">
+                      <LucyAvatarMini size={16} />
+                      <span className="text-[10px] font-semibold text-text-secondary">Lucy AI</span>
+                      {msg.source && (
+                        <span className="text-[9px] text-text-muted">· {llmSourceLabel(msg.source)}</span>
+                      )}
+                    </div>
+                  )}
                   <div
                     className={[
                       'max-w-[85%] rounded-panel px-[var(--s-md)] py-[var(--s-sm)] text-xs',
@@ -410,11 +419,6 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                       <span className="whitespace-pre-wrap break-words">{msg.text}</span>
                     ) : (
                       <MarkdownText text={msg.text} />
-                    )}
-                    {msg.source && (
-                      <div className="mt-1 text-[10px] text-text-muted">
-                        {llmSourceLabel(msg.source)}
-                      </div>
                     )}
                     {msg.createdRecord && (
                       <button
@@ -445,14 +449,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
                   )}
                 </div>
               ))}
-              {isTyping && (
-                <div className="mr-auto bg-surface border border-border rounded-panel px-[var(--s-md)] py-[var(--s-sm)]">
-                  <div className="flex items-center gap-2">
-                    <CatBody emotion="thinking" action="walk" />
-                    <span className="text-xs text-text-muted">Đang xử lý...</span>
-                  </div>
-                </div>
-              )}
+              {isTyping && <LucyChatThinking />}
             </div>
 
             <div className="p-[var(--s-sm)] border-t border-border bg-surface">

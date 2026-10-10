@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Send, Paperclip, Mic, MicOff, ExternalLink, Sparkles, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { aiRouter } from '@/services/aiRouter';
-import { CatBody } from '@/ui/components/MascotOverlay';
+import { LucyChatThinking, LucyAvatarMini } from '@/ui/components/LucyChatIndicator';
 import { getAllExpenses } from '@/services/expenseService';
 import { getAllRevenues } from '@/services/revenueService';
 import { webLLM } from '@/services/webLLM';
@@ -273,7 +273,16 @@ export function AIChatScreen() {
         aria-label="Chat messages"
       >
         {messages.map((msg) => (
-          <div key={msg.id} className="flex flex-col gap-2">
+          <div key={msg.id} className="flex flex-col gap-1.5">
+            {msg.role !== 'user' && (
+              <div className="flex items-center gap-1.5 mr-auto pl-1">
+                <LucyAvatarMini size={18} />
+                <span className="text-[11px] font-semibold text-text-secondary">Lucy AI</span>
+                {msg.source && (
+                  <span className="text-[10px] text-text-muted">· {llmSourceLabel(msg.source)}</span>
+                )}
+              </div>
+            )}
             <div
               className={[
                 'max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-all',
@@ -286,11 +295,6 @@ export function AIChatScreen() {
                 <span className="whitespace-pre-wrap break-words">{msg.text}</span>
               ) : (
                 <MarkdownText text={msg.text} />
-              )}
-              {msg.source && (
-                <div className="mt-1 text-[10px] text-text-muted">
-                  {llmSourceLabel(msg.source)}
-                </div>
               )}
               {msg.createdRecord && (
                 <button
@@ -321,14 +325,7 @@ export function AIChatScreen() {
             )}
           </div>
         ))}
-        {isTyping && (
-          <div className="mr-auto bg-surface border border-border rounded-panel px-[var(--s-md)] py-[var(--s-sm)]">
-            <div className="flex items-center gap-2">
-              <CatBody emotion="thinking" action="walk" />
-              <span className="text-xs text-text-muted">Đang xử lý...</span>
-            </div>
-          </div>
-        )}
+        {isTyping && <LucyChatThinking />}
         <div ref={bottomRef} aria-hidden className="h-px w-full" />
       </div>
 
