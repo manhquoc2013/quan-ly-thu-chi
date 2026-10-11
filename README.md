@@ -1,6 +1,6 @@
 # Quản Lý Tài Chính
 
-> **Phiên bản**: 2.4.1 · **Cập nhật**: 2026-10-11
+> **Phiên bản**: 2.4.2 · **Cập nhật**: 2026-10-11
 
 Ứng dụng quản lý tài chính & bán hàng thông minh, tích hợp trợ lý AI đa tầng (Hybrid AI), công cụ Chuẩn hoá dữ liệu nhập liệu bằng AI, tuỳ biến mức độ hoạt hoạ chống nhấp nháy, trợ lý linh vật Mèo Nấm 3D Pixar Chibi tương tác vật lý (5 trang phục đa năng, leo trèo bò trườn, bước đi trên hàng chữ DOM và tự động đổi trang phục theo ngữ cảnh), lưu trữ local (IndexedDB/SQLite) kết hợp đồng bộ đám mây Supabase Cloud Sync. Hỗ trợ PWA và CI/CD deploy lên GitHub Pages.
 

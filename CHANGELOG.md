@@ -6,6 +6,24 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.4.2] — 2026-10-11
+
+🔗 [So sánh với v2.4.1](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.4.1...v2.4.2)
+
+### Thang Cục Bộ Thực Tế & Thu Gọn Vào Ba Lô Khi Lên Đỉnh
+- **Giới Hạn Cự Ly Thang Cục Bộ (`MascotOverlay.tsx`)**:
+  - Khống chế chiều cao bắc thang trong cự ly thực tế hợp lý: `MIN_LADDER_CLIMB_HEIGHT = 36px` đến `MAX_LADDER_CLIMB_HEIGHT = 160px`.
+  - Nếu độ cao vượt quá 160px, Mèo Nấm sẽ nhảy hop theo từng bậc đỡ trung gian hoặc bung dù lượn (`chute`), chấm dứt hoàn toàn tình trạng thang dài xuyên suốt toàn màn hình.
+  - Chân thang (`ladderBottomY`) có điểm tựa sàn an toàn, không đâm xuyên qua thanh điều hướng đáy (Bottom Nav) hay nút chuyển giao diện ("Tối").
+- **Cơ Chế Thu Thang Ngược Vào Ba Lô (`MascotLadder.tsx`)**:
+  - Hỗ trợ `packDirection: 'to-top'`: khi mascot đã leo lên đỉnh, các móc đỉnh thang neo cố định tại vị trí ba lô trong khi các thanh trượt và bậc thang phía dưới được cuộn rút ngược từ dưới lên trên.
+  - Toàn bộ thang biến mất hoàn toàn vào ba lô trước khi mascot cất tiếng phát ngôn ("Lên được rồi!").
+- **Kiểm Thử & Đảm Bảo Chất Lượng**:
+  - Bổ sung unit tests cho cơ chế rút thang ngược trong `MascotLadder.test.tsx`.
+  - Bổ sung unit tests cho hằng số và giới hạn độ cao trong `MascotOverlay.test.tsx`.
+
+---
+
 ## [2.4.1] — 2026-10-11
 
 🔗 [So sánh với v2.4.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.4.0...v2.4.1)

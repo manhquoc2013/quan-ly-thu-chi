@@ -72,7 +72,7 @@ Quản lý toàn bộ hiệu ứng chuyển động và hoạt hoạ trong ứng
 
 ## 5. Tab Thông tin
 
-- Phiên bản ứng dụng hiện tại: **v2.4.1**.
+- Phiên bản ứng dụng hiện tại: **v2.4.2**.
 - Công nghệ sử dụng: React 19, Vite 6, Tailwind CSS v4, Zustand 5, IndexedDB, WebLLM, Playwright.
 
 ---
