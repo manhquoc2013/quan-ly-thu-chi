@@ -6,6 +6,24 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.4.1] — 2026-10-11
+
+🔗 [So sánh với v2.4.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.4.0...v2.4.1)
+
+### Chuyển Động Leo Thang Thực Tế & Thanh Lọc Hoàn Toàn Tàn Dư Quăng Dây
+- **Quỹ Đạo Leo Thang Thực Tế (`MascotOverlay.tsx`)**:
+  - Mascot được định vị ngay tại cột thang (`ladderX - W / 2`), loại bỏ hoàn toàn chuyển động trôi chéo không gian.
+  - Quỹ đạo leo theo trục Y thẳng đứng dọc các bậc rungs thang với `spinAngle = 0`, chấm dứt hoàn toàn góc nghiêng lắc lư đu dây cũ (-6°).
+  - Trình tự bắc thang thực tế: Đứng chờ tại chân/đỉnh thang (`idle`) trong lúc thang bung (`deploying`) ➔ Bám thang leo thẳng đứng (`climb`) ➔ Chạm sàn an toàn (`idle`) và thu gọn thang vào ba lô (`packing`).
+- **Thanh Lọc Triệt Để Tàn Dư Quăng Dây (Grapple Purge)**:
+  - Loại bỏ hoàn toàn type `grapple`, alias `normalizeAction('grapple')`, và các cờ đu dây cũ.
+  - Xóa `'grapple'` khỏi `LandVibe` và `LAND_LINES` trong `mascotLines.ts`, đồng bộ toàn bộ thoại và âm thanh sang `climb`.
+- **Tối Ưu Hoạt Hoạ Puppet Bám Bậc Thang (`NamCatPuppet.tsx`)**:
+  - Sửa `@keyframes body-climb`: giữ lưng thẳng (`rotate(0)`), chuyển động nâng hông nhẹ nhàng theo từng bước trèo.
+  - Hoạt họa tay (`larm-climb`, `rarm-climb`) và chân (`lleg-climb`, `rleg-climb`) luân phiên theo nhịp bám và đạp lên các bậc thang.
+
+---
+
 ## [2.4.0] — 2026-10-11
 
 🔗 [So sánh với v2.3.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.3.0...v2.4.0)
