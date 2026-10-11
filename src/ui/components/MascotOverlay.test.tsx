@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
-import { MascotOverlay, normalizeAction } from './MascotOverlay';
+import { MascotOverlay, normalizeAction, MIN_LADDER_CLIMB_HEIGHT, MAX_LADDER_CLIMB_HEIGHT } from './MascotOverlay';
 import { useMascotStore } from '@/store/mascotStore';
 
 describe('MascotOverlay rendering & state', () => {
@@ -46,5 +46,12 @@ describe('MascotOverlay rendering & state', () => {
     expect(normalizeAction('spin')).toBe('attack');
     expect(normalizeAction('climb')).toBe('climb');
     expect(normalizeAction('idle')).toBe('idle');
+  });
+
+  it('enforces local ladder climb height bounds between 36px and 160px', () => {
+    expect(MIN_LADDER_CLIMB_HEIGHT).toBe(36);
+    expect(MAX_LADDER_CLIMB_HEIGHT).toBe(160);
+    expect(MAX_LADDER_CLIMB_HEIGHT).toBeLessThanOrEqual(180);
+    expect(MIN_LADDER_CLIMB_HEIGHT).toBeGreaterThanOrEqual(30);
   });
 });

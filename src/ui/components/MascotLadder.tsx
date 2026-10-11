@@ -5,6 +5,7 @@
 import React from 'react';
 
 export type LadderState = 'deploying' | 'ready' | 'packing';
+export type LadderPackDirection = 'to-top' | 'to-bottom';
 
 export interface MascotLadderProps {
   x: number;
@@ -13,6 +14,7 @@ export interface MascotLadderProps {
   state: LadderState;
   progress?: number; // 0 to 1
   width?: number;
+  packDirection?: LadderPackDirection;
 }
 
 export function calculateLadderRungs(bottomY: number, topY: number, spacing = 22): number[] {
@@ -34,6 +36,7 @@ export const MascotLadder: React.FC<MascotLadderProps> = ({
   state,
   progress = 1,
   width = 24,
+  packDirection = 'to-top',
 }) => {
   const fullHeight = Math.max(16, bottomY - topY);
   
@@ -42,15 +45,31 @@ export const MascotLadder: React.FC<MascotLadderProps> = ({
   let opacity = 1;
 
   if (state === 'deploying') {
-    currentHeight = fullHeight * Math.min(1, Math.max(0.1, progress));
+    currentHeight = fullHeight * Math.min(1, Math.max(0.05, progress));
     opacity = Math.min(1, progress * 1.5);
   } else if (state === 'packing') {
-    currentHeight = fullHeight * Math.max(0.1, 1 - progress);
+    currentHeight = fullHeight * Math.max(0.02, 1 - progress);
     opacity = Math.max(0, 1 - progress);
   }
 
-  const currentTopY = bottomY - currentHeight;
-  const rungs = calculateLadderRungs(bottomY, currentTopY, 22);
+  // During packing to-top (cat reached top), ladder retracts upward towards topY (backpack)
+  let currentTopY = topY;
+  let currentBottomY = bottomY;
+
+  if (state === 'deploying') {
+    currentBottomY = bottomY;
+    currentTopY = bottomY - currentHeight;
+  } else if (state === 'packing') {
+    if (packDirection === 'to-top') {
+      currentTopY = topY;
+      currentBottomY = topY + currentHeight;
+    } else {
+      currentBottomY = bottomY;
+      currentTopY = bottomY - currentHeight;
+    }
+  }
+
+  const rungs = calculateLadderRungs(currentBottomY, currentTopY, 22);
 
   const halfW = width / 2;
   const leftX = x - halfW;
@@ -60,6 +79,7 @@ export const MascotLadder: React.FC<MascotLadderProps> = ({
     <svg
       data-mascot-ladder
       data-ladder-state={state}
+      data-pack-direction={packDirection}
       className="pointer-events-none fixed inset-0 z-[95] overflow-visible"
       width="100%"
       height="100%"
@@ -81,7 +101,7 @@ export const MascotLadder: React.FC<MascotLadderProps> = ({
         {/* Left Side Rail */}
         <line
           x1={leftX}
-          y1={bottomY}
+          y1={currentBottomY}
           x2={leftX}
           y2={currentTopY}
           stroke="url(#ladder-wood-grad)"
@@ -92,7 +112,7 @@ export const MascotLadder: React.FC<MascotLadderProps> = ({
         {/* Right Side Rail */}
         <line
           x1={rightX}
-          y1={bottomY}
+          y1={currentBottomY}
           x2={rightX}
           y2={currentTopY}
           stroke="url(#ladder-wood-grad)"

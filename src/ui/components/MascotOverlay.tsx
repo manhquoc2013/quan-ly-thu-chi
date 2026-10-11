@@ -18,7 +18,7 @@ import {
 import { LucyControlDeck } from './LucyControlDeck';
 import { lucyAudio } from '@/services/lucyAudio';
 import { NamCatPuppet } from './NamCatPuppet';
-import { MascotLadder, type LadderState } from './MascotLadder';
+import { MascotLadder, type LadderState, type LadderPackDirection } from './MascotLadder';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
@@ -75,6 +75,9 @@ interface Motion {
 const W = 63, H = 64;
 const MARGIN = 10;
 const HARD_TOSS = 140;
+/** Minimum and maximum vertical reach for folding ladder deployment (px). */
+export const MIN_LADDER_CLIMB_HEIGHT = 36;
+export const MAX_LADDER_CLIMB_HEIGHT = 160;
 /** Parachute only for drops taller than this (px). Short hops stay chute-free. */
 const CHUTE_MIN_DROP = 160;
 /** Pointer release faster than this (px/ms) counts as a real fling. */
@@ -884,6 +887,7 @@ export function MascotOverlay() {
     topY: number;
     state: LadderState;
     progress: number;
+    packDirection?: LadderPackDirection;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDizzy, setIsDizzy] = useState(false);
@@ -1458,7 +1462,8 @@ export function MascotOverlay() {
     const from = posRef.current;
     const toY = clamp(targetY, 0, groundY());
     const toX = clamp(targetX, 5, maxX());
-    if (toY >= from.y - 12) {
+    const climbDist = from.y - toY;
+    if (climbDist < MIN_LADDER_CLIMB_HEIGHT || climbDist > MAX_LADDER_CLIMB_HEIGHT) {
       doJump(toX, false);
       return;
     }
@@ -1475,7 +1480,7 @@ export function MascotOverlay() {
     }
 
     const ladderX = clamp((probe.left + probe.right) / 2, probe.left + 12, probe.right - 12);
-    const ladderBottomY = from.y + H;
+    const ladderBottomY = Math.min(from.y + H, groundY() + H - 4);
     const ladderTopY = probe.top;
     const climbX = clamp(ladderX - W / 2, 5, maxX());
 
@@ -1494,6 +1499,7 @@ export function MascotOverlay() {
       topY: ladderTopY,
       state: 'deploying',
       progress: 0,
+      packDirection: 'to-top',
     });
 
     const deployStart = performance.now();
@@ -1523,7 +1529,7 @@ export function MascotOverlay() {
         onDone: ({ x, y }) => {
           setAction('idle');
           setSpinAngle(0);
-          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
+          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0, packDirection: 'to-top' } : null));
           const packStart = performance.now();
           const PACK_MS = 280;
           const packStep = (packNow: number) => {
@@ -1550,7 +1556,7 @@ export function MascotOverlay() {
     ladderTimerRef.current = requestAnimationFrame(deployStep);
   }, [startMotion, doJump, settleIdle, clearLadder, playLandFx, speakLand, applyPos, setSpinAngle]);
 
-  /** Drop / descend DOWN — ladder for < 250px, parachute glide for >= 250px */
+  /** Drop / descend DOWN — ladder for <= MAX_LADDER_CLIMB_HEIGHT, parachute glide for > MAX_LADDER_CLIMB_HEIGHT */
   const doDescend = useCallback((targetY: number, targetX: number) => {
     const from = posRef.current;
     const toY = clamp(targetY, 0, groundY());
@@ -1562,8 +1568,8 @@ export function MascotOverlay() {
     clearLadder();
 
     const drop = toY - from.y;
-    // High drop (>= 250px): deploy parachute glide down
-    if (drop >= 250) {
+    // High drop (> MAX_LADDER_CLIMB_HEIGHT): deploy parachute glide down
+    if (drop > MAX_LADDER_CLIMB_HEIGHT) {
       const faceR = toX >= from.x;
       setFacingRight(faceR);
       facingRef.current = faceR;
@@ -1576,11 +1582,11 @@ export function MascotOverlay() {
       return;
     }
 
-    // Small drop (< 250px): deploy folding ladder downwards and climb down vertically
+    // Small drop (<= MAX_LADDER_CLIMB_HEIGHT): deploy folding ladder downwards and climb down vertically
     const climbX = clamp(from.x, 15, maxX());
     const ladderX = climbX + W / 2;
     const ladderTopY = from.y + H;
-    const ladderBottomY = toY + H;
+    const ladderBottomY = Math.min(toY + H, groundY() + H - 4);
 
     setBusy(true);
     setAction('idle');
@@ -1593,6 +1599,7 @@ export function MascotOverlay() {
       topY: ladderTopY,
       state: 'deploying',
       progress: 0,
+      packDirection: 'to-bottom',
     });
 
     const deployStart = performance.now();
@@ -1622,7 +1629,7 @@ export function MascotOverlay() {
         onDone: ({ x, y }) => {
           setAction('idle');
           setSpinAngle(0);
-          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
+          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0, packDirection: 'to-bottom' } : null));
           const packStart = performance.now();
           const PACK_MS = 240;
           const packStep = (packNow: number) => {
@@ -1936,16 +1943,16 @@ export function MascotOverlay() {
       const wantVertical = nearTop || pick === 'climb' || pick === 'runJump' || Math.random() < 0.32;
       if (wantVertical) {
         const near = plats.filter(p => p.left < cur.x + 220 && p.right > cur.x - 220);
-        const above = near.filter(p => p.top < surfY - 48 && isLatchableLedge(p));
-        const below = near.filter(p => p.top > surfY + 36 && p.top < gY - 8);
-        const belowWide = plats.filter(p => p.top > surfY + 28 && p.top < cur.y + 280 && p.top < gY - 8);
+        const above = near.filter(p => p.top < surfY - 36 && p.top >= surfY - MAX_LADDER_CLIMB_HEIGHT && isLatchableLedge(p));
+        const below = near.filter(p => p.top > surfY + 36 && p.top <= surfY + MAX_LADDER_CLIMB_HEIGHT && p.top < gY - 8);
+        const belowWide = plats.filter(p => p.top > surfY + 28 && p.top <= surfY + MAX_LADDER_CLIMB_HEIGHT && p.top < gY - 8);
         type Vert = { y: number; x: number; up: boolean; ledge?: Platform };
         const choices: Vert[] = [
           ...above.map(p => ({ y: p.top - H, x: platX(p), up: true, ledge: p })),
           ...below.map(p => ({ y: p.top - H, x: platX(p), up: false, ledge: p })),
           ...belowWide.map(p => ({ y: p.top - H, x: platX(p), up: false, ledge: p })),
         ];
-        if (onPlat) choices.push({ y: gY, x: clamp(cur.x + (facingRef.current ? 80 : -80), 5, maxX()), up: false });
+        if (onPlat && gY - cur.y <= MAX_LADDER_CLIMB_HEIGHT) choices.push({ y: gY, x: clamp(cur.x + (facingRef.current ? 80 : -80), 5, maxX()), up: false });
         if (choices.length) {
           const ups = choices.filter(c => c.up);
           const downs = choices.filter(c => !c.up);
@@ -2353,6 +2360,7 @@ export function MascotOverlay() {
           topY={ladderInfo.topY}
           state={ladderInfo.state}
           progress={ladderInfo.progress}
+          packDirection={ladderInfo.packDirection}
         />
       )}
 

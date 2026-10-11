@@ -43,4 +43,29 @@ describe('MascotLadder component & utilities', () => {
     const svg = container.querySelector('svg[data-mascot-ladder]');
     expect(svg?.getAttribute('data-ladder-state')).toBe('deploying');
   });
+
+  it('renders upward packing retraction into backpack when reaching top', () => {
+    const { container } = render(
+      React.createElement(MascotLadder, {
+        x: 100,
+        bottomY: 250,
+        topY: 150,
+        state: 'packing',
+        progress: 0.5,
+        packDirection: 'to-top',
+      })
+    );
+
+    const svg = container.querySelector('svg[data-mascot-ladder]');
+    expect(svg).toBeTruthy();
+    expect(svg?.getAttribute('data-ladder-state')).toBe('packing');
+    expect(svg?.getAttribute('data-pack-direction')).toBe('to-top');
+
+    // With 100px fullHeight and progress 0.5, currentHeight is ~50px
+    // For to-top packing, top remains anchored at topY (150), bottom is 150 + 50 = 200 (retracted up from 250)
+    const lines = container.querySelectorAll('line[stroke="url(#ladder-wood-grad)"]');
+    expect(lines.length).toBe(2);
+    expect(lines[0]?.getAttribute('y2')).toBe('150');
+    expect(Number(lines[0]?.getAttribute('y1'))).toBeLessThanOrEqual(205);
+  });
 });
