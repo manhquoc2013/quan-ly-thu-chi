@@ -3,7 +3,7 @@
  * Tone: warm, brief, thu–chi relevant; playful on tap/land, supportive for focus & productivity.
  */
 
-export type LandVibe = 'climb' | 'soft' | 'scroll' | 'hop' | 'chute' | 'toss' | 'grapple';
+export type LandVibe = 'climb' | 'soft' | 'scroll' | 'hop' | 'chute' | 'toss';
 
 export function pickLine(pool: readonly string[]): string {
   return pool[Math.floor(Math.random() * pool.length)]!;
@@ -42,7 +42,6 @@ export const FINANCIAL_TIPS = [
 
 export const LAND_LINES: Record<LandVibe, readonly string[]> = {
   climb: ['Lên được rồi!', 'Ngồi đây ổn!', 'Cao ghê ha!', 'Ổn áp!'],
-  grapple: ['Móc chắc!', 'Leo nào!', 'Bám rồi!', 'Lên tiếp!'],
   soft: ['Êm ru!', 'Đáp!', 'Nhẹ nhàng!', 'Ổn rồi!'],
   chute: ['Hạ cánh êm!', 'Nhẹ nhàng!', 'Ổn rồi!', 'Đáp!'],
   scroll: ['Ối, nền chạy mất!', 'Hu hu…', 'Chờ tí đã!'],

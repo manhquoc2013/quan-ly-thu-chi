@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
-import { MascotOverlay } from './MascotOverlay';
+import { MascotOverlay, normalizeAction } from './MascotOverlay';
 import { useMascotStore } from '@/store/mascotStore';
 
 describe('MascotOverlay rendering & state', () => {
@@ -38,5 +38,13 @@ describe('MascotOverlay rendering & state', () => {
     const { container } = render(React.createElement(MascotOverlay));
     // Old grapple rope rendered a line with stroke #57534e and claw hook path
     expect(container.querySelector('line[stroke="#57534e"]')).toBeNull();
+  });
+
+  it('normalizes actions cleanly without grapple aliases', () => {
+    expect(normalizeAction('flinch')).toBe('hurt');
+    expect(normalizeAction('tossed')).toBe('fall');
+    expect(normalizeAction('spin')).toBe('attack');
+    expect(normalizeAction('climb')).toBe('climb');
+    expect(normalizeAction('idle')).toBe('idle');
   });
 });

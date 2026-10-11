@@ -29,7 +29,7 @@ type CoreAction =
   | 'trip' | 'peek' | 'celebrate';
 
 /** Includes legacy aliases used by AuthGuard / chat loaders */
-export type Action = CoreAction | 'grapple' | 'spin' | 'flinch' | 'tossed';
+export type Action = CoreAction | 'spin' | 'flinch' | 'tossed';
 
 interface Platform { top: number; left: number; right: number; bottom: number }
 
@@ -261,7 +261,6 @@ export function normalizeAction(action: Action): CoreAction {
   if (action === 'flinch') return 'hurt';
   if (action === 'tossed') return 'fall';
   if (action === 'spin') return 'attack';
-  if (action === 'grapple') return 'climb';
   return action;
 }
 
@@ -445,7 +444,7 @@ function isInsideCardVoid(x: number, footY: number): boolean {
   return false;
 }
 
-/** Grapple only onto a real lip (card edge / wide control / title) — never empty air. */
+/** Latch ladder only onto a real lip (card edge / wide control / title) — never empty air. */
 function isLatchableLedge(p: Platform): boolean {
   if (p.right - p.left < 96) return false;
   const cx = clamp((p.left + p.right) / 2, 0, window.innerWidth - 1);
@@ -1337,9 +1336,9 @@ export function MascotOverlay() {
       setSpinAngle(Math.sin(t * Math.PI) * -8);
     } else if (m.kind === 'climb') {
       const e = easeInOutCubic(t);
-      x = m.fromX + (m.toX - m.fromX) * e;
+      x = m.fromX;
       y = m.fromY + (m.toY - m.fromY) * e;
-      setSpinAngle(-6 + Math.sin(t * Math.PI * 4) * 3);
+      setSpinAngle(0);
     } else if (m.kind === 'loco') {
       x = m.fromX + (m.toX - m.fromX) * t;
       y = m.fromY;
@@ -1474,16 +1473,21 @@ export function MascotOverlay() {
       doJump(toX, false);
       return;
     }
-    const faceR = toX >= from.x;
-    setFacingRight(faceR);
-    facingRef.current = faceR;
-    setBusy(true);
 
     const ladderX = clamp((probe.left + probe.right) / 2, probe.left + 12, probe.right - 12);
     const ladderBottomY = from.y + H;
     const ladderTopY = probe.top;
+    const climbX = clamp(ladderX - W / 2, 5, maxX());
 
-    setAction('climb');
+    const faceR = ladderX >= from.x;
+    setFacingRight(faceR);
+    facingRef.current = faceR;
+    setBusy(true);
+
+    applyPos(climbX, from.y, true);
+    setAction('idle');
+    setSpinAngle(0);
+
     setLadderInfo({
       x: ladderX,
       bottomY: ladderBottomY,
@@ -1504,18 +1508,21 @@ export function MascotOverlay() {
       }
       ladderTimerRef.current = 0;
 
-      const dist = Math.hypot(toX - from.x, toY - from.y);
+      setAction('climb');
+      const dist = Math.abs(toY - from.y);
       startMotion({
         kind: 'climb',
-        fromX: from.x,
+        fromX: climbX,
         fromY: from.y,
-        toX,
+        toX: climbX,
         toY,
-        duration: clamp(1000 + dist * 2.8, 1200, 2400),
+        duration: clamp(900 + dist * 2.5, 1100, 2200),
         parachute: false,
         hardLand: false,
         locoAction: 'walk',
         onDone: ({ x, y }) => {
+          setAction('idle');
+          setSpinAngle(0);
           setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
           const packStart = performance.now();
           const PACK_MS = 280;
@@ -1531,7 +1538,6 @@ export function MascotOverlay() {
             playLandFx();
             speakLand('climb');
             applyPos(x, y, true);
-            setAction('idle');
             setTimeout(() => {
               settleIdle(x, y);
               scheduleRef.current();
@@ -1542,7 +1548,7 @@ export function MascotOverlay() {
       });
     };
     ladderTimerRef.current = requestAnimationFrame(deployStep);
-  }, [startMotion, doJump, settleIdle, clearLadder, playLandFx, speakLand, applyPos]);
+  }, [startMotion, doJump, settleIdle, clearLadder, playLandFx, speakLand, applyPos, setSpinAngle]);
 
   /** Drop / descend DOWN — ladder for < 250px, parachute glide for >= 250px */
   const doDescend = useCallback((targetY: number, targetX: number) => {
@@ -1553,14 +1559,14 @@ export function MascotOverlay() {
       doJump(toX, false);
       return;
     }
-    const faceR = toX >= from.x;
-    setFacingRight(faceR);
-    facingRef.current = faceR;
     clearLadder();
 
     const drop = toY - from.y;
     // High drop (>= 250px): deploy parachute glide down
     if (drop >= 250) {
+      const faceR = toX >= from.x;
+      setFacingRight(faceR);
+      facingRef.current = faceR;
       doBallisticRef.current(
         clamp((toX - from.x) / 600, -0.35, 0.35),
         0.2,
@@ -1570,13 +1576,17 @@ export function MascotOverlay() {
       return;
     }
 
-    // Small drop (< 250px): deploy folding ladder downwards and climb down
-    const ladderX = clamp((from.x + toX) / 2, 15, window.innerWidth - 15);
+    // Small drop (< 250px): deploy folding ladder downwards and climb down vertically
+    const climbX = clamp(from.x, 15, maxX());
+    const ladderX = climbX + W / 2;
     const ladderTopY = from.y + H;
     const ladderBottomY = toY + H;
 
     setBusy(true);
-    setAction('climb');
+    setAction('idle');
+    setSpinAngle(0);
+    applyPos(climbX, from.y, true);
+
     setLadderInfo({
       x: ladderX,
       bottomY: ladderBottomY,
@@ -1597,18 +1607,21 @@ export function MascotOverlay() {
       }
       ladderTimerRef.current = 0;
 
+      setAction('climb');
       startMotion({
         kind: 'climb',
-        fromX: from.x,
+        fromX: climbX,
         fromY: from.y,
-        toX,
+        toX: climbX,
         toY,
-        duration: clamp(800 + drop * 2.2, 900, 1800),
+        duration: clamp(750 + drop * 2.0, 850, 1600),
         parachute: false,
         noChute: true,
         hardLand: false,
         locoAction: 'walk',
         onDone: ({ x, y }) => {
+          setAction('idle');
+          setSpinAngle(0);
           setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
           const packStart = performance.now();
           const PACK_MS = 240;
@@ -1622,7 +1635,8 @@ export function MascotOverlay() {
             ladderTimerRef.current = 0;
             clearLadder();
             playLandFx();
-            speakLand('hop');
+            speakLand('climb');
+            applyPos(x, y, true);
             setTimeout(() => {
               settleIdle(x, y);
               scheduleRef.current();
@@ -1633,7 +1647,7 @@ export function MascotOverlay() {
       });
     };
     ladderTimerRef.current = requestAnimationFrame(deployStep);
-  }, [startMotion, doJump, clearLadder, settleIdle, playLandFx, speakLand]);
+  }, [startMotion, doJump, clearLadder, settleIdle, playLandFx, speakLand, applyPos, setSpinAngle]);
 
   const doCrawl = useCallback(() => {
     const from = posRef.current;

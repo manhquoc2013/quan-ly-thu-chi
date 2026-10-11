@@ -55,7 +55,7 @@ export const NAM_PART_STYLES = `
   100% { transform: rotate(38deg) scale(1,0.95); }
 }
 @keyframes tail-jump { 0% { transform: rotate(-8deg); } 40% { transform: rotate(-32deg); } 100% { transform: rotate(-12deg); } }
-@keyframes tail-climb { 0%, 100% { transform: rotate(14deg); } 50% { transform: rotate(-14deg); } }
+@keyframes tail-climb { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } }
 @keyframes tail-crawl { 0%, 100% { transform: rotate(32deg); } 50% { transform: rotate(8deg); } }
 @keyframes tail-attack { 0% { transform: rotate(5deg); } 50% { transform: rotate(-28deg); } 100% { transform: rotate(5deg); } }
 @keyframes tail-hurt { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(-34deg); } }
@@ -84,7 +84,11 @@ export const NAM_PART_STYLES = `
 }
 @keyframes lleg-jump { 0% { transform: rotate(-20deg); } 40% { transform: rotate(8deg); } 100% { transform: rotate(-5deg); } }
 @keyframes lleg-runJump { 0% { transform: rotate(-25deg); } 40% { transform: rotate(12deg); } 100% { transform: rotate(-8deg); } }
-@keyframes lleg-climb { 0% { transform: rotate(-18deg) translateY(2px); } 35% { transform: rotate(20deg) translateY(-4px); } 70% { transform: rotate(-10deg); } 100% { transform: rotate(-18deg); } }
+@keyframes lleg-climb {
+  0% { transform: rotate(-14deg) translateY(4px); }
+  50% { transform: rotate(18deg) translateY(-5px); }
+  100% { transform: rotate(-14deg) translateY(4px); }
+}
 @keyframes lleg-crawl { 0% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } 100% { transform: rotate(-14deg); } }
 @keyframes lleg-attack { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(10deg); } }
 @keyframes lleg-hurt { 0% { transform: rotate(-8deg); } 50% { transform: rotate(-20deg); } 100% { transform: rotate(-8deg); } }
@@ -108,7 +112,11 @@ export const NAM_PART_STYLES = `
 }
 @keyframes rleg-jump { 0% { transform: rotate(20deg); } 40% { transform: rotate(-8deg); } 100% { transform: rotate(5deg); } }
 @keyframes rleg-runJump { 0% { transform: rotate(25deg); } 40% { transform: rotate(-12deg); } 100% { transform: rotate(8deg); } }
-@keyframes rleg-climb { 0% { transform: rotate(18deg) translateY(2px); } 35% { transform: rotate(-20deg) translateY(-4px); } 70% { transform: rotate(10deg); } 100% { transform: rotate(18deg); } }
+@keyframes rleg-climb {
+  0% { transform: rotate(18deg) translateY(-5px); }
+  50% { transform: rotate(-14deg) translateY(4px); }
+  100% { transform: rotate(18deg) translateY(-5px); }
+}
 @keyframes rleg-crawl { 0% { transform: rotate(14deg); } 50% { transform: rotate(-14deg); } 100% { transform: rotate(14deg); } }
 @keyframes rleg-attack { 0%, 100% { transform: rotate(5deg); } 50% { transform: rotate(-10deg); } }
 @keyframes rleg-hurt { 0% { transform: rotate(8deg); } 50% { transform: rotate(20deg); } 100% { transform: rotate(8deg); } }
@@ -120,7 +128,11 @@ export const NAM_PART_STYLES = `
 @keyframes larm-walk { 0% { transform: rotate(28deg); } 50% { transform: rotate(-30deg); } 100% { transform: rotate(28deg); } }
 @keyframes larm-run { 0% { transform: rotate(38deg); } 50% { transform: rotate(-40deg); } 100% { transform: rotate(38deg); } }
 @keyframes larm-jump { 0% { transform: rotate(-30deg); } 50% { transform: rotate(-15deg); } 100% { transform: rotate(-25deg); } }
-@keyframes larm-climb { 0% { transform: rotate(-48deg); } 40% { transform: rotate(8deg); } 100% { transform: rotate(-48deg); } }
+@keyframes larm-climb {
+  0% { transform: rotate(-52deg) translateY(-6px); }
+  50% { transform: rotate(12deg) translateY(3px); }
+  100% { transform: rotate(-52deg) translateY(-6px); }
+}
 @keyframes larm-crawl { 0% { transform: rotate(-8deg); } 50% { transform: rotate(16deg); } 100% { transform: rotate(-8deg); } }
 @keyframes larm-attack { 0% { transform: rotate(10deg); } 40% { transform: rotate(-55deg); } 100% { transform: rotate(10deg); } }
 @keyframes larm-trip { 0% { transform: rotate(0); } 50% { transform: rotate(-65deg); } 100% { transform: rotate(-45deg); } }
@@ -130,7 +142,11 @@ export const NAM_PART_STYLES = `
 @keyframes rarm-walk { 0% { transform: rotate(-28deg); } 50% { transform: rotate(30deg); } 100% { transform: rotate(-28deg); } }
 @keyframes rarm-run { 0% { transform: rotate(-38deg); } 50% { transform: rotate(40deg); } 100% { transform: rotate(-38deg); } }
 @keyframes rarm-jump { 0% { transform: rotate(30deg); } 50% { transform: rotate(15deg); } 100% { transform: rotate(25deg); } }
-@keyframes rarm-climb { 0% { transform: rotate(48deg); } 40% { transform: rotate(-8deg); } 100% { transform: rotate(48deg); } }
+@keyframes rarm-climb {
+  0% { transform: rotate(12deg) translateY(3px); }
+  50% { transform: rotate(-52deg) translateY(-6px); }
+  100% { transform: rotate(12deg) translateY(3px); }
+}
 @keyframes rarm-crawl { 0% { transform: rotate(8deg); } 50% { transform: rotate(-16deg); } 100% { transform: rotate(8deg); } }
 @keyframes rarm-attack { 0% { transform: rotate(-5deg); } 40% { transform: rotate(50deg); } 100% { transform: rotate(-5deg); } }
 @keyframes rarm-trip { 0% { transform: rotate(0); } 50% { transform: rotate(65deg); } 100% { transform: rotate(45deg); } }
@@ -142,7 +158,10 @@ export const NAM_PART_STYLES = `
 @keyframes body-walk { 0%, 50%, 100% { transform: translateY(0) rotate(-2deg); } 25%, 75% { transform: translateY(-4px) rotate(-2deg); } }
 @keyframes body-run { 0%, 50%, 100% { transform: translateY(0) rotate(-5deg); } 25%, 75% { transform: translateY(-6px) rotate(-5deg); } }
 @keyframes body-jump { 0% { transform: translateY(0) scaleY(0.9); } 35% { transform: translateY(-3px) scaleY(1.08); } 70% { transform: translateY(2px) scaleY(0.92); } 100% { transform: scaleY(1); } }
-@keyframes body-climb { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-4px) rotate(-4deg); } }
+@keyframes body-climb {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
 @keyframes body-crawl { 0%, 100% { transform: translateY(6px) scaleY(0.7) scaleX(1.15); } 50% { transform: translateY(5px) scaleY(0.68) scaleX(1.18); } }
 @keyframes body-trip {
   0% { transform: translateY(0) rotate(0); }
