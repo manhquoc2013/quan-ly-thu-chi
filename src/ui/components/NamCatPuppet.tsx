@@ -337,7 +337,14 @@ export function NamCatPuppet({
   const showSmile = (happy || faceLoco || isPeek) && !overrideFace && emotion !== 'sad';
 
   return (
-    <svg width={W} height={H} viewBox="0 0 145 125" overflow="visible" className="drop-shadow-xl select-none">
+    <svg
+      data-puppet-action={action}
+      width={W}
+      height={H}
+      viewBox="0 0 145 125"
+      overflow="visible"
+      className="drop-shadow-xl select-none"
+    >
       <defs>
         {/* ── Silver-gray tabby 3D fur lighting gradients (Pixar style) ── */}
         <linearGradient id="nam-fur" x1="20%" y1="0%" x2="80%" y2="100%">
@@ -906,8 +913,18 @@ export function NamCatPuppet({
         <ellipse cx="60" cy="53" rx="21" ry="16" fill="url(#nam-belly-white)" />
 
         {/* ── Rosy Blushing Cheeks ── */}
-        <ellipse cx="37" cy="53" rx="7.5" ry="4.5" fill="url(#nam-blush)" />
-        <ellipse cx="83" cy="53" rx="7.5" ry="4.5" fill="url(#nam-blush)" />
+        <g
+          data-cheek-pinched={isCheekPinched ? 'true' : 'false'}
+          style={{
+            transform: isCheekPinched ? 'scale(1.24, 0.88)' : undefined,
+            transformBox: 'view-box',
+            transformOrigin: '60px 53px',
+            transition: 'transform 0.15s ease-out',
+          }}
+        >
+          <ellipse cx="37" cy="53" rx="7.5" ry="4.5" fill="url(#nam-blush)" />
+          <ellipse cx="83" cy="53" rx="7.5" ry="4.5" fill="url(#nam-blush)" />
+        </g>
 
         {/* ── Expressive Eyes & Eyelashes ── */}
         {faceDead ? (

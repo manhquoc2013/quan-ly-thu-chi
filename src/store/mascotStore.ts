@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { speechService, type VisemeShape } from '@/services/speechService';
 import { lucyAudio } from '@/services/lucyAudio';
 
@@ -84,6 +84,7 @@ export const VOICE_TONES: Record<VoiceTone, { label: string; pitch: number; rate
 };
 
 export interface MascotState {
+  enabled: boolean; // Bật/Tắt hiển thị Mascot toàn diện
   visible: boolean;
   message: string;
   emotion: MascotEmotion;
@@ -119,6 +120,7 @@ export interface MascotState {
 }
 
 export interface MascotActions {
+  setEnabled: (enabled: boolean) => void;
   speak: (message: string, emotion: MascotEmotion, options?: { forceVoice?: boolean }) => void;
   hide: () => void;
   setEmotion: (emotion: MascotEmotion) => void;
@@ -159,6 +161,7 @@ let bubbleTimer: ReturnType<typeof setTimeout> | null = null;
 export const useMascotStore = create<MascotStore>()(
   persist(
     (set, get) => ({
+      enabled: true,
       visible: false,
       message: '',
       emotion: 'idle',
@@ -380,6 +383,10 @@ export const useMascotStore = create<MascotStore>()(
         }
       },
 
+      setEnabled: (enabled) => {
+        set({ enabled });
+      },
+
       setDocked: (isDocked) => {
         set({ isDocked });
         if (get().soundEnabled) lucyAudio.pop();
@@ -409,7 +416,22 @@ export const useMascotStore = create<MascotStore>()(
     }),
     {
       name: 'mascot-settings',
+      storage: createJSONStorage(() => {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            return window.localStorage;
+          }
+        } catch {
+          // Fallback storage when localStorage is unavailable
+        }
+        return {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        };
+      }),
       partialize: (state) => ({
+        enabled: state.enabled,
         outfit: state.outfit,
         autoOutfit: state.autoOutfit,
         activity: state.activity,

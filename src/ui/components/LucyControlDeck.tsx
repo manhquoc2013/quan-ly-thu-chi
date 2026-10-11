@@ -24,7 +24,7 @@ import {
   Lightbulb,
   Shirt,
   Gamepad2,
-  Smile,
+  EyeOff,
 } from 'lucide-react';
 import {
   useMascotStore,
@@ -65,6 +65,7 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
     petCount,
     petCat,
     speak,
+    setEnabled,
   } = useMascotStore();
 
   const toggleFab = useUIStore((s) => s.toggleFab);
@@ -512,6 +513,19 @@ export function LucyControlDeck({ onClose }: { onClose: () => void }) {
         >
           <MessageSquare size={13} />
           Mở khung trò chuyện chi tiết với Nấm
+        </button>
+
+        {/* Section 5: Quick Hide Mascot */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            setEnabled(false);
+          }}
+          className="w-full py-2 px-3 rounded-xl border border-border-subtle bg-surface hover:bg-surface-hover text-text-muted hover:text-text-primary font-medium text-xs transition-colors flex items-center justify-center gap-2"
+        >
+          <EyeOff size={13} />
+          Ẩn Mèo Nấm (Bật lại bất cứ lúc nào trong Cài đặt)
         </button>
       </div>
     </div>

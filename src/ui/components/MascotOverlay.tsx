@@ -15,10 +15,10 @@ import {
   pickLine,
   type LandVibe,
 } from '@/services/mascotLines';
-import type { VisemeShape } from '@/services/speechService';
 import { LucyControlDeck } from './LucyControlDeck';
 import { lucyAudio } from '@/services/lucyAudio';
 import { NamCatPuppet } from './NamCatPuppet';
+import { MascotLadder, type LadderState } from './MascotLadder';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, type CSSProperties } from 'react';
 
 /* ═══ Types ═══ */
@@ -91,8 +91,6 @@ const PHYS = {
 /** Pixels traveled per full limb cycle — keeps gait from looking like a slide. */
 const STRIDE = { walk: 30, run: 42, crawl: 24 } as const;
 
-interface RopeAnchor { ax: number; ay: number }
-
 const PROFILES: Record<MascotActivity, ActivityProfile> = {
   low: {
     delay: [6000, 14000],
@@ -117,41 +115,8 @@ const PROFILES: Record<MascotActivity, ActivityProfile> = {
   },
 };
 
-/* ═══ Part CSS ═══ */
+const _LEGACY_STYLES = `
 
-const PART_STYLES = `
-.mc-part{transform-box:fill-box;transform-origin:center center}
-.mc-leg{transform-box:fill-box;transform-origin:50% 18%}
-.mc-arm{transform-box:fill-box;transform-origin:50% 12%}
-/* Tail on the LEFT hip — behind the body when facing right (local +X = forward) */
-.mc-tail{transform-box:view-box;transform-origin:30px 80px}
-.mc-body{transform-box:fill-box;transform-origin:50% 55%}
-.mc-head{transform-box:view-box;transform-origin:60px 55px}
-
-@keyframes tail-idle{0%,100%{transform:rotate(8deg)}50%{transform:rotate(-10deg)}}
-/* Sway behind (left) while stepping forward */
-@keyframes tail-walk{
-  0%{transform:rotate(28deg) scale(1,1)}
-  25%{transform:rotate(4deg) scale(1.04,0.96)}
-  50%{transform:rotate(-30deg) scale(1,1)}
-  75%{transform:rotate(-6deg) scale(1.04,0.96)}
-  100%{transform:rotate(28deg) scale(1,1)}
-}
-@keyframes tail-run{
-  0%{transform:rotate(38deg) scale(1,0.95)}
-  25%{transform:rotate(6deg) scale(1.06,0.92)}
-  50%{transform:rotate(-36deg) scale(1,0.95)}
-  75%{transform:rotate(-8deg) scale(1.06,0.92)}
-  100%{transform:rotate(38deg) scale(1,0.95)}
-}
-@keyframes tail-jump{0%{transform:rotate(-8deg)}40%{transform:rotate(-32deg)}100%{transform:rotate(-12deg)}}
-@keyframes tail-climb{0%,100%{transform:rotate(12deg)}50%{transform:rotate(-14deg)}}
-@keyframes tail-crawl{0%,100%{transform:rotate(30deg)}50%{transform:rotate(8deg)}}
-@keyframes tail-attack{0%{transform:rotate(5deg)}50%{transform:rotate(-28deg)}100%{transform:rotate(5deg)}}
-@keyframes tail-hurt{0%,100%{transform:rotate(-22deg)}50%{transform:rotate(-34deg)}}
-@keyframes tail-fall{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(-32deg)}}
-@keyframes tail-dead{0%,100%{transform:rotate(-40deg)}}
-@keyframes tail-default{0%,100%{transform:rotate(8deg)}50%{transform:rotate(-10deg)}}
 
 /* Contact → Down → Passing → Up (classic walk cycle), opposite phase L/R */
 @keyframes lleg-idle{0%,100%{transform:rotate(0)}}
@@ -292,16 +257,6 @@ const PART_STYLES = `
 @keyframes cheek-pinch-r{0%,100%{transform:translate(0,0)}50%{transform:translate(6px,1px) scale(1.15,0.9)}}
 `;
 
-const PART_KEYS: Record<string, Set<CoreAction>> = {
-  tail: new Set(['idle', 'walk', 'run', 'jump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  lleg: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  rleg: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  larm: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  rarm: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  body: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-  head: new Set(['idle', 'walk', 'run', 'jump', 'runJump', 'climb', 'crawl', 'attack', 'hurt', 'fall', 'dead']),
-};
-
 export function normalizeAction(action: Action): CoreAction {
   if (action === 'flinch') return 'hurt';
   if (action === 'tossed') return 'fall';
@@ -310,32 +265,7 @@ export function normalizeAction(action: Action): CoreAction {
   return action;
 }
 
-function partAnim(part: string, action: Action, walkDur = 0.75, runDur = 0.5): string {
-  const core = normalizeAction(action);
-  const safe = PART_KEYS[part]?.has(core)
-    ? core
-    : core === 'runJump' && PART_KEYS[part]?.has('run')
-      ? 'run'
-      : 'idle';
-  const key = `${part}-${safe}`;
-  const once = core === 'hurt' || core === 'attack' || core === 'dead' || core === 'jump' || core === 'runJump';
-  const loco = core === 'walk' || core === 'run' || core === 'crawl' || core === 'climb';
-  const dur =
-    core === 'hurt' ? '0.28s' :
-    core === 'attack' ? '0.55s' :
-    core === 'dead' ? '1.4s' :
-    core === 'jump' || core === 'runJump' ? '0.55s' :
-    core === 'climb' ? '0.55s' :
-    core === 'crawl' ? '0.45s' :
-    core === 'fall' ? '0.45s' :
-    core === 'run' ? `${runDur}s` :
-    core === 'walk' ? `${walkDur}s` :
-    '2.4s';
-  // Linear gait timing so limb phase stays locked to constant travel speed
-  const ease = once ? 'ease-out' : loco ? 'linear' : 'ease-in-out';
-  const iter = once ? '1 forwards' : 'infinite';
-  return `${key} ${dur} ${ease} ${iter}`;
-}
+
 
 export const CatBody = NamCatPuppet;
 
@@ -907,6 +837,7 @@ function Parachute({ open }: { open: boolean }) {
 /* ═══ Component ═══ */
 
 export function MascotOverlay() {
+  const enabled = useMascotStore((s) => s.enabled);
   const visible = useMascotStore((s) => s.visible);
   const message = useMascotStore((s) => s.message);
   const emotion = useMascotStore((s) => s.emotion);
@@ -948,7 +879,13 @@ export function MascotOverlay() {
   const [action, setAction] = useState<CoreAction>('idle');
   const [facingRight, setFacingRight] = useState(true);
   const [chuteOpen, setChuteOpen] = useState(false);
-  const [ropeOn, setRopeOn] = useState(false);
+  const [ladderInfo, setLadderInfo] = useState<{
+    x: number;
+    bottomY: number;
+    topY: number;
+    state: LadderState;
+    progress: number;
+  } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDizzy, setIsDizzy] = useState(false);
   const [isBellyTickle, setIsBellyTickle] = useState(false);
@@ -956,9 +893,7 @@ export function MascotOverlay() {
   const [isCheekPinched, setIsCheekPinched] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const ropeLineRef = useRef<SVGLineElement>(null);
-  const ropeHookRef = useRef<SVGGElement>(null);
-  const ropeRef = useRef<RopeAnchor | null>(null);
+  const ladderTimerRef = useRef(0);
   const posRef = useRef(pos);
   const actionRef = useRef(action);
   const facingRef = useRef(true);
@@ -1009,34 +944,11 @@ export function MascotOverlay() {
 
   const setBusy = (v: boolean) => { busyRef.current = v; };
 
-  const clearRope = useCallback(() => {
-    ropeRef.current = null;
-    setRopeOn(false);
-    if (throwRafRef.current) {
-      cancelAnimationFrame(throwRafRef.current);
-      throwRafRef.current = 0;
-    }
-  }, []);
-
-  const paintRope = useCallback((catX: number, catY: number, throwT: number) => {
-    const anchor = ropeRef.current;
-    const line = ropeLineRef.current;
-    const hook = ropeHookRef.current;
-    if (!anchor || !line) return;
-    // Paw toward facing direction
-    const handX = catX + (facingRef.current ? W * 0.62 : W * 0.38);
-    const handY = catY + 18;
-    const latched = throwT >= 0.99;
-    const x2 = latched ? anchor.ax : handX + (anchor.ax - handX) * throwT;
-    const y2 = latched ? anchor.ay : handY + (anchor.ay - handY) * throwT;
-    line.setAttribute('x1', String(handX));
-    line.setAttribute('y1', String(handY));
-    line.setAttribute('x2', String(x2));
-    line.setAttribute('y2', String(y2));
-    if (hook) {
-      // Shank (+Y local) continues along the rope (hand → hook) so the tail matches the line
-      const ang = (Math.atan2(y2 - handY, x2 - handX) * 180) / Math.PI - 90;
-      hook.setAttribute('transform', `translate(${x2}, ${y2}) rotate(${ang}) scale(0.5)`);
+  const clearLadder = useCallback(() => {
+    setLadderInfo(null);
+    if (ladderTimerRef.current) {
+      cancelAnimationFrame(ladderTimerRef.current);
+      ladderTimerRef.current = 0;
     }
   }, []);
 
@@ -1064,7 +976,6 @@ export function MascotOverlay() {
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
     }
-    if (ropeRef.current) paintRope(x, y, 1);
     if (syncReact) {
       setPos(next);
       uiPosSyncT.current = performance.now();
@@ -1076,7 +987,7 @@ export function MascotOverlay() {
         setPos(next);
       }
     }
-  }, [paintRope]);
+  }, []);
 
   // Mount: place via DOM once (style left/top are not React-controlled afterward)
   useLayoutEffect(() => {
@@ -1145,9 +1056,9 @@ export function MascotOverlay() {
       const targetY = groundY();
       applyPos(targetX, targetY, true);
       setAction('idle');
-      clearRope();
+      clearLadder();
     }
-  }, [isDocked, applyPos, clearRope]);
+  }, [isDocked, applyPos, clearLadder]);
 
   /** Physics lean lives on outer pivot — never fight land/gait CSS on the inner layer. */
   const setSpinAngle = useCallback((deg: number) => {
@@ -1178,7 +1089,7 @@ export function MascotOverlay() {
 
   /** Idle on a legal surface only — never hard-teleport across the screen. */
   const settleIdle = useCallback((x: number, y: number) => {
-    clearRope();
+    clearLadder();
     setChuteOpen(false);
     const gY = groundY();
     const plats = scanPlatforms(gY);
@@ -1213,7 +1124,7 @@ export function MascotOverlay() {
         });
       }, 40);
     }
-  }, [applyPos, clearRope, easeSpinTo]);
+  }, [applyPos, clearLadder, easeSpinTo]);
 
   const finishMotion = useCallback((m: Motion, x: number, y: number) => {
     motionRef.current = null;
@@ -1543,17 +1454,15 @@ export function MascotOverlay() {
     });
   }, [startMotion, settleIdle, playLandFx, speakLand]);
 
-  /** Throw grappling rope UP only, then climb along it. */
+  /** Deploy folding ladder from backpack, climb up, and pack away. */
   const doClimb = useCallback((targetY: number, targetX: number, ledge?: Platform) => {
     const from = posRef.current;
     const toY = clamp(targetY, 0, groundY());
     const toX = clamp(targetX, 5, maxX());
-    // Never rope downward
     if (toY >= from.y - 12) {
       doJump(toX, false);
       return;
     }
-    // Refuse mid-air / void anchors — jump instead
     const latchTop = toY + H;
     const probe: Platform = ledge ?? {
       top: latchTop,
@@ -1569,25 +1478,32 @@ export function MascotOverlay() {
     setFacingRight(faceR);
     facingRef.current = faceR;
     setBusy(true);
-    // Latch exactly on the ledge lip (platform top)
-    const ax = clamp((probe.left + probe.right) / 2, probe.left + 8, probe.right - 8);
-    ropeRef.current = { ax, ay: probe.top };
-    setRopeOn(true);
-    setAction('attack');
-    speakLand('grapple');
-    paintRope(from.x, from.y, 0);
 
-    const throwStart = performance.now();
-    const THROW_MS = 480;
-    const throwStep = (now: number) => {
-      const t = clamp((now - throwStart) / THROW_MS, 0, 1);
-      paintRope(posRef.current.x, posRef.current.y, easeOutQuad(t));
+    const ladderX = clamp((probe.left + probe.right) / 2, probe.left + 12, probe.right - 12);
+    const ladderBottomY = from.y + H;
+    const ladderTopY = probe.top;
+
+    setAction('climb');
+    setLadderInfo({
+      x: ladderX,
+      bottomY: ladderBottomY,
+      topY: ladderTopY,
+      state: 'deploying',
+      progress: 0,
+    });
+
+    const deployStart = performance.now();
+    const DEPLOY_MS = 360;
+    const deployStep = (now: number) => {
+      const t = clamp((now - deployStart) / DEPLOY_MS, 0, 1);
+      setLadderInfo((prev) => (prev ? { ...prev, progress: easeOutQuad(t), state: t >= 1 ? 'ready' : 'deploying' } : null));
+
       if (t < 1) {
-        throwRafRef.current = requestAnimationFrame(throwStep);
+        ladderTimerRef.current = requestAnimationFrame(deployStep);
         return;
       }
-      throwRafRef.current = 0;
-      setAction('climb');
+      ladderTimerRef.current = 0;
+
       const dist = Math.hypot(toX - from.x, toY - from.y);
       startMotion({
         kind: 'climb',
@@ -1595,27 +1511,40 @@ export function MascotOverlay() {
         fromY: from.y,
         toX,
         toY,
-        duration: clamp(1100 + dist * 3, 1300, 2600),
+        duration: clamp(1000 + dist * 2.8, 1200, 2400),
         parachute: false,
         hardLand: false,
         locoAction: 'walk',
         onDone: ({ x, y }) => {
-          clearRope();
-          playLandFx();
-          speakLand('climb');
-          applyPos(x, y, true);
-          setAction('idle');
-          setTimeout(() => {
-            settleIdle(x, y);
-            scheduleRef.current();
-          }, 380);
+          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
+          const packStart = performance.now();
+          const PACK_MS = 280;
+          const packStep = (packNow: number) => {
+            const pt = clamp((packNow - packStart) / PACK_MS, 0, 1);
+            setLadderInfo((prev) => (prev ? { ...prev, progress: pt } : null));
+            if (pt < 1) {
+              ladderTimerRef.current = requestAnimationFrame(packStep);
+              return;
+            }
+            ladderTimerRef.current = 0;
+            clearLadder();
+            playLandFx();
+            speakLand('climb');
+            applyPos(x, y, true);
+            setAction('idle');
+            setTimeout(() => {
+              settleIdle(x, y);
+              scheduleRef.current();
+            }, 320);
+          };
+          ladderTimerRef.current = requestAnimationFrame(packStep);
         },
       });
     };
-    throwRafRef.current = requestAnimationFrame(throwStep);
-  }, [startMotion, doJump, paintRope, settleIdle, clearRope, playLandFx, speakLand, applyPos]);
+    ladderTimerRef.current = requestAnimationFrame(deployStep);
+  }, [startMotion, doJump, settleIdle, clearLadder, playLandFx, speakLand, applyPos]);
 
-  /** Drop / hop DOWN — never throw a rope. */
+  /** Drop / descend DOWN — ladder for < 250px, parachute glide for >= 250px */
   const doDescend = useCallback((targetY: number, targetX: number) => {
     const from = posRef.current;
     const toY = clamp(targetY, 0, groundY());
@@ -1627,10 +1556,11 @@ export function MascotOverlay() {
     const faceR = toX >= from.x;
     setFacingRight(faceR);
     facingRef.current = faceR;
-    clearRope();
+    clearLadder();
+
     const drop = toY - from.y;
-    // Short drop = hop (no chute); tall = parachute glide
-    if (drop >= CHUTE_MIN_DROP) {
+    // High drop (>= 250px): deploy parachute glide down
+    if (drop >= 250) {
       doBallisticRef.current(
         clamp((toX - from.x) / 600, -0.35, 0.35),
         0.2,
@@ -1639,31 +1569,71 @@ export function MascotOverlay() {
       );
       return;
     }
-    setAction('jump');
+
+    // Small drop (< 250px): deploy folding ladder downwards and climb down
+    const ladderX = clamp((from.x + toX) / 2, 15, window.innerWidth - 15);
+    const ladderTopY = from.y + H;
+    const ladderBottomY = toY + H;
+
     setBusy(true);
-    setChuteOpen(false);
-    startMotion({
-      kind: 'jump',
-      fromX: from.x,
-      fromY: from.y,
-      toX,
-      toY,
-      duration: clamp(520 + drop * 1.2, 560, 900),
-      parachute: false,
-      noChute: true,
-      hardLand: false,
-      locoAction: 'walk',
-      onDone: ({ x, y }) => {
-        setChuteOpen(false);
-        playLandFx();
-        speakLand('hop');
-        setTimeout(() => {
-          settleIdle(x, y);
-          scheduleRef.current();
-        }, 360);
-      },
+    setAction('climb');
+    setLadderInfo({
+      x: ladderX,
+      bottomY: ladderBottomY,
+      topY: ladderTopY,
+      state: 'deploying',
+      progress: 0,
     });
-  }, [startMotion, doJump, clearRope, settleIdle, playLandFx, speakLand]);
+
+    const deployStart = performance.now();
+    const DEPLOY_MS = 320;
+    const deployStep = (now: number) => {
+      const t = clamp((now - deployStart) / DEPLOY_MS, 0, 1);
+      setLadderInfo((prev) => (prev ? { ...prev, progress: easeOutQuad(t), state: t >= 1 ? 'ready' : 'deploying' } : null));
+
+      if (t < 1) {
+        ladderTimerRef.current = requestAnimationFrame(deployStep);
+        return;
+      }
+      ladderTimerRef.current = 0;
+
+      startMotion({
+        kind: 'climb',
+        fromX: from.x,
+        fromY: from.y,
+        toX,
+        toY,
+        duration: clamp(800 + drop * 2.2, 900, 1800),
+        parachute: false,
+        noChute: true,
+        hardLand: false,
+        locoAction: 'walk',
+        onDone: ({ x, y }) => {
+          setLadderInfo((prev) => (prev ? { ...prev, state: 'packing', progress: 0 } : null));
+          const packStart = performance.now();
+          const PACK_MS = 240;
+          const packStep = (packNow: number) => {
+            const pt = clamp((packNow - packStart) / PACK_MS, 0, 1);
+            setLadderInfo((prev) => (prev ? { ...prev, progress: pt } : null));
+            if (pt < 1) {
+              ladderTimerRef.current = requestAnimationFrame(packStep);
+              return;
+            }
+            ladderTimerRef.current = 0;
+            clearLadder();
+            playLandFx();
+            speakLand('hop');
+            setTimeout(() => {
+              settleIdle(x, y);
+              scheduleRef.current();
+            }, 300);
+          };
+          ladderTimerRef.current = requestAnimationFrame(packStep);
+        },
+      });
+    };
+    ladderTimerRef.current = requestAnimationFrame(deployStep);
+  }, [startMotion, doJump, clearLadder, settleIdle, playLandFx, speakLand]);
 
   const doCrawl = useCallback(() => {
     const from = posRef.current;
@@ -1738,7 +1708,7 @@ export function MascotOverlay() {
   ) => {
     const from = posRef.current;
     if (spinEaseRaf.current) cancelAnimationFrame(spinEaseRaf.current);
-    clearRope();
+    clearLadder();
     setChuteOpen(false);
     setFacingRight(vx >= 0);
     facingRef.current = vx >= 0;
@@ -1815,7 +1785,7 @@ export function MascotOverlay() {
         }
       },
     });
-  }, [applyPos, startMotion, settleIdle, clearRope, playLandFx, speakLand, easeSpinTo]);
+  }, [applyPos, startMotion, settleIdle, clearLadder, playLandFx, speakLand, easeSpinTo]);
 
   const doFall = useCallback((
     toX: number,
@@ -1926,7 +1896,7 @@ export function MascotOverlay() {
       const cur = posRef.current;
       // Floating in void → hop down; chute only if tall
       if (isFloating(cur.x, cur.y, plats, gY)) {
-        clearRope();
+        clearLadder();
         const landY = findSurface(plats, cur.x, cur.y + H, gY);
         const drop = Math.max(0, (landY < cur.y + 4 ? gY : landY) - cur.y);
         const tall = drop >= CHUTE_MIN_DROP;
@@ -2018,7 +1988,7 @@ export function MascotOverlay() {
         doLoco(clamp(cur.x + dir * span, range.lo, range.hi), 'walk');
       }
     }, rand(profile.delay[0], profile.delay[1]));
-  }, [profile, doClimb, doDescend, doJump, doCrawl, doAttack, doLoco, doBallistic, clearRope]);
+  }, [profile, doClimb, doDescend, doJump, doCrawl, doAttack, doLoco, doBallistic, clearLadder]);
 
   useEffect(() => {
     scheduleRef.current = schedule;
@@ -2165,7 +2135,7 @@ export function MascotOverlay() {
       setChuteOpen(false);
     }
     if (spinEaseRaf.current) cancelAnimationFrame(spinEaseRaf.current);
-    clearRope();
+    clearLadder();
     interactingRef.current = true;
     draggingRef.current = true;
     setBusy(true);
@@ -2355,43 +2325,21 @@ export function MascotOverlay() {
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
-  }, [applyPos, doBallistic, clearRope, petCat, playTapReaction, setSpinAngle, settleIdle]);
+  }, [applyPos, doBallistic, clearLadder, petCat, playTapReaction, setSpinAngle, settleIdle]);
+
+  if (!enabled) return null;
 
   return (
     <>
-      {/* Grapple rope UP only: solid cord + claw hook latching onto ledge */}
-      {ropeOn && (
-        <svg className="pointer-events-none fixed inset-0 z-[90]" width="100%" height="100%" aria-hidden>
-          <line
-            ref={ropeLineRef}
-            x1={0} y1={0} x2={0} y2={0}
-            stroke="#57534e"
-            strokeWidth="2.8"
-            strokeLinecap="round"
-          />
-          <g ref={ropeHookRef} transform="translate(0,0) scale(0.5)">
-            {/* Local +Y = along rope away from paw. Ring sits on the rope end. */}
-            <circle cx="0" cy="0" r="3" fill="#d6d3d1" stroke="#292524" strokeWidth="1.3" />
-            {/* Shank continues the rope line */}
-            <rect x="-1.3" y="2" width="2.6" height="9" rx="1" fill="#78716c" stroke="#44403c" strokeWidth="0.7" />
-            {/* Claw curves off the shank to catch the ledge */}
-            <path
-              d="M0 11 L0 15 Q0 21 7 21 Q11 21 11 16 L11 19"
-              fill="none"
-              stroke="#292524"
-              strokeWidth="2.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M11 19 L9 23"
-              fill="none"
-              stroke="#57534e"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </g>
-        </svg>
+      {/* Folding ladder deployed from backpack */}
+      {ladderInfo && (
+        <MascotLadder
+          x={ladderInfo.x}
+          bottomY={ladderInfo.bottomY}
+          topY={ladderInfo.topY}
+          state={ladderInfo.state}
+          progress={ladderInfo.progress}
+        />
       )}
 
       <div

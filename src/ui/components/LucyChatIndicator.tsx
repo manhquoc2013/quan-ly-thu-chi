@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Brain, Calculator, Coins } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface LucyChatThinkingProps {
   customText?: string;

@@ -67,6 +67,8 @@ export function SettingsScreen() {
     householdId, householdName, householdRole, supabaseEmail, setHousehold, setSupabaseEmail,
   } = useAuthStore();
 
+  const enabled = useMascotStore((s) => s.enabled);
+  const setEnabled = useMascotStore((s) => s.setEnabled);
   const activity = useMascotStore((s) => s.activity);
   const setActivity = useMascotStore((s) => s.setActivity);
   const voiceEnabled = useMascotStore((s) => s.voiceEnabled);
@@ -438,6 +440,27 @@ export function SettingsScreen() {
           <section aria-label="Mascot settings">
             <Card><CardHeader><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Cat className="h-4 w-4 text-accent-fg" /><CardTitle>Mèo Nấm — Trợ lý tài chính & Đồng hành</CardTitle></div><Button size="sm" onClick={() => setMenuOpen(true)} className="text-xs">Mở Bảng điều khiển Mèo Nấm</Button></div></CardHeader>
               <CardContent><div className="space-y-[var(--s-md)]">
+                {/* Master Switch Bật / Tắt Mascot */}
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-neutral-bg">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-text-primary">Hiển thị Mèo Nấm trên màn hình</span>
+                      <span className={['text-[11px] px-2 py-0.5 rounded-full font-medium', enabled ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-neutral-500/15 text-text-muted'].join(' ')}>
+                        {enabled ? 'Đang bật' : 'Đã tắt'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-muted">Bật hoặc tắt toàn bộ mascot đồng hành Mèo Nấm và âm thanh tương tác.</p>
+                  </div>
+                  <ToggleSwitch
+                    aria-label="Bật/Tắt hiển thị Mèo Nấm"
+                    checked={enabled}
+                    onCheckedChange={(val) => {
+                      setEnabled(val);
+                      toast.success(val ? 'Đã bật hiển thị Mèo Nấm' : 'Đã tắt hiển thị Mèo Nấm');
+                    }}
+                  />
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-semibold text-text-primary">Mức độ hoạt động của Nấm</span>
