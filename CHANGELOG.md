@@ -6,6 +6,29 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.4.0] — 2026-10-11
+
+🔗 [So sánh với v2.3.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.3.0...v2.4.0)
+
+### Tối Ưu Hoạt Hoạ Mascot, Bắt Thang Leo Trèo & Cấu Hình Bật / Tắt Linh Vật
+- **Thang Gấp Leo Trèo Kỹ Thuật Số (`MascotLadder.tsx`)**:
+  - Loại bỏ hoàn toàn cơ chế quăng dây neo (grappling hook) di chuyển màn hình vốn tạo cảm giác đột ngột và cứng nhắc.
+  - Thiết kế module thang nhôm kỹ thuật số dạng SVG rút từ ba lô: có chân đế cao su chống trượt, thanh đứng vát bo góc, các bậc thang phản quang và móc khóa đỉnh an toàn.
+  - Hiệu ứng mở thang mượt mà (extend/retract) và tự động thu gọn vào ba lô khi Nấm leo lên đến nơi hoặc tiếp đất.
+- **Quy Tắc Hạ Độ Cao Đa Nhánh Tự Nhiên (Descent Branching)**:
+  - Khi cần xuống bục thấp (< 250px): Nấm triển khai thang và leo xuống từng bậc an toàn, tự nhiên.
+  - Khi độ cao lớn (≥ 250px) hoặc rơi tự do giữa không trung: Nấm bung dù lượn (`parachute`) chao liệng nhẹ nhàng trong gió với góc nghiêng tự nhiên trước khi tiếp đất.
+- **Tối Ưu Độ Mượt & Tính Vật Lý Của Hoạt Hoạ (`NamCatPuppet.tsx`)**:
+  - Bổ sung quán tính chuyển động cho tai (`earWiggle`), vẫy đuôi tự nhiên khi di chuyển hoặc đứng yên (`tailWiggle`).
+  - Hiệu ứng co giãn biến dạng vật lý (Squash & Stretch) khi tiếp đất (`landingSquash`) tạo cảm giác êm ái, bớt cứng nhắc.
+  - Nâng cấp tương tác véo má/chạm vào má phúng phính (`cheekPinch`) phản hồi sinh động khi người dùng tương tác chuột.
+- **Cấu Hình Bật / Tắt Mascot Toàn Diện**:
+  - Bổ sung nút chuyển Bật / Tắt Master trong **Cài đặt ➔ tab Mascot** (`SettingsScreen.tsx`), lưu trạng thái bền vững với cơ chế fallback an toàn phòng trường hợp hỏng storage.
+  - Bổ sung nút **Ẩn nhanh (Quick Hide)** tiện lợi ngay trên bảng điều khiển `LucyControlDeck.tsx` để người dùng có thể ẩn linh vật ngay lập tức chỉ với 1 click khi cần tập trung làm việc.
+  - Tự động dừng mọi timer hoạt hoạ, giải phóng event listener và ẩn toàn bộ overlay khi mascot ở trạng thái tắt.
+
+---
+
 ## [2.3.0] — 2026-10-11
 
 🔗 [So sánh với v2.2.0](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.2.0...v2.3.0)

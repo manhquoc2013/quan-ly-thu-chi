@@ -1,6 +1,6 @@
 # Wiki — Quản Lý Tài Chính
 
-Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng của **Quản Lý Tài Chính** (v2.3.0).
+Chào mừng đến với Trung tâm Tài liệu & Hướng dẫn Sử dụng của **Quản Lý Tài Chính** (v2.4.0).
 
 > 📖 **Xem trực tuyến trên GitHub Wiki**: [Truy cập tab Wiki](https://github.com/manhquoc2013/quan-ly-thu-chi/wiki) để sử dụng toàn bộ liên kết điều hướng và menu tương tác.
 

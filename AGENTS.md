@@ -5,6 +5,7 @@
 * **No Hardcoding / Zero Magic Values:** Tuyệt đối không hardcode URL, port, timeout, chuỗi tĩnh, magic numbers hay mã màu. Bắt buộc trừu tượng hóa ra Constants, Enums, Config hoặc Environment Variables.
 * **Production-Ready Only:** CẤM placeholder (`TODO`, `FIXME`, mock returns, stub function). Mọi dòng code phải đầy đủ logic và sẵn sàng deploy.
 * **Algorithmic & Memory Efficiency:** Tối ưu O(1), O(n) thay vì O(n²). Tái sử dụng buffer/object, giải phóng resource/listener tránh rò rỉ bộ nhớ (memory leaks).
+* **No Auto-Branch & No Auto-Commit:** Khi implement, tuyệt đối KHÔNG tự ý tạo nhánh mới (`git branch`, `git checkout -b`) và KHÔNG tự động commit code (`git commit`). Thực hiện code trực tiếp trên nhánh hiện tại; việc quản lý nhánh và commit hoàn toàn do người dùng chủ động kiểm soát.
 
 ## 2. QUALITY ASSURANCE & "DEFINITION OF DONE"
 * **Zero Warning Policy:** Code không được phép phát sinh bất kỳ warning nào (từ compiler, linter, runtime hoặc deprecation).
