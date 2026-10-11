@@ -6,6 +6,21 @@ Các tag được đánh theo [Semantic Versioning](https://semver.org/lang/vi/)
 
 ---
 
+## [2.4.3] — 2026-10-11
+
+🔗 [So sánh với v2.4.2](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.4.2...v2.4.3)
+
+### Sửa Lỗi Tải Model AI Cục Bộ (WebLLM) & Bổ Sung Kiểm Thử Hồi Quy
+- **Khắc Phục Lỗi ModelNotFoundError (`webLLM.ts`)**:
+  - Chuẩn hóa mã model ID từ định dạng GGUF sai (`Qwen2.5-3B-Instruct-Q4_K_M`) sang chuẩn WebLLM MLC prebuilt (`Qwen2.5-3B-Instruct-q4f16_1-MLC`).
+  - Đảm bảo WebGPU tải trực tiếp mô hình Qwen 2.5 3B từ cấu hình sẵn có của thư viện `@mlc-ai/web-llm` mà không ném lỗi 404 / ModelNotFoundError.
+- **Đồng Bộ Giao Diện Cài Đặt (`SettingsScreen.tsx`)**:
+  - Cập nhật thông tin hiển thị model AI cục bộ sang Qwen 2.5 3B chính xác.
+- **Bổ Sung Regression Test (`webLLM.test.ts`)**:
+  - Viết unit test xác thực `MODEL_ID` luôn tồn tại trong `prebuiltAppConfig.model_list` của `@mlc-ai/web-llm` để ngăn ngừa lỗi cấu hình sai trong tương lai.
+
+---
+
 ## [2.4.2] — 2026-10-11
 
 🔗 [So sánh với v2.4.1](https://github.com/manhquoc2013/quan-ly-thu-chi/compare/v2.4.1...v2.4.2)
