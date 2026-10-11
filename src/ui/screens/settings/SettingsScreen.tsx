@@ -399,7 +399,7 @@ export function SettingsScreen() {
 
           <section aria-label="Local AI settings">
             <Card><CardHeader><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 min-w-0"><Bot className="h-4 w-4 text-accent-fg shrink-0" /><CardTitle>AI Cục Bộ (WebLLM)</CardTitle></div><div className="flex items-center gap-2 shrink-0">{enableWebLLM ? <Badge variant="default" className="bg-success-bg text-success-fg border-success-bg-badge gap-1"><CheckCircle size={12} />Đang bật</Badge> : <Badge variant="outline" className="gap-1"><XCircle size={12} />Tắt</Badge>}<ToggleSwitch aria-label="Bật AI cục bộ" checked={enableWebLLM} onCheckedChange={(on) => { setEnableWebLLM(on); queueUserSettingsSync(); }} /></div></div></CardHeader>
-              <CardContent><p className="text-xs text-text-muted">Chạy model AI Qwen3-4B trực tiếp trên máy qua WebGPU. Có thể gây giật lag trên máy yếu.</p><p className="text-[11px] text-text-muted mt-1">⏱ Rate limit: Không giới hạn (local)</p></CardContent>
+              <CardContent><p className="text-xs text-text-muted">Chạy model AI Qwen2.5-3B trực tiếp trên máy qua WebGPU. Có thể gây giật lag trên máy yếu.</p><p className="text-[11px] text-text-muted mt-1">⏱ Rate limit: Không giới hạn (local)</p></CardContent>
             </Card>
           </section>
 

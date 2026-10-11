@@ -1,7 +1,7 @@
 /**
  * WebLLM Service — Local AI running in the browser via WebGPU.
  *
- * Qwen3-4B (~2.7GB first download, cached in IndexedDB).
+ * Qwen2.5-3B (~2.5GB first download, cached in IndexedDB).
  * Context window raised above default 4K so long EXTRACT_PROMPT + data fits.
  *
  * v2: Added AbortController + 30s timeout to prevent machine freeze.
@@ -10,8 +10,8 @@
 
 import { CreateMLCEngine, type MLCEngine } from '@mlc-ai/web-llm';
 
-const MODEL_ID = 'Qwen2.5-3B-Instruct-Q4_K_M';
-/** Qwen3-4B supports 32K; 4K keeps VRAM low to avoid UI stutter on mid-range GPUs */
+export const MODEL_ID = 'Qwen2.5-3B-Instruct-q4f16_1-MLC';
+/** Qwen2.5-3B supports 32K; 4K keeps VRAM low to avoid UI stutter on mid-range GPUs */
 const CONTEXT_WINDOW_SIZE = 4096;
 /** Max seconds to wait for a single generate() call before auto-aborting */
 const _GENERATE_TIMEOUT_MS = 30_000;
